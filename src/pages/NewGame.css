@@ -1,0 +1,304 @@
+.new-game {
+  padding: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.new-game-header {
+  margin-bottom: 2rem;
+}
+
+.wallet-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.new-game-header h1 {
+  margin: 0;
+  color: #7A0000;
+}
+
+.dark .new-game-header h1 {
+  color: #FFEBEE;
+}
+
+.new-game-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.config-card {
+  background: #FFF5F7;
+  border: 1px solid #FFE8EC;
+  padding: 2rem;
+}
+
+.dark .config-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.patterns-card {
+  background: #FFF5F7;
+  border: 1px solid #FFE8EC;
+  padding: 2rem;
+}
+
+.dark .patterns-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.config-card h2,
+.patterns-card h2 {
+  margin: 0 0 1.5rem 0;
+  color: #7A0000;
+}
+
+.dark .config-card h2,
+.dark .patterns-card h2 {
+  color: #FFEBEE;
+}
+
+.config-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  color: #7A0000;
+}
+
+.dark .form-group label {
+  color: #cbd5e1;
+}
+
+.patterns-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0.75rem;
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.pattern-box {
+  aspect-ratio: 1;
+  border: 2px solid #FFE8EC;
+  background: #FFE8EC;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #7A0000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0.875rem;
+}
+
+.dark .pattern-box {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.pattern-box:hover {
+  border-color: #B3001B;
+  box-shadow: 0 0 8px rgba(179, 0, 27, 0.3);
+}
+
+.pattern-box.selected {
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(179, 0, 27, 0.4);
+}
+
+.check-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-icon svg {
+  color: #B3001B;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 3rem;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.range-btn,
+.clear-btn {
+  padding: 1rem 2rem;
+  border: 2px solid #B3001B;
+  color: #B3001B;
+}
+
+.dark .range-btn,
+.dark .clear-btn {
+  border-color: #D32F2F;
+  color: #D32F2F;
+}
+
+.range-btn:hover,
+.clear-btn:hover {
+  background: #FFE8EC;
+}
+
+.dark .range-btn:hover,
+.dark .clear-btn:hover {
+  background: #0f172a;
+}
+
+/* Scrollbar styling */
+.patterns-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.patterns-grid::-webkit-scrollbar-track {
+  background: #FFE8EC;
+  border-radius: 4px;
+}
+
+.dark .patterns-grid::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+.patterns-grid::-webkit-scrollbar-thumb {
+  background: #B3001B;
+  border-radius: 4px;
+}
+
+.patterns-grid::-webkit-scrollbar-thumb:hover {
+  background: #8B0015;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .new-game {
+    padding: 1.5rem;
+  }
+
+  .config-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .patterns-grid {
+    max-height: 500px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .new-game {
+    padding: 1rem;
+  }
+
+  .wallet-badge {
+    font-size: 0.875rem;
+    padding: 0.4rem 1rem;
+  }
+
+  .config-card,
+  .patterns-card {
+    padding: 1.5rem;
+  }
+
+  .config-form {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .patterns-grid {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.5rem;
+    max-height: 400px;
+  }
+
+  .pattern-box {
+    font-size: 0.8125rem;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .confirm-btn,
+  .range-btn,
+  .clear-btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .new-game-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .config-card,
+  .patterns-card {
+    padding: 1rem;
+  }
+
+  .patterns-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.4rem;
+  }
+
+  .pattern-box {
+    font-size: 0.75rem;
+  }
+
+  .check-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .action-buttons {
+    gap: 0.75rem;
+  }
+
+  .confirm-btn {
+    padding: 0.875rem 2rem;
+  }
+
+  .range-btn,
+  .clear-btn {
+    padding: 0.875rem 1.25rem;
+  }
+}

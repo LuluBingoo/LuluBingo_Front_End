@@ -1,0 +1,151 @@
+.header {
+  height: 80px;
+  background: #FFF5F7;
+  border-bottom: 1px solid #FFE8EC;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  position: fixed;
+  top: 0;
+  left: 250px;
+  right: 0;
+  z-index: 90;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.dark .header {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.header-title h1 {
+  margin: 0;
+  color: #8B0015;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .header-title h1 {
+  background: linear-gradient(135deg, #D32F2F 0%, #B3001B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #FFE8EC;
+  border-radius: 8px;
+  color: #7A0000;
+}
+
+.dark .user-info {
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.user-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(179, 0, 27, 0.3);
+}
+
+.dark .theme-toggle {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.3);
+}
+
+.theme-icon {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .header {
+    left: 200px;
+    padding: 0 1.5rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .header {
+    left: 70px;
+    padding: 0 1rem;
+    height: 70px;
+  }
+
+  .header-title h1 {
+    font-size: 1.25rem;
+  }
+
+  .user-info {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .user-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+  }
+
+  .theme-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 0.75rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.125rem;
+  }
+
+  .user-info span {
+    display: none;
+  }
+
+  .user-info {
+    padding: 0.5rem;
+    border-radius: 50%;
+  }
+}

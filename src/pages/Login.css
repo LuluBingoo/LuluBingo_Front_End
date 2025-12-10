@@ -1,0 +1,302 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 50%, #EF9A9A 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .login-page {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+}
+
+.login-container {
+  position: relative;
+  z-index: 10;
+}
+
+.login-card {
+  width: 420px;
+  background: white;
+  border: 1px solid #FFEBEE;
+  padding: 3rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+.dark .login-card {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: #334155;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.login-logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(179, 0, 27, 0.4);
+}
+
+.logo-trophy {
+  width: 40px;
+  height: 40px;
+  color: white;
+}
+
+.login-card h1 {
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-subtitle {
+  margin: 0 0 2rem 0;
+  color: #64748b;
+}
+
+.dark .login-subtitle {
+  color: #94a3b8;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  z-index: 1;
+}
+
+.dark .input-icon {
+  color: #94a3b8;
+}
+
+.login-input {
+  padding-left: 3rem;
+  width: 100%;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .toggle-password {
+  color: #94a3b8;
+}
+
+.login-button {
+  width: 100%;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  color: white;
+  padding: 1rem;
+}
+
+.login-button:hover {
+  background: linear-gradient(135deg, #8B0015 0%, #6B0010 100%);
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+}
+
+.forgot-link {
+  color: #B3001B;
+  text-decoration: none;
+}
+
+.dark .forgot-link {
+  color: #D32F2F;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+.decorative-circles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
+  pointer-events: none;
+}
+
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.1;
+}
+
+.circle-1 {
+  width: 400px;
+  height: 400px;
+  background: #B3001B;
+  top: 0;
+  left: 0;
+}
+
+.circle-2 {
+  width: 300px;
+  height: 300px;
+  background: #D32F2F;
+  bottom: 0;
+  right: 0;
+}
+
+.circle-3 {
+  width: 200px;
+  height: 200px;
+  background: #EF5350;
+  top: 50%;
+  right: 10%;
+}
+
+.dark .circle {
+  opacity: 0.05;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .login-card {
+    width: 380px;
+    padding: 2.5rem;
+  }
+
+  .decorative-circles {
+    width: 600px;
+    height: 600px;
+  }
+
+  .circle-1 {
+    width: 300px;
+    height: 300px;
+  }
+
+  .circle-2 {
+    width: 225px;
+    height: 225px;
+  }
+
+  .circle-3 {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .login-card {
+    width: 90%;
+    max-width: 420px;
+    padding: 2rem;
+  }
+
+  .login-logo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .logo-trophy {
+    width: 35px;
+    height: 35px;
+  }
+
+  .login-card h1 {
+    font-size: 1.5rem;
+  }
+
+  .decorative-circles {
+    width: 500px;
+    height: 500px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    width: 95%;
+    padding: 1.5rem;
+  }
+
+  .login-logo {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 1rem;
+  }
+
+  .logo-trophy {
+    width: 30px;
+    height: 30px;
+  }
+
+  .login-card h1 {
+    font-size: 1.25rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .login-form {
+    gap: 1.25rem;
+  }
+
+  .input-group input {
+    font-size: 0.9375rem;
+  }
+
+  .login-button {
+    padding: 0.875rem;
+  }
+
+  .decorative-circles {
+    width: 400px;
+    height: 400px;
+  }
+
+  .circle-1 {
+    width: 200px;
+    height: 200px;
+  }
+
+  .circle-2 {
+    width: 150px;
+    height: 150px;
+  }
+
+  .circle-3 {
+    width: 100px;
+    height: 100px;
+  }
+}
