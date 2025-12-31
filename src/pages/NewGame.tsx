@@ -7,25 +7,40 @@ import { Check } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import './NewGame.css';
 
-export const NewGame: React.FC = () => {
+interface NewGameProps {
+  onGameCreated: (config: GameConfig, patterns: number[]) => void;
+}
+
+interface GameConfig {
+  game: string;
+  betBirr: string;
+  numPlayers: string;
+  winBirr: string;
+
+}
+
+export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const { t } = useLanguage();
   const [selectedPatterns, setSelectedPatterns] = useState<number[]>([]);
-  const [gameConfig, setGameConfig] = useState({
+  const [gameConfig, setGameConfig] = useState<GameConfig>({
     game: '2',
     betBirr: '10',
     numPlayers: '',
     winBirr: '0',
-    bonus: '',
-    freeHit: ''
+   
   });
 
   const handlePatternClick = (num: number) => {
+    if (selectedPatterns.length >= parseInt(gameConfig.numPlayers) && !selectedPatterns.includes(num)) {
+      alert(`You can only select up to ${gameConfig.numPlayers} patterns`);
+      return;
+    }
     setSelectedPatterns(prev =>
       prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]
     );
   };
 
-  const handleConfigChange = (field: string, value: string) => {
+  const handleConfigChange = (field: keyof GameConfig, value: string) => {
     setGameConfig(prev => ({ ...prev, [field]: value }));
   };
 
@@ -38,31 +53,27 @@ export const NewGame: React.FC = () => {
       alert('Please select at least one pattern');
       return;
     }
+    if(gameConfig.winBirr === '0' || gameConfig.winBirr === ''){
+      gameConfig.winBirr = (parseInt(gameConfig.betBirr) * selectedPatterns.length).toString();
+    }
     
+    // Instead of showing alert, pass data to parent
+    onGameCreated(gameConfig, selectedPatterns);
+    
+    // Optional: Still show confirmation message
     const message = `Game Configuration:\n
 Game: ${gameConfig.game}
 Bet: ${gameConfig.betBirr} Birr
 Players: ${gameConfig.numPlayers}
 Win: ${gameConfig.winBirr} Birr
-Bonus: ${gameConfig.bonus || 0}
-Free Hits: ${gameConfig.freeHit || 0}
 Selected Patterns: ${selectedPatterns.length}
 
-Game created successfully!`;
+Game created successfully! Redirecting to Playground...`;
     
     alert(message);
   };
 
-  const handleRange = () => {
-    // Select patterns from 100-200
-    const rangePatterns = Array.from({ length: 101 }, (_, i) => i + 100).filter(n => n <= 200);
-    const validPatterns = rangePatterns.filter(n => n <= 100); // Only keep valid pattern numbers
-    setSelectedPatterns(prev => {
-      const newPatterns = validPatterns.filter(p => !prev.includes(p));
-      return [...prev, ...newPatterns];
-    });
-    alert('Selected patterns in range 100-200 (Note: Only patterns 1-100 are available)');
-  };
+
 
   const handleClear = () => {
     if (window.confirm('Clear all selected patterns?')) {
@@ -79,8 +90,8 @@ Game created successfully!`;
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="wallet-badge">{t('newGame.badWallet')}</div>
-        <h1>{t('newGame.title')}</h1>
+        {/* <div className="wallet-badge">{t('newGame.badWallet')}</div> */}
+        <h1 className=''>{t('newGame.title')}</h1>
       </motion.div>
 
       <div className="new-game-content">
@@ -126,24 +137,7 @@ Game created successfully!`;
                   onChange={(e) => handleConfigChange('winBirr', e.target.value)}
                 />
               </div>
-              <div className="form-group">
-                <label>{t('newGame.bonus')}</label>
-                <Input 
-                  type="number" 
-                  placeholder={t('newGame.enterBonus')}
-                  value={gameConfig.bonus}
-                  onChange={(e) => handleConfigChange('bonus', e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>{t('newGame.freeHit')}</label>
-                <Input 
-                  type="number" 
-                  placeholder={t('newGame.enterFreeHits')}
-                  value={gameConfig.freeHit}
-                  onChange={(e) => handleConfigChange('freeHit', e.target.value)}
-                />
-              </div>
+                            
             </div>
           </Card>
         </motion.div>
@@ -192,9 +186,7 @@ Game created successfully!`;
         <Button className="confirm-btn" onClick={handleConfirm}>
           {t('common.confirm')}
         </Button>
-        <Button className="range-btn" variant="outline" onClick={handleRange}>
-          {t('newGame.range')}
-        </Button>
+        
         <Button className="clear-btn" variant="outline" onClick={handleClear}>
           {t('common.clear')}
         </Button>

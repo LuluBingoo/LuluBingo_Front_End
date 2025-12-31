@@ -2,13 +2,17 @@ import React from 'react';
 import { Moon, Sun, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 import './Header.css';
 
 interface HeaderProps {
   username?: string;
 }
 
+
 export const Header: React.FC<HeaderProps> = ({ username = 'surafel-worabe' }) => {
+const Navigate = useNavigate();
+
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -19,7 +23,10 @@ export const Header: React.FC<HeaderProps> = ({ username = 'surafel-worabe' }) =
       transition={{ type: 'spring', stiffness: 100 }}
     >
       <div className="header-title">
-        <h1 className="logo-text">LULU Bingo</h1>
+        {/* <h1 className="logo-text">LULU Bingo</h1> */}
+        <button className="logo-text" onClick={() => Navigate('/newgame')}>
+          New Game
+        </button>
       </div>
       
       <div className="header-actions">
