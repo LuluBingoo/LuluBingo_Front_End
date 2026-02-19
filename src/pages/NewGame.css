@@ -307,3 +307,270 @@
     padding: 0.875rem 1.25rem;
   }
 }
+
+
+/* NewGame.css */
+.new-game {
+  padding: 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.new-game-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.new-game-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.wallet-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+}
+
+.new-game-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.game-config {
+  display: flex;
+  flex-direction: column;
+}
+
+.patterns-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.config-card, .patterns-card {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.config-card h2, .patterns-card h2 {
+  margin: 0 0 20px 0;
+  color: #1e293b;
+  font-size: 1.5rem;
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  width: 100%;
+}
+
+.info-box {
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.selected-patterns-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pattern-tag {
+  background: #0ea5e9;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 36px;
+  text-align: center;
+}
+
+.no-patterns {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.patterns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.patterns-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: #64748b;
+  text-align: right;
+}
+
+.patterns-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 5px;
+  margin-bottom: 15px;
+}
+
+.pattern-box {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.pattern-box:hover {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.pattern-box.selected {
+  background: #0ea5e9;
+  color: white;
+  border-color: #0284c7;
+}
+
+.pattern-box:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pattern-box:disabled:hover {
+  border-color: #e2e8f0;
+  background: white;
+}
+
+.check-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #22c55e;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patterns-info {
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.patterns-info p {
+  margin: 5px 0;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.clear-btn {
+  padding: 12px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .new-game-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .patterns-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .patterns-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  
+  .patterns-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .patterns-stats {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .patterns-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .confirm-btn, .clear-btn {
+    width: 100%;
+  }
+}

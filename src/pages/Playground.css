@@ -481,3 +481,137 @@
 
 
 }
+
+
+/* Add to Playground.css */
+.error-toast {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: #fecaca;
+  color: #dc2626;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100;
+  animation: slideIn 0.3s ease;
+}
+
+.toast-close {
+  padding: 2px;
+  min-width: auto;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.cartela-info-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 8px;
+  padding: 4px;
+  background: #f8fafc;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.playground-content {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 20px;
+  height: calc(100vh - 120px);
+  padding: 20px;
+}
+
+.playground-left {
+  height: 100%;
+}
+
+.playground-right {
+  height: 100%;
+}
+
+.cartela-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.check-btn,
+.view-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.view-all-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  color: white;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.view-all-btn:hover {
+  background: linear-gradient(135deg, #8B0015 0%, #7A0000 100%);
+  box-shadow: 0 4px 12px rgba(179, 0, 27, 0.3);
+}
+
+.view-all-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.or-divider {
+  text-align: center;
+  margin: 12px 0;
+  position: relative;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.or-divider::before {
+  left: 0;
+}
+
+.or-divider::after {
+  right: 0;
+}
+
+.or-divider span {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  background: white;
+  padding: 0 8px;
+  position: relative;
+}
+
+.dark .or-divider span {
+  background: #1e293b;
+}

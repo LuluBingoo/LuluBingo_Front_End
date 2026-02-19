@@ -135,6 +135,7 @@ interface GameConfig {
   numPlayers: string;
   winBirr: string;
   selectedPatterns: number[];
+  cartelaNumbers?: string[];
 }
 
 /* ===============================
@@ -153,7 +154,7 @@ function AppLayout({
 }) {
   const navigate = useNavigate();
 
-  // Handle game creation (same logic as before)
+  // Handle game creation
   const handleGameCreated = (
     config: Omit<GameConfig, 'selectedPatterns'>,
     patterns: number[]
@@ -168,11 +169,26 @@ function AppLayout({
     navigate('/playground');
   };
 
-  // Handle starting new game (same logic)
+  // Handle starting new game
   const handleStartNewGame = () => {
     setGameConfig(null);
     setIsGameActive(false);
     navigate('/newgame');
+  };
+
+  // Handle game state changes from Playground
+  const handleGameStateChange = (active: boolean) => {
+    setIsGameActive(active);
+  };
+
+  // Handle cartela removal
+  const handleCartelaRemoved = (cartelaNumber: string) => {
+    if (gameConfig && gameConfig.cartelaNumbers) {
+      setGameConfig({
+        ...gameConfig,
+        cartelaNumbers: gameConfig.cartelaNumbers.filter(c => c !== cartelaNumber)
+      });
+    }
   };
 
   return (
@@ -182,7 +198,7 @@ function AppLayout({
         <Header />
         <main className="page-content">
           <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard gameConfig={gameConfig} isGameActive={isGameActive} />} />
 
             <Route
               path="/playground"
@@ -190,6 +206,8 @@ function AppLayout({
                 <Playground
                   gameConfig={gameConfig}
                   onStartNewGame={handleStartNewGame}
+                  onGameStateChange={handleGameStateChange}
+                  onCartelaRemoved={handleCartelaRemoved}
                 />
               }
             />
@@ -203,7 +221,7 @@ function AppLayout({
             <Route path="/settings" element={<Settings />} />
 
             {/* Default */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/playground" replace />} />
           </Routes>
         </main>
       </div>

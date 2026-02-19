@@ -6,38 +6,45 @@ import { Badge } from '../components/ui/badge';
 import { useLanguage } from '../contexts/LanguageContext';
 import './Dashboard.css';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  gameConfig?: {
+    game: string;
+    betBirr: string;
+    numPlayers: string;
+    winBirr: string;
+    selectedPatterns: number[];
+    cartelaNumbers?: string[];
+  } | null;
+  isGameActive?: boolean;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ gameConfig, isGameActive = false }) => {
   const { t } = useLanguage();
+  
+  // Calculate stats based on current game
+  const gamesToday = isGameActive ? 1 : 0;
+  const availableBalance = gameConfig ? `$${parseFloat(gameConfig.winBirr || '0').toFixed(2)}` : '$818.00';
   
   const stats = [
     { label: t('dashboard.deposit'), value: '2', icon: DollarSign, color: '#0ea5e9' },
-    { label: t('dashboard.gamesToday'), value: '0', icon: Gamepad2, color: '#8b5cf6' },
+    { label: t('dashboard.gamesToday'), value: gamesToday.toString(), icon: Gamepad2, color: '#8b5cf6' },
     { label: t('dashboard.earningToday'), value: '$0', icon: TrendingUp, color: '#10b981' },
-    { label: t('dashboard.availableBalance'), value: '$818.00', icon: DollarSign, color: '#f59e0b' },
+    { label: t('dashboard.availableBalance'), value: availableBalance, icon: DollarSign, color: '#f59e0b' },
   ];
 
-  const recentGames = [
+  // Show current game if active
+  const recentGames = isGameActive && gameConfig ? [
     { 
-      id: 2860308, 
-      stake: 10, 
-      players: 4, 
-      calls: 1, 
+      id: parseInt(gameConfig.game) || 1, 
+      stake: parseFloat(gameConfig.betBirr) || 10, 
+      players: gameConfig.cartelaNumbers?.length || 0, 
+      calls: 0, 
       winner: [], 
       bonus: 0, 
       free: 0, 
       status: 'PLAYING' 
     },
-    { 
-      id: 2860304, 
-      stake: 10, 
-      players: 4, 
-      calls: 1, 
-      winner: [], 
-      bonus: 0, 
-      free: 0, 
-      status: 'PLAYING' 
-    },
-  ];
+  ] : [];
 
   return (
     <div className="dashboard">
