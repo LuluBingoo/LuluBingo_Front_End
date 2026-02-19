@@ -146,11 +146,13 @@ function AppLayout({
   setGameConfig,
   isGameActive,
   setIsGameActive,
+  onLogout,
 }: {
   gameConfig: GameConfig | null;
   setGameConfig: React.Dispatch<React.SetStateAction<GameConfig | null>>;
   isGameActive: boolean;
   setIsGameActive: React.Dispatch<React.SetStateAction<boolean>>;
+  onLogout: () => void;
 }) {
   const navigate = useNavigate();
 
@@ -195,7 +197,7 @@ function AppLayout({
     <div className="app-container">
       <Sidebar isGameActive={isGameActive} />
       <div className="main-content">
-        <Header />
+        <Header onLogout={onLogout} />
         <main className="page-content">
           <Routes>
             <Route path="/dashboard" element={<Dashboard gameConfig={gameConfig} isGameActive={isGameActive} />} />
@@ -237,6 +239,12 @@ function App() {
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [isGameActive, setIsGameActive] = useState(false);
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setGameConfig(null);
+    setIsGameActive(false);
+  };
+
   return (
     <ThemeProvider>
       <LanguageProvider>
@@ -249,6 +257,7 @@ function App() {
               setGameConfig={setGameConfig}
               isGameActive={isGameActive}
               setIsGameActive={setIsGameActive}
+              onLogout={handleLogout}
             />
           )}
         </Router>

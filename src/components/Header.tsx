@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, Sun, User } from 'lucide-react';
+import { Moon, Sun, User, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -7,13 +7,20 @@ import './Header.css';
 
 interface HeaderProps {
   username?: string;
+  onLogout?: () => void;
 }
 
 
-export const Header: React.FC<HeaderProps> = ({ username = 'surafel-worabe' }) => {
+export const Header: React.FC<HeaderProps> = ({ username = 'surafel-worabe', onLogout }) => {
 const Navigate = useNavigate();
 
   const { theme, toggleTheme } = useTheme();
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      onLogout?.();
+    }
+  };
 
   return (
     <motion.header 
@@ -46,6 +53,16 @@ const Navigate = useNavigate();
           ) : (
             <Sun className="theme-icon" />
           )}
+        </motion.button>
+
+        <motion.button
+          className="logout-button"
+          onClick={handleLogout}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <LogOut className="logout-icon" />
+          <span className="logout-text">Logout</span>
         </motion.button>
       </div>
     </motion.header>
