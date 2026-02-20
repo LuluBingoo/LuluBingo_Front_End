@@ -338,6 +338,8 @@ import {
   Flame,
   Monitor,
   MoreHorizontal,
+  Loader2,
+  Trophy,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -399,9 +401,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // State for cartela
   const [cartelaInput, setCartelaInput] = useState("");
-  const [claimPattern, setClaimPattern] = useState<
-    "row" | "column" | "diagonal"
-  >("row");
   const [showCartelaModal, setShowCartelaModal] = useState(false);
   const [selectedCartela, setSelectedCartela] = useState<string>("");
   const [cartelaError, setCartelaError] = useState("");
@@ -425,8 +424,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isTogglingFullscreen, setIsTogglingFullscreen] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [isCheckingCartela, setIsCheckingCartela] = useState(false);
   const [showBallPopup, setShowBallPopup] = useState(false);
   const [ballPopupLabel, setBallPopupLabel] = useState("");
+  const [winnerCelebration, setWinnerCelebration] = useState<{
+    cartela: string;
+    pattern?: string | null;
+  } | null>(null);
   const [callStreak, setCallStreak] = useState(0);
   const [streakBoost, setStreakBoost] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
@@ -479,12 +483,42 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return Object.fromEntries(entries);
   }, [gameConfig?.cartelaData, serverCartelaOrder]);
 
+  const normalizeCartelaNumber = (value: string | number): number | null => {
+    const digits = String(value).replace(/\D/g, "");
+    if (!digits) return null;
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
+
+  const findCartelaInList = (value: string, list: string[]): string | null => {
+    const target = normalizeCartelaNumber(value);
+    if (target === null) return null;
+
+    for (const item of list) {
+      if (normalizeCartelaNumber(item) === target) {
+        return item;
+      }
+    }
+
+    return null;
+  };
+
   const getServerCartelaIndex = (cartelaNumber: string) => {
-    const serverIndex = serverCartelaOrder.indexOf(cartelaNumber);
+    const target = normalizeCartelaNumber(cartelaNumber);
+    if (target === null) {
+      return -1;
+    }
+
+    const serverIndex = serverCartelaOrder.findIndex(
+      (item) => normalizeCartelaNumber(item) === target,
+    );
     if (serverIndex >= 0) {
       return serverIndex;
     }
-    return activeCartelas.indexOf(cartelaNumber);
+
+    return activeCartelas.findIndex(
+      (item) => normalizeCartelaNumber(item) === target,
+    );
   };
 
   // Notify parent when game state changes
@@ -513,6 +547,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     window.setTimeout(() => setShowBallPopup(false), 1500);
     window.setTimeout(() => setStreakBoost(false), 350);
+  };
+
+  const triggerWinnerCelebration = (
+    cartelaNumber: string,
+    pattern?: string | null,
+  ) => {
+    setWinnerCelebration({ cartela: cartelaNumber, pattern: pattern || null });
+    window.setTimeout(() => setWinnerCelebration(null), 4200);
   };
 
   const syncGameState = async () => {
@@ -660,7 +702,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (gameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(gameConfig.gameCode, {
           cartella_index: winnerIndex,
-          pattern: claimPattern,
         });
 
         if (!claim.is_bingo) {
@@ -672,19 +713,29 @@ export const Playground: React.FC<PlaygroundProps> = ({
           }
           popup.warning(
             claim.detail ||
-              `Cartela ${cartelaNumber} is not a valid winner for ${claimPattern}.`,
+              `Cartela ${cartelaNumber} is not a valid winner yet.`,
           );
           return;
         }
-      }
 
-      setGameStatus("completed");
-      popup.success(
-        `🎉 Cartela ${cartelaNumber} declared as WINNER!\n\nGame completed with ${claimPattern} pattern.`,
-      );
-      setIsGameActive(false);
-      setAutoCall(false);
-      onGameStateChange?.(false);
+        const patternText = claim.pattern ? `\nPattern: ${claim.pattern}` : "";
+        const payoutText = claim.payout_amount
+          ? `\nPayout: ${claim.payout_amount}`
+          : "";
+        const cutText = claim.shop_cut_amount
+          ? `\nShop Cut: ${claim.shop_cut_amount}`
+          : "";
+
+        triggerWinnerCelebration(cartelaNumber, claim.pattern);
+        setGameStatus("completed");
+        setIsGameActive(false);
+        setAutoCall(false);
+        onGameStateChange?.(false);
+        popup.success(
+          `🎉 BINGO! Cartela ${cartelaNumber} WON!\nGame closed.${patternText}${payoutText}${cutText}`,
+        );
+        return;
+      }
     } catch (error) {
       console.error("Failed to complete game", error);
       popup.error("Failed to complete game on the server.");
@@ -724,16 +775,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
-    const cartelaNumber = cartelaInput.padStart(3, "0");
-    const isValid = activeCartelas.includes(cartelaNumber);
+    const matchedCartela = findCartelaInList(cartelaInput, activeCartelas);
 
-    if (!isValid) {
-      setCartelaError(`Cartela ${cartelaNumber} not in game`);
+    if (!matchedCartela) {
+      setCartelaError(`Cartela ${cartelaInput} not in game`);
       setTimeout(() => setCartelaError(""), 3000);
       return;
     }
 
-    setSelectedCartela(cartelaNumber);
+    setSelectedCartela(matchedCartela);
     setShowCartelaModal(true);
   };
 
@@ -754,17 +804,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
-    const cartelaNumber = cartelaInput.padStart(3, "0");
-    const isValid = activeCartelas.includes(cartelaNumber);
+    const matchedCartela = findCartelaInList(cartelaInput, activeCartelas);
 
-    if (!isValid) {
-      popup.error(`Cartela ${cartelaNumber} not in game`);
+    if (!matchedCartela) {
+      popup.error(`Cartela ${cartelaInput} not in game`);
       return;
     }
 
-    const cartellaIndex = getServerCartelaIndex(cartelaNumber);
+    const cartellaIndex = getServerCartelaIndex(matchedCartela);
     if (cartellaIndex < 0) {
-      popup.error(`Cartela ${cartelaNumber} not found in server order`);
+      popup.error(`Cartela ${matchedCartela} not found in server order`);
       return;
     }
 
@@ -773,33 +822,48 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    setIsCheckingCartela(true);
     try {
       const claim = await gamesApi.claimGame(gameConfig.gameCode, {
         cartella_index: cartellaIndex,
-        pattern: claimPattern,
       });
 
       if (claim.is_bingo) {
+        const patternText = claim.pattern ? ` (${claim.pattern})` : "";
+        const payoutText = claim.payout_amount
+          ? `\nPayout: ${claim.payout_amount}`
+          : "";
+        const cutText = claim.shop_cut_amount
+          ? `\nShop Cut: ${claim.shop_cut_amount}`
+          : "";
+
+        triggerWinnerCelebration(matchedCartela, claim.pattern);
+        setGameStatus("completed");
+        setIsGameActive(false);
+        setAutoCall(false);
+        onGameStateChange?.(false);
         popup.success(
-          `🎉 Cartela ${cartelaNumber} has a valid ${claimPattern} claim!`,
+          `🎉 BINGO${patternText}! Player with Cartela ${matchedCartela} WON!\nGame closed.${payoutText}${cutText}`,
         );
         return;
       }
 
       if (claim.is_banned) {
         popup.error(
-          `False claim. Cartela ${cartelaNumber} is now BANNED for this game.`,
+          `False claim. Cartela ${matchedCartela} is now BANNED for this game.`,
         );
         return;
       }
 
-      popup.info(
+      popup.error(
         claim.detail ||
-          `Cartela ${cartelaNumber} does not satisfy ${claimPattern} yet.`,
+          `Cartela ${matchedCartela} did not win and is BANNED for this game.`,
       );
     } catch (error) {
       console.error("Failed to validate cartela", error);
       popup.error("Failed to validate cartela on the server.");
+    } finally {
+      setIsCheckingCartela(false);
     }
   };
 
@@ -876,29 +940,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const shuffleNumbers = () => {
-    const gameCode = gameConfig?.gameCode;
-    if (!gameCode) return;
     if (gameStatus !== "pending") {
       popup.warning("Shuffle is locked after game starts.");
       return;
     }
 
     setIsShuffling(true);
-    void (async () => {
-      try {
-        await gamesApi.shuffleGame(gameCode);
-        reshuffleBoard();
-        setCalledNumbers([]);
-        setCurrentCalledNumber("");
-        popup.info(t("playground.shuffleAnimated"));
-        await syncGameState();
-      } catch (error) {
-        console.error("Failed to shuffle game", error);
-        popup.error("Failed to shuffle from backend.");
-      } finally {
-        window.setTimeout(() => setIsShuffling(false), 650);
-      }
-    })();
+
+    reshuffleBoard();
+    setCalledNumbers([]);
+    setCurrentCalledNumber("");
+    popup.info(t("playground.shuffleAnimated"));
+    window.setTimeout(() => setIsShuffling(false), 650);
   };
 
   const calculateWinMoney = () => {
@@ -1214,30 +1267,90 @@ export const Playground: React.FC<PlaygroundProps> = ({
           </Card>
         </div>
 
+        <AnimatePresence>
+          {winnerCelebration && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="pointer-events-none fixed inset-0 z-[1400] flex items-center justify-center bg-black/55 px-4"
+            >
+              <motion.div
+                initial={{ scale: 0.6, y: 30, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.85, y: 20, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                className="w-full max-w-2xl rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
+              >
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24">
+                  <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.06, 1] }}
+                  transition={{ duration: 1.1, repeat: 2 }}
+                  className="text-4xl font-black tracking-tight text-amber-700 sm:text-6xl"
+                >
+                  BINGO!
+                </motion.div>
+                <div className="mt-3 text-xl font-bold text-slate-900 sm:text-3xl">
+                  Cartela {winnerCelebration.cartela} WINS
+                </div>
+                {winnerCelebration.pattern && (
+                  <div className="mt-2 text-sm font-semibold uppercase tracking-wider text-amber-700 sm:text-base">
+                    Pattern: {winnerCelebration.pattern}
+                  </div>
+                )}
+                <div className="mt-5 text-sm font-medium text-slate-700 sm:text-base">
+                  🎉 Congratulations to the winner!
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {isCheckingCartela && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1350] flex items-center justify-center bg-black/40 px-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 10, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.95, y: 8, opacity: 0 }}
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+              >
+                <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Checking cartela...
+                </span>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {showBallPopup && ballPopupLabel && (
+            <motion.div
+              key={ballPopupLabel}
+              initial={{ opacity: 0, scale: 0.35, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.2, y: -40 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
+            >
+              <motion.div
+                className={`${isFullscreen ? "h-36 w-36 text-5xl" : "h-28 w-28 text-4xl"} flex items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]`}
+                animate={{ rotate: [0, -4, 4, 0] }}
+                transition={{ duration: 0.35 }}
+              >
+                {ballPopupLabel}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Controls below board */}
         {isFullscreen && (
           <>
-            <AnimatePresence>
-              {showBallPopup && ballPopupLabel && (
-                <motion.div
-                  key={ballPopupLabel}
-                  initial={{ opacity: 0, scale: 0.35, y: 40 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 1.2, y: -40 }}
-                  transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
-                >
-                  <motion.div
-                    className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 text-5xl font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]"
-                    animate={{ rotate: [0, -4, 4, 0] }}
-                    transition={{ duration: 0.35 }}
-                  >
-                    {ballPopupLabel}
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <div className="pointer-events-none fixed right-5 bottom-5 z-1150 flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
               <AnimatePresence>
                 {showFullscreenHud && (
@@ -1519,30 +1632,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
                 disabled={!isGameActive}
               />
 
-              <select
-                value={claimPattern}
-                onChange={(e) =>
-                  setClaimPattern(
-                    e.target.value as "row" | "column" | "diagonal",
-                  )
-                }
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
-                disabled={!isGameActive}
-                title="Select claim pattern"
-                aria-label="Select claim pattern"
-              >
-                <option value="row">Row</option>
-                <option value="column">Column</option>
-                <option value="diagonal">Diagonal</option>
-              </select>
-
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
                   onClick={checkCartela}
-                  disabled={!isGameActive}
+                  disabled={!isGameActive || isCheckingCartela}
                 >
-                  <Check className="mr-1 h-4 w-4" /> {t("playground.check")}
+                  {isCheckingCartela ? (
+                    <>
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-1 h-4 w-4" /> {t("playground.check")}
+                    </>
+                  )}
                 </Button>
                 <Button
                   className="h-10 w-full"

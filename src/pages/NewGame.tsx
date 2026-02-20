@@ -210,7 +210,7 @@ import {
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { gamesApi } from "../services/api";
-import { ShopBingoSession } from "../services/types";
+import { ShopBingoPlayer, ShopBingoSession } from "../services/types";
 import { useNavigate } from "react-router-dom";
 
 interface NewGameProps {
@@ -239,21 +239,28 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [betLocked, setBetLocked] = useState(false);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [selectedCartellas, setSelectedCartellas] = useState<number[]>([]);
+  const [stagedPlayers, setStagedPlayers] = useState<ShopBingoPlayer[]>([]);
   const [betPerCartella, setBetPerCartella] = useState("20");
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
   const nextPlayerNumber = useMemo(() => {
-    const reservedCount = session?.players_data.length ?? 0;
+    const reservedCount =
+      (session?.players_data.length ?? 0) + stagedPlayers.length;
     return Math.min(reservedCount + 1, 4);
-  }, [session]);
+  }, [session, stagedPlayers]);
 
   const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
 
+  const stagedLockedCartellas = useMemo(
+    () => new Set(stagedPlayers.flatMap((player) => player.cartella_numbers)),
+    [stagedPlayers],
+  );
+
   const lockedByOthers = useMemo(() => {
-    if (!session) return new Set<number>();
-    return new Set(session.locked_cartellas);
-  }, [session]);
+    const serverLocked = session?.locked_cartellas ?? [];
+    return new Set([...serverLocked, ...stagedLockedCartellas]);
+  }, [session, stagedLockedCartellas]);
 
   const totalPayable = useMemo(() => {
     const bet = Number.parseFloat(betPerCartella || "0");
@@ -262,7 +269,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     ).toFixed(2);
   }, [betPerCartella, selectedCartellas]);
 
-  const totalLockedPlayers = session?.players_data.length ?? 0;
+  const totalLockedPlayers =
+    (session?.players_data.length ?? 0) + stagedPlayers.length;
   const totalPaidPlayers =
     session?.players_data.filter((player) => player.paid).length ?? 0;
 
@@ -306,33 +314,6 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     return () => clearInterval(intervalId);
   }, [session?.session_id]);
 
-  const reserveSelection = async (
-    cartellas: number[],
-    playerName: string,
-    silent = false,
-  ) => {
-    if (!session?.session_id) return;
-    try {
-      const updated = await gamesApi.reserveShopCartellas(session.session_id, {
-        player_name: playerName,
-        cartella_numbers: cartellas,
-        bet_per_cartella: betPerCartella,
-      });
-      setSession(updated);
-      if (!silent) {
-        popup.success("Cartellas reserved.");
-      }
-    } catch (error) {
-      console.error("Failed to reserve cartellas", error);
-      if (!silent) {
-        popup.error("Failed to reserve cartellas. Some may already be taken.");
-      }
-      if (session?.session_id) {
-        await syncSession(session.session_id);
-      }
-    }
-  };
-
   const handleCartellaToggle = async (cartellaNumber: number) => {
     if (lockedByOthers.has(cartellaNumber)) {
       popup.warning("This cartella is already locked by another player.");
@@ -369,23 +350,21 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     setSubmittingLock(true);
     try {
-      const connectedSession = await ensureSession();
-      if (!connectedSession) {
-        return;
-      }
+      const betAmount = Number.parseFloat(betPerCartella || "0");
+      const totalBet = (selectedCartellas.length * betAmount).toFixed(2);
 
-      if (!session || session.session_id !== connectedSession.session_id) {
-        setSession(connectedSession);
-      }
+      setStagedPlayers((prev) => [
+        ...prev,
+        {
+          player_name: currentPlayerName,
+          cartella_numbers: [...selectedCartellas],
+          bet_per_cartella: betPerCartella,
+          total_bet: totalBet,
+          paid: false,
+        },
+      ]);
 
-      await gamesApi.reserveShopCartellas(connectedSession.session_id, {
-        player_name: currentPlayerName,
-        cartella_numbers: selectedCartellas,
-        bet_per_cartella: betPerCartella,
-      });
-
-      popup.success(`${currentPlayerName} locked successfully.`);
-      await syncSession(connectedSession.session_id);
+      popup.success(`${currentPlayerName} locked locally.`);
       setSelectedCartellas([]);
       setCurrentPage(1);
     } catch (error) {
@@ -420,12 +399,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   };
 
   const handleCheckPaymentAndCreate = async () => {
-    if (!session?.session_id) {
+    const serverLockedCount = session?.players_data.length ?? 0;
+    const stagedLockedCount = stagedPlayers.length;
+
+    if (!session?.session_id && stagedLockedCount === 0) {
       popup.warning(t("newGame.lockAllPlayersFirst"));
       return;
     }
 
-    if (totalLockedPlayers < 4) {
+    if (serverLockedCount + stagedLockedCount < 4) {
       popup.warning(t("newGame.lockAllFourPlayers"));
       return;
     }
@@ -442,10 +424,29 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     setSubmittingPayment(true);
     try {
+      const connectedSession = await ensureSession();
+      if (!connectedSession) {
+        return;
+      }
+
+      let latestSession = connectedSession;
+
+      for (const stagedPlayer of stagedPlayers) {
+        latestSession = await gamesApi.reserveShopCartellas(
+          latestSession.session_id,
+          {
+            player_name: stagedPlayer.player_name,
+            cartella_numbers: stagedPlayer.cartella_numbers,
+            bet_per_cartella: stagedPlayer.bet_per_cartella,
+          },
+        );
+      }
+
       const response = await gamesApi.createShopGameFromSession(
-        session.session_id,
+        latestSession.session_id,
       );
       setSession(response.session);
+      setStagedPlayers([]);
       const createdGame = response.game;
 
       if (!createdGame) {
@@ -483,6 +484,77 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
   return (
     <div className="space-y-6 p-6">
+      {submittingPayment && (
+        <div className="fixed inset-0 z-1400 flex items-center justify-center bg-white/80 backdrop-blur-md dark:bg-slate-950/80">
+          <div className="w-[min(92vw,680px)] space-y-5 rounded-2xl border border-red-200 bg-white/95 p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900/95">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-red-700 dark:text-red-400">
+                Creating Bingo Game...
+              </h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Checking payments and locking cartellas.
+              </p>
+            </div>
+
+            <div className="relative h-20 overflow-hidden rounded-xl border border-red-100 bg-gradient-to-r from-red-50 via-white to-sky-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+              <motion.div
+                className="absolute inset-y-0 left-0 flex items-center gap-3 px-2"
+                animate={{ x: [0, -360] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}
+              >
+                {[
+                  "B-07",
+                  "I-19",
+                  "N-42",
+                  "G-53",
+                  "O-71",
+                  "B-14",
+                  "I-24",
+                  "N-36",
+                  "G-60",
+                  "O-66",
+                  "B-07",
+                  "I-19",
+                  "N-42",
+                  "G-53",
+                  "O-71",
+                ].map((label, index) => (
+                  <motion.div
+                    key={`${label}-${index}`}
+                    className="flex h-12 w-12 items-center justify-center rounded-full border border-red-200 bg-white text-xs font-black text-red-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-red-300"
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{
+                      duration: 0.9,
+                      repeat: Infinity,
+                      delay: (index % 5) * 0.08,
+                    }}
+                  >
+                    {label}
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500"
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{
+                    duration: 1.3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              </div>
+              <p className="text-center text-xs font-medium tracking-wide text-slate-500 dark:text-slate-300">
+                PLEASE WAIT • FINALIZING SESSION
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Dialog
         open={!betLocked && showBetDialog}
         onOpenChange={() => {
