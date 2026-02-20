@@ -199,6 +199,14 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Check, Users, Wallet } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { gamesApi } from "../services/api";
@@ -221,43 +229,30 @@ interface GameConfig {
   backendStatus?: string;
 }
 
-interface CartelaData {
-  id: string;
-  number: string;
-  pattern: number;
-  numbers: number[];
-}
-
 export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const { t } = useLanguage();
   const popup = usePopup();
   const [session, setSession] = useState<ShopBingoSession | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [playerName, setPlayerName] = useState("");
+  const [showBetDialog, setShowBetDialog] = useState(true);
+  const [betInput, setBetInput] = useState("20");
+  const [betLocked, setBetLocked] = useState(false);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [selectedCartellas, setSelectedCartellas] = useState<number[]>([]);
   const [betPerCartella, setBetPerCartella] = useState("20");
-  const [submittingReserve, setSubmittingReserve] = useState(false);
+  const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
-  const playerNameKey = playerName.trim().toLowerCase();
+  const nextPlayerNumber = useMemo(() => {
+    const reservedCount = session?.players_data.length ?? 0;
+    return Math.min(reservedCount + 1, 4);
+  }, [session]);
 
-  const currentPlayer = useMemo(() => {
-    if (!session || !playerNameKey) return null;
-    return (
-      session.players_data.find(
-        (player) => player.player_name.toLowerCase() === playerNameKey,
-      ) || null
-    );
-  }, [session, playerNameKey]);
+  const currentPlayerName = `Player ${nextPlayerNumber}`;
 
   const lockedByOthers = useMemo(() => {
     if (!session) return new Set<number>();
-    const own = new Set(currentPlayer?.cartella_numbers ?? []);
-    return new Set(
-      session.locked_cartellas.filter((number) => !own.has(number)),
-    );
-  }, [session, currentPlayer]);
+    return new Set(session.locked_cartellas);
+  }, [session]);
 
   const totalPayable = useMemo(() => {
     const bet = Number.parseFloat(betPerCartella || "0");
@@ -278,41 +273,25 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const syncSession = async (sessionId: string) => {
     const latest = await gamesApi.getShopSession(sessionId);
     setSession(latest);
-    const ownPlayer = latest.players_data.find(
-      (player) => player.player_name.toLowerCase() === playerNameKey,
-    );
-    if (ownPlayer) {
-      setSelectedCartellas(ownPlayer.cartella_numbers);
-      setBetPerCartella(ownPlayer.bet_per_cartella);
-    }
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const ensureSession = async (): Promise<ShopBingoSession | null> => {
+    if (session) {
+      return session;
+    }
 
-    const initSession = async () => {
-      try {
-        const created = await gamesApi.createShopSession({
-          min_bet_per_cartella: "20",
-        });
-        if (!isMounted) return;
-        setSession(created);
-      } catch (error) {
-        console.error("Failed to initialize shop session", error);
-        popup.error("Failed to initialize shop game mode.");
-      } finally {
-        if (isMounted) {
-          setSessionLoading(false);
-        }
-      }
-    };
-
-    initSession();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [popup]);
+    try {
+      const created = await gamesApi.createShopSession({
+        min_bet_per_cartella: betPerCartella,
+      });
+      setSession(created);
+      return created;
+    } catch (error) {
+      console.error("Failed to initialize shop session", error);
+      popup.error("Failed to connect setup with backend.");
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!session?.session_id) return;
@@ -324,18 +303,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [session?.session_id, playerNameKey]);
+  }, [session?.session_id]);
 
-  const reserveSelection = async (cartellas: number[], silent = false) => {
+  const reserveSelection = async (
+    cartellas: number[],
+    playerName: string,
+    silent = false,
+  ) => {
     if (!session?.session_id) return;
-    const cleanedName = playerName.trim();
-    if (!cleanedName) {
-      if (!silent) popup.warning("Enter player name first.");
-      return;
-    }
     try {
       const updated = await gamesApi.reserveShopCartellas(session.session_id, {
-        player_name: cleanedName,
+        player_name: playerName,
         cartella_numbers: cartellas,
         bet_per_cartella: betPerCartella,
       });
@@ -371,77 +349,57 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       : [...selectedCartellas, cartellaNumber];
 
     setSelectedCartellas(next);
-
-    if (playerName.trim() && session?.session_id) {
-      await reserveSelection(next, true);
-    }
   };
 
-  const handleReserve = async () => {
-    if (submittingReserve) return;
+  const handleLockCurrentPlayer = async () => {
+    if (submittingLock) return;
+    if (!betLocked) {
+      popup.warning("Set and lock bet amount first.");
+      return;
+    }
+    if (totalPaidPlayers >= 4) {
+      popup.info("All 4 players are already locked.");
+      return;
+    }
     if (selectedCartellas.length === 0) {
       popup.warning("Select at least one cartella.");
       return;
     }
 
-    setSubmittingReserve(true);
+    setSubmittingLock(true);
     try {
-      await reserveSelection(selectedCartellas);
-    } finally {
-      setSubmittingReserve(false);
-    }
-  };
+      const connectedSession = await ensureSession();
+      if (!connectedSession) {
+        return;
+      }
 
-  const handleConfirmPayment = async () => {
-    if (!session?.session_id) return;
-    if (!playerName.trim()) {
-      popup.warning("Enter player name first.");
-      return;
-    }
-    if (
-      selectedCartellas.length === 0 &&
-      !currentPlayer?.cartella_numbers.length
-    ) {
-      popup.warning("Reserve at least one cartella before confirming payment.");
-      return;
-    }
+      if (!session || session.session_id !== connectedSession.session_id) {
+        setSession(connectedSession);
+      }
 
-    setSubmittingPayment(true);
-    try {
+      await gamesApi.reserveShopCartellas(connectedSession.session_id, {
+        player_name: currentPlayerName,
+        cartella_numbers: selectedCartellas,
+        bet_per_cartella: betPerCartella,
+      });
+
       const response = await gamesApi.confirmShopPlayerPayment(
-        session.session_id,
+        connectedSession.session_id,
         {
-          player_name: playerName.trim(),
+          player_name: currentPlayerName,
         },
       );
 
-      setSession(response.session);
-      popup.success("Payment confirmed for this player.");
+      popup.success(`${currentPlayerName} locked successfully.`);
 
-      if (response.game_created && response.game) {
-        const cartelaNumbers = Object.keys(
-          response.game.cartella_number_map || {},
-        );
-        const config: GameConfig & { cartelaNumbers: string[] } = {
-          game: response.game.game_code,
-          gameCode: response.game.game_code,
-          betBirr: response.game.bet_amount,
-          numPlayers: String(response.game.num_players),
-          winBirr: response.game.win_amount,
-          cartelaNumbers,
-          cartelaData: response.game.cartella_numbers,
-          drawSequence: response.game.draw_sequence,
-          cartellaDrawSequences: response.game.cartella_draw_sequences,
-          backendStatus: response.game.status,
-        };
-        onGameCreated(config, selectedCartellas);
-        popup.success(`Game created: ${response.game.game_code}`);
-      }
+      setSession(response.session);
+      setSelectedCartellas([]);
+      setCurrentPage(1);
     } catch (error) {
-      console.error("Failed to confirm payment", error);
-      popup.error("Failed to confirm payment.");
+      console.error("Failed to lock current player", error);
+      popup.error("Failed to lock current player.");
     } finally {
-      setSubmittingPayment(false);
+      setSubmittingLock(false);
     }
   };
 
@@ -454,17 +412,134 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     });
     if (!confirmed) return;
     setSelectedCartellas([]);
-    if (session?.session_id && playerName.trim()) {
-      await reserveSelection([], true);
+  };
+
+  const handleLockBet = () => {
+    const parsed = Number.parseFloat(betInput);
+    if (!Number.isFinite(parsed) || parsed < 20) {
+      popup.warning("Minimum bet per cartella is 20 ETB.");
+      return;
+    }
+    const locked = parsed.toFixed(2);
+    setBetPerCartella(locked);
+    setBetLocked(true);
+    setShowBetDialog(false);
+  };
+
+  const handleCheckPaymentAndCreate = async () => {
+    if (!session?.session_id) {
+      popup.warning("Lock all players first.");
+      return;
+    }
+
+    if (totalLockedPlayers < 4) {
+      popup.warning("Lock all 4 players before checking payment.");
+      return;
+    }
+
+    const confirmed = await popup.confirm({
+      title: "Check Payment",
+      description:
+        "Confirm payments for all 4 players and create the game now?",
+      confirmText: "Create Game",
+      cancelText: "Cancel",
+    });
+
+    if (!confirmed) return;
+
+    setSubmittingPayment(true);
+    try {
+      let latestSession = await gamesApi.getShopSession(session.session_id);
+      setSession(latestSession);
+
+      let createdGame = null as any;
+
+      for (const player of latestSession.players_data) {
+        if (player.paid) {
+          continue;
+        }
+
+        const response = await gamesApi.confirmShopPlayerPayment(
+          session.session_id,
+          {
+            player_name: player.player_name,
+          },
+        );
+
+        latestSession = response.session;
+        setSession(latestSession);
+
+        if (response.game_created && response.game) {
+          createdGame = response.game;
+          break;
+        }
+      }
+
+      if (!createdGame) {
+        popup.error("Could not create game after payment check.");
+        return;
+      }
+
+      const cartelaNumbers = Object.keys(createdGame.cartella_number_map || {});
+      const allSelectedPatterns = cartelaNumbers.map((value) =>
+        Number.parseInt(value, 10),
+      );
+
+      const config: GameConfig & { cartelaNumbers: string[] } = {
+        game: createdGame.game_code,
+        gameCode: createdGame.game_code,
+        betBirr: createdGame.bet_amount,
+        numPlayers: String(createdGame.num_players),
+        winBirr: createdGame.win_amount,
+        cartelaNumbers,
+        cartelaData: createdGame.cartella_numbers,
+        drawSequence: createdGame.draw_sequence,
+        cartellaDrawSequences: createdGame.cartella_draw_sequences,
+        backendStatus: createdGame.status,
+      };
+
+      onGameCreated(config, allSelectedPatterns);
+      popup.success(`Game created: ${createdGame.game_code}`);
+    } catch (error) {
+      console.error("Failed during payment check", error);
+      popup.error("Payment check failed.");
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
-  if (sessionLoading) {
-    return <div className="p-8 text-center">Loading shop game mode...</div>;
-  }
-
   return (
     <div className="new-game">
+      <Dialog
+        open={showBetDialog}
+        onOpenChange={(open) => {
+          if (!betLocked) {
+            setShowBetDialog(open);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Bet Amount</DialogTitle>
+            <DialogDescription>
+              Enter bet amount once. It will be locked and used for all players.
+              Minimum is 20 ETB per cartella.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Input
+            type="number"
+            min={20}
+            value={betInput}
+            onChange={(e) => setBetInput(e.target.value)}
+          />
+
+          <DialogFooter>
+            <Button onClick={handleLockBet}>Lock Bet Amount</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <motion.div
         className="new-game-header"
         initial={{ opacity: 0, y: 20 }}
@@ -485,28 +560,22 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             <div className="config-form">
               <div className="form-group">
                 <label>Session ID</label>
-                <Input value={session?.session_id || "-"} disabled />
+                <Input
+                  value={session?.session_id || "Not connected yet"}
+                  disabled
+                />
               </div>
               <div className="form-group">
-                <label>Player Name</label>
-                <Input
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Enter player name"
-                />
+                <label>Current Player</label>
+                <Input value={currentPlayerName} disabled />
               </div>
               <div className="form-group">
                 <label>Fixed Players</label>
                 <Input value={String(session?.fixed_players || 4)} disabled />
               </div>
               <div className="form-group">
-                <label>Bet / Cartella (ETB, min 20)</label>
-                <Input
-                  type="number"
-                  min={20}
-                  value={betPerCartella}
-                  onChange={(e) => setBetPerCartella(e.target.value)}
-                />
+                <label>Bet / Cartella (ETB)</label>
+                <Input type="number" value={betPerCartella} disabled />
               </div>
               <div className="form-group info-box">
                 <label>Selected Cartellas: {selectedCartellas.length}/4</label>
@@ -535,8 +604,30 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   <Users size={16} className="inline mr-1" /> Players Locked
                 </label>
                 <div className="shop75-players">
-                  {totalLockedPlayers}/4 players reserved, {totalPaidPlayers}/4
-                  paid
+                  {totalLockedPlayers}/4 players reserved, {totalPaidPlayers}/4 paid
+                </div>
+              </div>
+
+              <div className="shop75-progress-row">
+                {[1, 2, 3, 4].map((playerNum) => {
+                  const reserved = (session?.players_data.length || 0) >= playerNum;
+                  const paid = totalPaidPlayers >= playerNum;
+                  return (
+                    <div
+                      key={playerNum}
+                      className={`shop75-progress-chip ${paid ? "paid" : reserved ? "reserved" : "pending"}`}
+                    >
+                      P{playerNum}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="form-group info-box">
+                <label>Next Step</label>
+                <div className="shop75-players">
+                  Select up to 4 cartellas for {currentPlayerName}, then lock to
+                  continue.
                 </div>
               </div>
             </div>
@@ -615,18 +706,20 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       >
         <Button
           className="confirm-btn"
-          onClick={handleReserve}
-          disabled={submittingReserve}
+          onClick={handleLockCurrentPlayer}
+          disabled={
+            submittingLock || totalLockedPlayers >= 4 || !betLocked || submittingPayment
+          }
         >
-          {submittingReserve ? "Saving..." : "Save Selection"}
+          {submittingLock ? "Locking..." : `Lock ${currentPlayerName}`}
         </Button>
 
         <Button
           className="confirm-btn"
-          onClick={handleConfirmPayment}
-          disabled={submittingPayment}
+          onClick={handleCheckPaymentAndCreate}
+          disabled={submittingPayment || totalLockedPlayers < 4}
         >
-          {submittingPayment ? "Confirming..." : "Confirm Payment"}
+          {submittingPayment ? "Checking Payment..." : "Check Payment"}
         </Button>
 
         <Button className="clear-btn" variant="outline" onClick={handleClear}>
