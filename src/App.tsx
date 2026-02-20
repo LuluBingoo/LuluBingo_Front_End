@@ -141,6 +141,7 @@ interface GameConfig {
   cartelaData?: number[][];
   drawSequence?: number[];
   cartellaDrawSequences?: number[][];
+  cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   backendStatus?: string;
 }
 

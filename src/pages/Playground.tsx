@@ -362,6 +362,7 @@ interface PlaygroundProps {
     cartelaNumbers?: string[];
     cartelaData?: number[][];
     drawSequence?: number[];
+    cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   } | null;
   onStartNewGame?: () => void;
   onGameStateChange?: (isActive: boolean) => void;
@@ -408,6 +409,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
   // Local state for active cartelas (can be removed)
   const [activeCartelas, setActiveCartelas] = useState<string[]>([]);
   const [serverCartelaOrder, setServerCartelaOrder] = useState<string[]>([]);
+  const [cartellaStatuses, setCartellaStatuses] = useState<
+    Record<string, "active" | "banned" | "winner">
+  >({});
   const [drawSequence, setDrawSequence] = useState<number[]>([]);
   const [drawCursor, setDrawCursor] = useState(0);
 
@@ -450,6 +454,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       setGameStatus((gameConfig.backendStatus as any) || "pending");
       setActiveCartelas(gameConfig.cartelaNumbers || []);
       setServerCartelaOrder(gameConfig.cartelaNumbers || []);
+      setCartellaStatuses(gameConfig.cartellaStatuses || {});
       setDrawSequence(gameConfig.drawSequence || []);
       setDrawCursor(0);
       onGameStateChange?.(gameConfig.backendStatus === "active");
@@ -519,6 +524,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return activeCartelas.findIndex(
       (item) => normalizeCartelaNumber(item) === target,
     );
+  };
+
+  const getCartellaStatusByNumber = (
+    cartelaNumber: string,
+  ): "active" | "banned" | "winner" | null => {
+    const index = getServerCartelaIndex(cartelaNumber);
+    if (index < 0) {
+      return null;
+    }
+    return cartellaStatuses[String(index)] || "active";
   };
 
   // Notify parent when game state changes
@@ -640,6 +655,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setCurrentCalledNumber("");
       }
       setDrawCursor(state.call_cursor || 0);
+      if (state.cartella_statuses) {
+        setCartellaStatuses(state.cartella_statuses);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : "";
       const isTimeout = message.includes("timeout");
@@ -759,22 +777,28 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    if (getCartellaStatusByNumber(cartelaNumber) === "banned") {
+      popup.error("Banned.");
+      return;
+    }
+
     try {
       if (gameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(gameConfig.gameCode, {
           cartella_index: winnerIndex,
         });
 
+        if (claim.cartella_statuses) {
+          setCartellaStatuses(claim.cartella_statuses);
+        }
+
         if (!claim.is_bingo) {
           if (claim.is_banned) {
-            popup.error(
-              `False claim. Cartela ${cartelaNumber} is now BANNED for this game.`,
-            );
+            popup.error("Banned.");
             return;
           }
           popup.warning(
-            claim.detail ||
-              `Cartela ${cartelaNumber} is not a valid winner yet.`,
+            claim.detail || "No bingo found yet (row or diagonal only).",
           );
           return;
         }
@@ -878,6 +902,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    if (getCartellaStatusByNumber(matchedCartela) === "banned") {
+      popup.error("Banned.");
+      return;
+    }
+
     if (!gameConfig?.gameCode) {
       popup.error("No backend game code found for validation.");
       return;
@@ -888,6 +917,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       const claim = await gamesApi.claimGame(gameConfig.gameCode, {
         cartella_index: cartellaIndex,
       });
+
+      if (claim.cartella_statuses) {
+        setCartellaStatuses(claim.cartella_statuses);
+      }
 
       if (claim.is_bingo) {
         const patternText = claim.pattern ? ` (${claim.pattern})` : "";
@@ -910,15 +943,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       if (claim.is_banned) {
-        popup.error(
-          `False claim. Cartela ${matchedCartela} is now BANNED for this game.`,
-        );
+        popup.error("Banned.");
         return;
       }
 
-      popup.error(
-        claim.detail ||
-          `Cartela ${matchedCartela} did not win and is BANNED for this game.`,
+      popup.warning(
+        claim.detail || "No bingo found yet (row or diagonal only).",
       );
     } catch (error) {
       console.error("Failed to validate cartela", error);

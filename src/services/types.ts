@@ -92,6 +92,7 @@ export interface Game {
   status: GameStatus;
   winners: number[];
   banned_cartellas?: number[];
+  cartella_statuses?: Record<string, "active" | "banned" | "winner">;
   awarded_claims?: Array<Record<string, unknown>>;
   total_pool?: string;
   win_percentage?: string;
@@ -118,15 +119,17 @@ export interface GameCompleteRequest {
 export interface GameClaimRequest {
   cartella_index: number;
   called_numbers?: number[];
-  pattern?: "row" | "column" | "diagonal";
+  pattern?: "row" | "diagonal";
 }
 
 export interface GameClaimResponse {
   game_code: string;
   cartella_index: number;
-  pattern?: "row" | "column" | "diagonal";
+  pattern?: "row" | "diagonal";
   is_bingo: boolean;
   is_banned?: boolean;
+  cartella_status?: "active" | "banned" | "winner";
+  cartella_statuses?: Record<string, "active" | "banned" | "winner">;
   status?: GameStatus;
   matched_count?: number;
   required_count?: number;
@@ -189,6 +192,7 @@ export interface GameStateResponse {
   current_called_number: number | null;
   current_called_formatted: string | null;
   called_numbers: number[];
+  cartella_statuses?: Record<string, "active" | "banned" | "winner">;
 }
 
 export interface GameNextCallResponse {

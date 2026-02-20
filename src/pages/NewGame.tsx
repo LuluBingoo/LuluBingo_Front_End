@@ -226,6 +226,7 @@ interface GameConfig {
   cartelaData?: number[][];
   drawSequence?: number[];
   cartellaDrawSequences?: number[][];
+  cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   backendStatus?: string;
 }
 
@@ -469,6 +470,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         cartelaData: createdGame.cartella_numbers,
         drawSequence: createdGame.draw_sequence,
         cartellaDrawSequences: createdGame.cartella_draw_sequences,
+        cartellaStatuses: createdGame.cartella_statuses || {},
         backendStatus: createdGame.status,
       };
 
