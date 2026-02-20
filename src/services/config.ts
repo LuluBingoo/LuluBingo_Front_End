@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://lulubingo-back-end-kvf3.onrender.com/api',
-  USE_MOCK: true, // Toggle between mock and real API
+  BASE_URL: 'http://localhost:8000/api',
+  USE_MOCK: false, // Toggle between mock and real API
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
 };

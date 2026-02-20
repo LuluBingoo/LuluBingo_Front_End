@@ -123,6 +123,7 @@ import { NewGame } from './pages/NewGame';
 import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
+import { authApi } from './services/api';
 
 import './styles/globals.css';
 
@@ -239,10 +240,16 @@ function App() {
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [isGameActive, setIsGameActive] = useState(false);
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setGameConfig(null);
-    setIsGameActive(false);
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout failed', error);
+    } finally {
+      setIsLoggedIn(false);
+      setGameConfig(null);
+      setIsGameActive(false);
+    }
   };
 
   return (

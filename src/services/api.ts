@@ -91,8 +91,18 @@ export const authApi = {
     return await apiClient.post<ShopUser>(API_ENDPOINTS.AUTH.DISABLE_2FA, { otp });
   },
 
-  logout(): void {
-    apiClient.setToken(null);
+  async logout(): Promise<void> {
+    if (API_CONFIG.USE_MOCK) {
+       apiClient.setToken(null);
+       return;
+    }
+    try {
+      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {});
+    } catch (error) {
+      console.error('Logout failed', error);
+    } finally {
+      apiClient.setToken(null);
+    }
   },
 
   isAuthenticated(): boolean {
