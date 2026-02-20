@@ -1,12 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   --font-size: 16px;
-  --font-game: 'Orbitron', sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-logo: 'Bungee', sans-serif;
+  --font-game: "Orbitron", sans-serif;
+  --font-body:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-logo: "Bungee", sans-serif;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
@@ -201,7 +202,7 @@ body {
 .app-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #FFF5F7 0%, #FFE8EC 100%);
+  background: linear-gradient(135deg, #fff5f7 0%, #ffe8ec 100%);
   transition: background 0.3s ease;
 }
 
@@ -248,7 +249,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFF5F7;
+  background: #fff5f7;
 }
 
 .dark ::-webkit-scrollbar-track {
@@ -256,25 +257,28 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #B3001B;
+  background: #b3001b;
   border-radius: 5px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #D32F2F;
+  background: #d32f2f;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B0015;
+  background: #8b0015;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #B3001B;
+  background: #b3001b;
 }
 
 /* Smooth Transitions */
 * {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Override input background for dark mode */
@@ -290,34 +294,157 @@ body {
 
 /* Button focus styles */
 button:focus-visible {
-  outline: 2px solid #B3001B;
+  outline: 2px solid #b3001b;
   outline-offset: 2px;
 }
 
 .dark button:focus-visible {
-  outline-color: #D32F2F;
+  outline-color: #d32f2f;
 }
 
 /* Gaming Typography */
-h1, h2, .game-title {
+h1,
+h2,
+.game-title {
   font-family: var(--font-game);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-h3, h4 {
+h3,
+h4 {
   font-family: var(--font-game);
   letter-spacing: 0.03em;
 }
 
 /* Body text uses cleaner font */
-p, label, span, .description, .info-text {
+p,
+label,
+span,
+.description,
+.info-text {
   font-family: var(--font-body);
 }
 
 /* Input fields use body font */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: var(--font-body) !important;
+}
+
+[data-sonner-toaster] {
+  z-index: 1400 !important;
+}
+
+.popup-fallback-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2100;
+  display: grid;
+  gap: 8px;
+  width: min(92vw, 360px);
+  pointer-events: none;
+}
+
+.popup-fallback-toast {
+  border: 1px solid;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 10px 12px;
+  color: #0f172a;
+  pointer-events: auto;
+}
+
+.popup-fallback-toast--success {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.popup-fallback-toast--error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.popup-fallback-toast--warning {
+  border-color: #d97706;
+  background: #fffbeb;
+}
+
+.popup-fallback-toast--info {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.popup-fallback-toast-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.popup-fallback-toast-message {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.popup-fallback-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.popup-fallback-confirm-card {
+  width: min(94vw, 460px);
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  box-shadow: 0 16px 44px rgba(2, 6, 23, 0.28);
+  padding: 18px;
+}
+
+.popup-fallback-confirm-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.popup-fallback-confirm-description {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.popup-fallback-confirm-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.popup-fallback-confirm-btn {
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.popup-fallback-confirm-btn--cancel {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.popup-fallback-confirm-btn--confirm {
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 /* Buttons keep gaming font but less prominent */

@@ -604,13 +604,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   <Users size={16} className="inline mr-1" /> Players Locked
                 </label>
                 <div className="shop75-players">
-                  {totalLockedPlayers}/4 players reserved, {totalPaidPlayers}/4 paid
+                  {totalLockedPlayers}/4 players reserved, {totalPaidPlayers}/4
+                  paid
                 </div>
               </div>
 
               <div className="shop75-progress-row">
                 {[1, 2, 3, 4].map((playerNum) => {
-                  const reserved = (session?.players_data.length || 0) >= playerNum;
+                  const reserved =
+                    (session?.players_data.length || 0) >= playerNum;
                   const paid = totalPaidPlayers >= playerNum;
                   return (
                     <div
@@ -708,7 +710,10 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           className="confirm-btn"
           onClick={handleLockCurrentPlayer}
           disabled={
-            submittingLock || totalLockedPlayers >= 4 || !betLocked || submittingPayment
+            submittingLock ||
+            totalLockedPlayers >= 4 ||
+            !betLocked ||
+            submittingPayment
           }
         >
           {submittingLock ? "Locking..." : `Lock ${currentPlayerName}`}

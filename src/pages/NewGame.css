@@ -49,6 +49,39 @@
   font-weight: 600;
 }
 
+.shop75-progress-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.shop75-progress-chip {
+  min-width: 44px;
+  text-align: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.shop75-progress-chip.pending {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.shop75-progress-chip.reserved {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.shop75-progress-chip.paid {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #22c55e;
+}
+
 .shop75-locked {
   background: #e2e8f0 !important;
   color: #64748b !important;
