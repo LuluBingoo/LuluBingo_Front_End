@@ -16,20 +16,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
+    if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme);
       return;
     }
 
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    setTheme(prefersDark ? "dark" : "light");
+    setTheme("light");
   }, []);
 
   useEffect(() => {
     localStorage.setItem("theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.body.classList.add("dark");
+    }
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
 

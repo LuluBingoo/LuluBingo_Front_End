@@ -343,6 +343,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
@@ -374,6 +375,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   onFullscreenChange,
 }) => {
   const { t } = useLanguage();
+  const { theme } = useTheme();
   const popup = usePopup();
 
   const configuredAutoCallSeconds = Number.parseInt(
@@ -1105,7 +1107,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
           ref={boardContainerRef}
           className={`transition-all duration-300 ${
             isFullscreen
-              ? "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-slate-900 via-slate-950 to-black p-2 sm:p-3 overflow-hidden"
+              ? theme === "dark"
+                ? "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-slate-900 via-slate-950 to-black p-2 sm:p-3 overflow-hidden"
+                : "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-white via-slate-50 to-white p-2 sm:p-3 overflow-hidden"
               : "w-full"
           }`}
         >
@@ -1122,7 +1126,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
               }`}
             >
               <h3
-                className={`text-lg font-semibold ${isFullscreen ? "text-white" : "text-slate-900 dark:text-slate-100"}`}
+                className={`text-lg font-semibold ${isFullscreen ? (theme === "dark" ? "text-white" : "text-slate-900") : "text-slate-900 dark:text-slate-100"}`}
               >
                 Bingo Board
               </h3>
@@ -1131,7 +1135,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsTheaterMode((prev) => !prev)}
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold transition ${isTheaterMode ? "bg-indigo-400 text-slate-950" : "bg-slate-700 text-white hover:bg-slate-600"}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold transition ${isTheaterMode ? "bg-indigo-400 text-slate-950" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
                     title="Toggle TV mode"
                     aria-label="Toggle TV mode"
                   >
@@ -1154,7 +1158,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
               <Button
                 variant="outline"
                 onClick={toggleFullscreen}
-                className={`h-9 ${isFullscreen ? "border-slate-600 bg-slate-900/60 text-white hover:bg-slate-800" : ""}`}
+                className={`h-9 ${isFullscreen ? (theme === "dark" ? "border-slate-600 bg-slate-900/60 text-white hover:bg-slate-800" : "border-slate-300 bg-white text-slate-900 hover:bg-slate-100") : ""}`}
               >
                 {isFullscreen ? (
                   <>
@@ -1171,7 +1175,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             </div>
 
             <motion.div
-              className={`space-y-2 ${isFullscreen ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : ""}`}
+              className={`space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
               animate={
                 isShuffling
                   ? { scale: [1, 0.99, 1.01, 1], opacity: [1, 0.9, 1] }
@@ -1241,7 +1245,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
-                    className="rounded-full border border-slate-500/50 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-slate-100 backdrop-blur"
+                    className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur ${theme === "dark" ? "border border-slate-500/50 bg-slate-900/70 text-slate-100" : "border border-slate-300 bg-white/95 text-slate-700"}`}
                   >
                     Heat{" "}
                     {Math.min(
@@ -1266,7 +1270,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       type="button"
                       onClick={shuffleNumbers}
                       disabled={gameStatus !== "pending" || isShuffling}
-                      className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-700 text-white transition hover:scale-105 hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-55"
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
                       title="Shuffle"
                       aria-label="Shuffle"
                     >
@@ -1282,10 +1286,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       disabled={
                         gameStatus !== "active" || calledNumbers.length >= 75
                       }
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-white transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
                         autoCall
                           ? "bg-emerald-600 hover:bg-emerald-500"
-                          : "bg-slate-700 hover:bg-slate-600"
+                          : theme === "dark"
+                            ? "bg-slate-700 text-white hover:bg-slate-600"
+                            : "bg-slate-200 text-slate-900 hover:bg-slate-300"
                       }`}
                       title="Auto Call"
                       aria-label="Auto Call"
@@ -1312,7 +1318,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                             type="button"
                             onClick={shuffleNumbers}
                             disabled={gameStatus !== "pending" || isShuffling}
-                            className="absolute inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-700 text-white shadow-lg transition hover:bg-slate-600 disabled:opacity-55"
+                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
                             title="Shuffle"
                             aria-label="Shuffle"
                           >
@@ -1333,10 +1339,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
                               gameStatus !== "active" ||
                               calledNumbers.length >= 75
                             }
-                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition disabled:opacity-55 ${
+                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${
                               autoCall
                                 ? "bg-emerald-600 hover:bg-emerald-500"
-                                : "bg-slate-700 hover:bg-slate-600"
+                                : theme === "dark"
+                                  ? "bg-slate-700 text-white hover:bg-slate-600"
+                                  : "bg-slate-200 text-slate-900 hover:bg-slate-300"
                             }`}
                             title="Auto Call"
                             aria-label="Auto Call"
@@ -1350,7 +1358,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowRadialControls((prev) => !prev)}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-700 text-white shadow-lg transition hover:bg-slate-600"
+                      className={`inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
                       title="More controls"
                       aria-label="More controls"
                     >

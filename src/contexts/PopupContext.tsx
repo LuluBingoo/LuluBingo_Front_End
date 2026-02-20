@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { toast, Toaster } from "sonner";
+import { useTheme } from "./ThemeContext";
 
 type ConfirmOptions = {
   title: string;
@@ -27,10 +28,10 @@ const PopupContext = createContext<PopupContextValue | null>(null);
 
 type ConfirmState = ConfirmOptions | null;
 
-
 export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { theme } = useTheme();
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
   useEffect(() => {
@@ -78,6 +79,7 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
     <PopupContext.Provider value={value}>
       {children}
       <Toaster
+        theme={theme}
         richColors
         position="top-right"
         closeButton
@@ -85,9 +87,6 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
         toastOptions={{
           style: {
             zIndex: 1300,
-            background: "#ffffff",
-            color: "#0f172a",
-            border: "1px solid #e2e8f0",
             opacity: "1",
           },
         }}
@@ -96,11 +95,11 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
       {confirmState ? (
         <div className="fixed inset-0 z-2200 flex items-center justify-center bg-black/50 p-4">
           <div className="w-[min(94vw,460px)] rounded-xl border border-slate-300 bg-white p-4.5 opacity-100 shadow-[0_16px_44px_rgba(2,6,23,0.28)] dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-[18px] font-bold text-slate-900">
+            <div className="text-[18px] font-bold text-slate-900 dark:text-slate-100">
               {confirmState.title}
             </div>
             {confirmState.description ? (
-              <div className="mt-2 text-sm leading-[1.45] text-slate-700">
+              <div className="mt-2 text-sm leading-[1.45] text-slate-700 dark:text-slate-300">
                 {confirmState.description}
               </div>
             ) : null}
@@ -108,7 +107,7 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
               <button
                 type="button"
                 onClick={() => resolveConfirm(false)}
-                className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-900"
+                className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
               >
                 {confirmState.cancelText || "Cancel"}
               </button>

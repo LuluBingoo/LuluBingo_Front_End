@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Lock, Globe, Palette } from "lucide-react";
+import { Bell, Lock, Globe, Palette, Moon, Sun } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
@@ -13,11 +13,13 @@ import {
 } from "../components/ui/select";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { shopApi } from "../services/api";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const popup = usePopup();
+  const { theme, toggleTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [featureFlags, setFeatureFlags] = useState<Record<string, any>>({});
@@ -334,6 +336,21 @@ export const Settings: React.FC = () => {
                       {t("settings.themeModeDesc")}
                     </p>
                   </div>
+                  <Button
+                    variant="outline"
+                    className="min-w-32"
+                    onClick={toggleTheme}
+                  >
+                    {theme === "dark" ? (
+                      <>
+                        <Sun className="h-4 w-4" /> Light
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="h-4 w-4" /> Dark
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>

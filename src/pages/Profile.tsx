@@ -221,7 +221,9 @@ export const Profile: React.FC = () => {
                   <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20 text-center">
                     <div className="flex items-center justify-center gap-2 text-green-500 mb-2">
                       <Shield size={18} />
-                      <span className="font-semibold">{t("profile.twoFactorEnabled")}</span>
+                      <span className="font-semibold">
+                        {t("profile.twoFactorEnabled")}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -246,7 +248,9 @@ export const Profile: React.FC = () => {
                   <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20 text-center">
                     <div className="flex items-center justify-center gap-2 text-yellow-500 mb-2">
                       <Shield size={18} />
-                      <span className="font-semibold">{t("profile.twoFactorDisabled")}</span>
+                      <span className="font-semibold">
+                        {t("profile.twoFactorDisabled")}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -451,7 +455,7 @@ export const Profile: React.FC = () => {
                   </div>
                 ) : twoFactorSetup ? (
                   <div className="mt-3 space-y-3">
-                    <div className="mx-auto w-fit rounded-lg bg-white p-3">
+                    <div className="mx-auto w-fit rounded-lg bg-white p-3 dark:bg-slate-900">
                       <QRCodeSVG
                         value={twoFactorSetup.provisioning_uri}
                         size={170}

@@ -1,9 +1,45 @@
+const getEnvString = (value: string | undefined, fallback: string): string => {
+  if (!value) {
+    return fallback;
+  }
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : fallback;
+};
+
+const getEnvNumber = (value: string | undefined, fallback: number): number => {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const getEnvBoolean = (
+  value: string | undefined,
+  fallback: boolean,
+): boolean => {
+  if (!value) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
+  return fallback;
+};
+
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: "http://localhost:8000/api",
-  USE_MOCK: false, // Toggle between mock and real API
-  TIMEOUT: 10000,
-  RETRY_ATTEMPTS: 3,
+  BASE_URL: getEnvString(
+    import.meta.env.VITE_API_BASE_URL,
+    "http://localhost:8000/api",
+  ),
+  USE_MOCK: getEnvBoolean(import.meta.env.VITE_API_USE_MOCK, false),
+  TIMEOUT: getEnvNumber(import.meta.env.VITE_API_TIMEOUT, 10000),
+  RETRY_ATTEMPTS: getEnvNumber(import.meta.env.VITE_API_RETRY_ATTEMPTS, 3),
 };
 
 // API Endpoints

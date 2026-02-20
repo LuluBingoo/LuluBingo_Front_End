@@ -1,5 +1,6 @@
 /* @import url("https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"); */
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --font-size: 16px;
@@ -61,12 +62,18 @@
 
   html {
     font-size: var(--font-size);
+    background-color: var(--background);
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-body);
+  }
+
+  #root {
+    min-height: 100vh;
+    background-color: var(--background);
   }
 
   h1,
