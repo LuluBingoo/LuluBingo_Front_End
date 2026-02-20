@@ -97,6 +97,13 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
+  const toastColorClassMap: Record<ToastKind, string> = {
+    success: "border-green-600",
+    error: "border-red-600",
+    warning: "border-amber-600",
+    info: "border-blue-600",
+  };
+
   return (
     <PopupContext.Provider value={value}>
       {children}
@@ -104,54 +111,55 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
         richColors
         position="top-right"
         closeButton
+        className="z-1400!"
         toastOptions={{
           style: {
             zIndex: 1300,
+            background: "#ffffff",
+            color: "#0f172a",
+            border: "1px solid #e2e8f0",
+            opacity: "1",
           },
         }}
       />
 
-      <div className="popup-fallback-stack">
+      <div className="fixed top-4 right-4 z-2100 grid w-[min(92vw,360px)] gap-2 pointer-events-none">
         {toasts.map((toastItem) => (
           <div
             key={toastItem.id}
-            className={`popup-fallback-toast popup-fallback-toast--${toastItem.type}`}
+            className={`pointer-events-auto rounded-[10px] border bg-white px-3 py-2.5 text-slate-900 opacity-100 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:bg-slate-900 dark:text-slate-100 ${toastColorClassMap[toastItem.type]}`}
           >
             {toastItem.title ? (
-              <div className="popup-fallback-toast-title">
-                {toastItem.title}
-              </div>
+              <div className="mb-1 font-bold">{toastItem.title}</div>
             ) : null}
-            <div className="popup-fallback-toast-message">
-              {toastItem.message}
-            </div>
+            <div className="text-sm leading-[1.35]">{toastItem.message}</div>
           </div>
         ))}
       </div>
 
       {confirmState ? (
-        <div className="popup-fallback-confirm-overlay">
-          <div className="popup-fallback-confirm-card">
-            <div className="popup-fallback-confirm-title">
+        <div className="fixed inset-0 z-2200 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-[min(94vw,460px)] rounded-xl border border-slate-300 bg-white p-4.5 opacity-100 shadow-[0_16px_44px_rgba(2,6,23,0.28)] dark:border-slate-700 dark:bg-slate-900">
+            <div className="text-[18px] font-bold text-slate-900">
               {confirmState.title}
             </div>
             {confirmState.description ? (
-              <div className="popup-fallback-confirm-description">
+              <div className="mt-2 text-sm leading-[1.45] text-slate-700">
                 {confirmState.description}
               </div>
             ) : null}
-            <div className="popup-fallback-confirm-actions">
+            <div className="mt-4 flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => resolveConfirm(false)}
-                className="popup-fallback-confirm-btn popup-fallback-confirm-btn--cancel"
+                className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-900"
               >
                 {confirmState.cancelText || "Cancel"}
               </button>
               <button
                 type="button"
                 onClick={() => resolveConfirm(true)}
-                className="popup-fallback-confirm-btn popup-fallback-confirm-btn--confirm"
+                className="cursor-pointer rounded-lg border border-slate-900 bg-slate-900 px-3 py-2 font-bold text-white"
               >
                 {confirmState.confirmText || "Confirm"}
               </button>

@@ -211,7 +211,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { gamesApi } from "../services/api";
 import { ShopBingoSession } from "../services/types";
-import "./NewGame.css";
+import { useNavigate } from "react-router-dom";
 
 interface NewGameProps {
   onGameCreated: (config: GameConfig, patterns: number[]) => void;
@@ -231,6 +231,7 @@ interface GameConfig {
 
 export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const popup = usePopup();
   const [session, setSession] = useState<ShopBingoSession | null>(null);
   const [showBetDialog, setShowBetDialog] = useState(true);
@@ -383,16 +384,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         bet_per_cartella: betPerCartella,
       });
 
-      const response = await gamesApi.confirmShopPlayerPayment(
-        connectedSession.session_id,
-        {
-          player_name: currentPlayerName,
-        },
-      );
-
       popup.success(`${currentPlayerName} locked successfully.`);
-
-      setSession(response.session);
+      await syncSession(connectedSession.session_id);
       setSelectedCartellas([]);
       setCurrentPage(1);
     } catch (error) {
@@ -428,12 +421,12 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
   const handleCheckPaymentAndCreate = async () => {
     if (!session?.session_id) {
-      popup.warning("Lock all players first.");
+      popup.warning(t("newGame.lockAllPlayersFirst"));
       return;
     }
 
     if (totalLockedPlayers < 4) {
-      popup.warning("Lock all 4 players before checking payment.");
+      popup.warning(t("newGame.lockAllFourPlayers"));
       return;
     }
 
@@ -441,8 +434,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       title: "Check Payment",
       description:
         "Confirm payments for all 4 players and create the game now?",
-      confirmText: "Create Game",
-      cancelText: "Cancel",
+      confirmText: t("newGame.createGame"),
+      cancelText: t("common.cancel"),
     });
 
     if (!confirmed) return;
@@ -460,7 +453,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         }
 
         const response = await gamesApi.confirmShopPlayerPayment(
-          session.session_id,
+          latestSession.session_id,
           {
             player_name: player.player_name,
           },
@@ -476,7 +469,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       }
 
       if (!createdGame) {
-        popup.error("Could not create game after payment check.");
+        popup.error(t("newGame.createGameFailed"));
         return;
       }
 
@@ -499,31 +492,34 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       };
 
       onGameCreated(config, allSelectedPatterns);
-      popup.success(`Game created: ${createdGame.game_code}`);
+      popup.success(`${t("newGame.gameCreated")}: ${createdGame.game_code}`);
     } catch (error) {
       console.error("Failed during payment check", error);
-      popup.error("Payment check failed.");
+      popup.error(t("newGame.paymentCheckFailed"));
     } finally {
       setSubmittingPayment(false);
     }
   };
 
   return (
-    <div className="new-game">
+    <div className="space-y-6 p-6">
       <Dialog
-        open={showBetDialog}
-        onOpenChange={(open) => {
+        open={!betLocked && showBetDialog}
+        onOpenChange={() => {
           if (!betLocked) {
-            setShowBetDialog(open);
+            setShowBetDialog(true);
           }
         }}
       >
-        <DialogContent>
+        <DialogContent
+          className="[&>button]:hidden"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle>Set Bet Amount</DialogTitle>
+            <DialogTitle>{t("newGame.setBetAmount")}</DialogTitle>
             <DialogDescription>
-              Enter bet amount once. It will be locked and used for all players.
-              Minimum is 20 ETB per cartella.
+              {t("newGame.betDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -535,179 +531,39 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           />
 
           <DialogFooter>
-            <Button onClick={handleLockBet}>Lock Bet Amount</Button>
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              {t("newGame.cancelToDashboard")}
+            </Button>
+            <Button onClick={handleLockBet}>
+              {t("newGame.lockBetAmount")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <motion.div
-        className="new-game-header"
+        className="mb-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="">Shop-Based 75-Ball Bingo</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          {t("newGame.shopTitle")}
+        </h1>
       </motion.div>
 
-      <div className="new-game-content">
-        <motion.div
-          className="game-config"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="config-card">
-            <h2>Shop Game Config</h2>
-            <div className="config-form">
-              <div className="form-group">
-                <label>Session ID</label>
-                <Input
-                  value={session?.session_id || "Not connected yet"}
-                  disabled
-                />
-              </div>
-              <div className="form-group">
-                <label>Current Player</label>
-                <Input value={currentPlayerName} disabled />
-              </div>
-              <div className="form-group">
-                <label>Fixed Players</label>
-                <Input value={String(session?.fixed_players || 4)} disabled />
-              </div>
-              <div className="form-group">
-                <label>Bet / Cartella (ETB)</label>
-                <Input type="number" value={betPerCartella} disabled />
-              </div>
-              <div className="form-group info-box">
-                <label>Selected Cartellas: {selectedCartellas.length}/4</label>
-                <div className="selected-patterns-list">
-                  {selectedCartellas.length > 0 ? (
-                    selectedCartellas.map((cartella) => (
-                      <span key={cartella} className="pattern-tag">
-                        {cartella}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="no-patterns">No cartellas selected</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-group info-box">
-                <label>
-                  <Wallet size={16} className="inline mr-1" /> Total Payable
-                </label>
-                <div className="shop75-payable">{totalPayable} ETB</div>
-              </div>
-
-              <div className="form-group info-box">
-                <label>
-                  <Users size={16} className="inline mr-1" /> Players Locked
-                </label>
-                <div className="shop75-players">
-                  {totalLockedPlayers}/4 players reserved, {totalPaidPlayers}/4
-                  paid
-                </div>
-              </div>
-
-              <div className="shop75-progress-row">
-                {[1, 2, 3, 4].map((playerNum) => {
-                  const reserved =
-                    (session?.players_data.length || 0) >= playerNum;
-                  const paid = totalPaidPlayers >= playerNum;
-                  return (
-                    <div
-                      key={playerNum}
-                      className={`shop75-progress-chip ${paid ? "paid" : reserved ? "reserved" : "pending"}`}
-                    >
-                      P{playerNum}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="form-group info-box">
-                <label>Next Step</label>
-                <div className="shop75-players">
-                  Select up to 4 cartellas for {currentPlayerName}, then lock to
-                  continue.
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          className="patterns-section"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="patterns-card">
-            <div className="patterns-header shop75-pages">
-              <h2>Cartella Selection (1–200)</h2>
-              <div className="shop75-page-actions">
-                <Button
-                  variant={currentPage === 1 ? "default" : "outline"}
-                  onClick={() => setCurrentPage(1)}
-                  size="sm"
-                >
-                  1–100
-                </Button>
-                <Button
-                  variant={currentPage === 2 ? "default" : "outline"}
-                  onClick={() => setCurrentPage(2)}
-                  size="sm"
-                >
-                  101–200
-                </Button>
-              </div>
-            </div>
-            <div className="patterns-grid">
-              {pageRange.map((number) => {
-                const isSelected = selectedCartellas.includes(number);
-                const isLocked = lockedByOthers.has(number);
-
-                return (
-                  <motion.button
-                    key={number}
-                    className={`pattern-box ${isSelected ? "selected" : ""} ${isLocked ? "shop75-locked" : ""}`}
-                    onClick={() => handleCartellaToggle(number)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    disabled={isLocked}
-                  >
-                    {isSelected && (
-                      <motion.div
-                        className="check-icon"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                      >
-                        <Check size={16} />
-                      </motion.div>
-                    )}
-                    {number}
-                  </motion.button>
-                );
-              })}
-            </div>
-            <div className="patterns-info">
-              <p>• Fixed mode: exactly 4 players required to start.</p>
-              <p>• A player can hold at most 4 cartellas.</p>
-              <p>• Locked cartellas are disabled in real time for others.</p>
-            </div>
-          </Card>
-        </motion.div>
-      </div>
+      {!betLocked ? (
+        <Card className="border-amber-300 bg-amber-50 p-5 text-amber-900 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
+          <p className="text-sm font-medium">{t("newGame.lockBetFirst")}</p>
+        </Card>
+      ) : null}
 
       <motion.div
-        className="action-buttons"
-        initial={{ opacity: 0, y: 20 }}
+        className="flex flex-wrap gap-2"
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
       >
         <Button
-          className="confirm-btn"
+          className="bg-red-700 text-white hover:bg-red-800"
           onClick={handleLockCurrentPlayer}
           disabled={
             submittingLock ||
@@ -720,17 +576,195 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         </Button>
 
         <Button
-          className="confirm-btn"
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
           onClick={handleCheckPaymentAndCreate}
           disabled={submittingPayment || totalLockedPlayers < 4}
         >
-          {submittingPayment ? "Checking Payment..." : "Check Payment"}
+          {submittingPayment
+            ? t("newGame.checkingPayment")
+            : t("newGame.checkPayment")}
         </Button>
 
-        <Button className="clear-btn" variant="outline" onClick={handleClear}>
+        <Button variant="outline" onClick={handleClear}>
           {t("common.clear")} Selection
         </Button>
       </motion.div>
+
+      {!betLocked ? null : (
+        <>
+          <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+            <motion.div
+              className=""
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="space-y-4 p-5">
+                <h2 className="text-lg font-semibold">Shop Game Config</h2>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Session ID</label>
+                    <Input
+                      value={session?.session_id || "Not connected yet"}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">
+                      Current Player
+                    </label>
+                    <Input value={currentPlayerName} disabled />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Fixed Players</label>
+                    <Input
+                      value={String(session?.fixed_players || 4)}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">
+                      Bet / Cartella (ETB)
+                    </label>
+                    <Input type="number" value={betPerCartella} disabled />
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      Selected Cartellas: {selectedCartellas.length}/4
+                    </label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedCartellas.length > 0 ? (
+                        selectedCartellas.map((cartella) => (
+                          <span
+                            key={cartella}
+                            className="rounded-full bg-red-700 px-2.5 py-1 text-xs font-semibold text-white"
+                          >
+                            {cartella}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500">
+                          No cartellas selected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      <Wallet size={16} className="inline mr-1" /> Total Payable
+                    </label>
+                    <div className="mt-1 text-lg font-bold text-emerald-600">
+                      {totalPayable} ETB
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      <Users size={16} className="inline mr-1" /> Players Locked
+                    </label>
+                    <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                      {totalLockedPlayers}/4 players reserved,{" "}
+                      {totalPaidPlayers}/4 paid
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    {[1, 2, 3, 4].map((playerNum) => {
+                      const reserved =
+                        (session?.players_data.length || 0) >= playerNum;
+                      const paid = totalPaidPlayers >= playerNum;
+                      return (
+                        <div
+                          key={playerNum}
+                          className={`rounded-md px-2 py-1 text-center text-xs font-semibold ${paid ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : reserved ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}
+                        >
+                          P{playerNum}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">Next Step</label>
+                    <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                      Select up to 4 cartellas for {currentPlayerName}, then
+                      lock to continue.
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              className=""
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="space-y-3 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold">
+                    Cartella Selection (1–200)
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={currentPage === 1 ? "default" : "outline"}
+                      onClick={() => setCurrentPage(1)}
+                      size="sm"
+                    >
+                      1–100
+                    </Button>
+                    <Button
+                      variant={currentPage === 2 ? "default" : "outline"}
+                      onClick={() => setCurrentPage(2)}
+                      size="sm"
+                    >
+                      101–200
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10">
+                  {pageRange.map((number) => {
+                    const isSelected = selectedCartellas.includes(number);
+                    const isLocked = lockedByOthers.has(number);
+
+                    return (
+                      <motion.button
+                        key={number}
+                        className={`relative flex h-10 items-center justify-center rounded-md border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"}`}
+                        onClick={() => handleCartellaToggle(number)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        disabled={isLocked}
+                      >
+                        {isSelected && (
+                          <motion.div
+                            className="absolute top-0 right-0 p-0.5"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                          >
+                            <Check size={16} />
+                          </motion.div>
+                        )}
+                        {number}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+                <div className="space-y-1 text-sm text-slate-500 dark:text-slate-300">
+                  <p>• Fixed mode: exactly 4 players required to start.</p>
+                  <p>• A player can hold at most 4 cartellas.</p>
+                  <p>
+                    • Locked cartellas are disabled in real time for others.
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

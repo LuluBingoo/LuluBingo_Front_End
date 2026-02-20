@@ -327,7 +327,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Shuffle, Play, Check, X, Eye } from "lucide-react";
+import { Shuffle, Play, Check, X, Eye, Maximize, Minimize } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
@@ -335,7 +335,6 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
-import "./Playground.css";
 
 interface PlaygroundProps {
   gameConfig?: {
@@ -391,6 +390,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
   });
 
   const [isGameActive, setIsGameActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTogglingFullscreen, setIsTogglingFullscreen] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const boardContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Initialize game if config exists
   useEffect(() => {
@@ -719,17 +722,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const shuffleNumbers = () => {
-    void (async () => {
-      const confirmed = await popup.confirm({
-        title: "Shuffle board",
-        description: "Shuffle numbers inside columns?",
-        confirmText: "Shuffle",
-        cancelText: "Cancel",
-      });
-      if (confirmed) {
-        reshuffleBoard();
-      }
-    })();
+    setIsShuffling(true);
+    reshuffleBoard();
+    popup.info(t("playground.shuffleAnimated"));
+    window.setTimeout(() => setIsShuffling(false), 650);
   };
 
   const calculateWinMoney = () => {
@@ -739,8 +735,36 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return calledNumbers.length * 10;
   };
 
+  const toggleFullscreen = async () => {
+    if (isTogglingFullscreen) return;
+
+    setIsTogglingFullscreen(true);
+    try {
+      if (!document.fullscreenElement) {
+        await boardContainerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error("Failed to toggle fullscreen", error);
+      popup.error("Fullscreen is not available on this device/browser.");
+    } finally {
+      setIsTogglingFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   return (
-    <div className="playground">
+    <div className="space-y-4 p-6">
       {/* Cartela Modal */}
       <CartelaModal
         isOpen={showCartelaModal}
@@ -755,37 +779,43 @@ export const Playground: React.FC<PlaygroundProps> = ({
       />
 
       {/* Header */}
-      <div className="playground-header">
-        <div className="game-info-bar">
-          <div className="info-item">
-            <span className="info-label">{t("playground.game")}</span>
-            <span className="info-value">{gameConfig?.game || "F-am"}</span>
+      <div>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <span className="mr-1 text-xs uppercase text-slate-500">
+              {t("playground.game")}
+            </span>
+            <span className="font-semibold">{gameConfig?.game || "F-am"}</span>
           </div>
-          <div className="info-item">
-            <span className="info-label">{t("playground.stake")}</span>
-            <span className="info-value">
+          <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <span className="mr-1 text-xs uppercase text-slate-500">
+              {t("playground.stake")}
+            </span>
+            <span className="font-semibold">
               {gameConfig?.betBirr ? `${gameConfig.betBirr} BIRR` : "BINGO"}
             </span>
           </div>
-          <div className="info-item">
-            <span className="info-label">{t("playground.winPrice")}</span>
-            <span className="info-value">{calculateWinMoney()}</span>
+          <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <span className="mr-1 text-xs uppercase text-slate-500">
+              {t("playground.winPrice")}
+            </span>
+            <span className="font-semibold">{calculateWinMoney()}</span>
           </div>
-          <div className="info-item highlight">
-            <span className="calls-count">
+          <div className="rounded-md bg-red-700 px-3 py-2 text-white">
+            <span className="font-semibold">
               {calledNumbers.length} {t("playground.called")}
             </span>
           </div>
-          <div className="info-item">
-            <span className="info-label">Cartelas:</span>
-            <span className="info-value">{activeCartelas.length || 0}</span>
+          <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
+            <span className="mr-1 text-xs uppercase text-slate-500">
+              Cartelas:
+            </span>
+            <span className="font-semibold">{activeCartelas.length || 0}</span>
           </div>
           {currentCalledNumber && (
-            <div className="info-item current-number-display">
-              <span className="current-number-label">Current:</span>
-              <span className="current-number-value">
-                {currentCalledNumber}
-              </span>
+            <div className="rounded-md bg-emerald-100 px-3 py-2 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <span className="mr-1 text-xs uppercase">Current:</span>
+              <span className="font-semibold">{currentCalledNumber}</span>
             </div>
           )}
         </div>
@@ -793,13 +823,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       {/* Error toast */}
       {cartelaError && (
-        <div className="error-toast">
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {cartelaError}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setCartelaError("")}
-            className="toast-close"
+            className="h-6 w-6 p-0"
           >
             <X size={14} />
           </Button>
@@ -807,31 +837,61 @@ export const Playground: React.FC<PlaygroundProps> = ({
       )}
 
       {/* Main content */}
-      <div className="playground-content">
-        {/* Left side - Bingo board */}
-        <div className="playground-left">
-          <Card className="bingo-board-card">
-            <div className="bingo-board">
+      <div className="space-y-4">
+        <div ref={boardContainerRef} className="w-full">
+          <Card className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Bingo Board
+              </h3>
+              <Button
+                variant="outline"
+                onClick={toggleFullscreen}
+                disabled={isTogglingFullscreen}
+                className="h-9"
+              >
+                {isFullscreen ? (
+                  <>
+                    <Minimize className="mr-1 h-4 w-4" />{" "}
+                    {t("playground.exitFullscreen")}
+                  </>
+                ) : (
+                  <>
+                    <Maximize className="mr-1 h-4 w-4" />{" "}
+                    {t("playground.fullscreen")}
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <motion.div
+              className="space-y-2"
+              animate={
+                isShuffling
+                  ? { scale: [1, 0.99, 1.01, 1], opacity: [1, 0.9, 1] }
+                  : { scale: 1, opacity: 1 }
+              }
+              transition={{ duration: 0.55 }}
+            >
               {Object.entries(bingoRows).map(([letter, numbers]) => (
-                <div key={letter} className="bingo-row">
+                <div
+                  key={letter}
+                  className="grid grid-cols-[48px_1fr] items-center gap-2"
+                >
                   <motion.div
-                    className="row-header"
+                    className="flex h-10 items-center justify-center rounded-md bg-red-700 font-bold text-white"
                     whileHover={{ scale: 1.05 }}
                   >
                     {letter}
                   </motion.div>
-                  <div className="numbers-row">
+                  <div
+                    className={`grid gap-2 ${isFullscreen ? "grid-cols-15" : "grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15"}`}
+                  >
                     {numbers.map((num) => (
                       <motion.div
                         key={num}
-                        className={`bingo-number ${calledNumbers.includes(num) ? "called" : ""}`}
+                        className={`flex h-10 cursor-pointer items-center justify-center rounded-md border text-sm font-semibold transition ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"}`}
                         whileHover={{ scale: 1.1 }}
-                        style={{
-                          backgroundColor: calledNumbers.includes(num)
-                            ? "#0ea5e9"
-                            : "",
-                          color: calledNumbers.includes(num) ? "#fff" : "",
-                        }}
                         onClick={() => isGameActive && callSpecificNumber(num)}
                       >
                         {num}
@@ -840,20 +900,24 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   </div>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </Card>
         </div>
 
-        {/* Right side - Controls */}
-        <div className="playground-right">
-          <div className="playground-sidebar">
-            <div className="control-panel">
+        {/* Controls below board */}
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Game Controls
+            </h3>
+
+            <div className="space-y-2">
               {/* Conditional rendering based on game state */}
               {isGameActive ? (
                 <>
                   {/* Display current number button */}
                   <Button
-                    className="control-btn display-number-btn"
+                    className="h-10 w-full"
                     onClick={displayCurrentNumber}
                     variant="outline"
                   >
@@ -862,7 +926,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
                   {/* Call number button */}
                   <Button
-                    className="control-btn call-btn"
+                    className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
                     onClick={callRandomNumber}
                     disabled={calledNumbers.length >= 75}
                   >
@@ -871,113 +935,124 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
                   {/* Stop game button */}
                   <Button
-                    className="control-btn stop-btn"
+                    className="h-10 w-full"
                     onClick={stopGame}
                     variant="destructive"
                   >
-                    <X className="btn-icon" />
+                    <X className="mr-1 h-4 w-4" />
                     {t("playground.stopGame")}
                   </Button>
                 </>
               ) : (
                 /* Start new game button (only when no active game) */
                 <Button
-                  className="control-btn start-btn"
+                  className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
                   onClick={startNewGame}
                 >
-                  <Play className="btn-icon" />
+                  <Play className="mr-1 h-4 w-4" />
                   {t("playground.startNewGame")}
                 </Button>
               )}
 
               {/* Shuffle button (always visible) */}
               <Button
-                className="control-btn shuffle-btn"
+                className="h-10 w-full"
                 onClick={shuffleNumbers}
                 variant="outline"
               >
-                <Shuffle className="btn-icon" />
+                <Shuffle className="mr-1 h-4 w-4" />
                 {t("playground.shuffle")}
               </Button>
 
               {/* Auto-call section (only when game is active) */}
               {isGameActive && (
-                <div className="auto-call-section">
-                  <label className="auto-call-label">
+                <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                  <label className="flex items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
                       checked={autoCall}
                       onChange={(e) => setAutoCall(e.target.checked)}
-                      className="auto-call-checkbox"
+                      className="h-4 w-4 rounded"
                       disabled={calledNumbers.length >= 75}
                     />
                     {t("playground.autoCall")}
                   </label>
-                  <span className="auto-call-timer">
+                  <span className="mt-2 block text-xs text-slate-500">
                     {autoCallTimer} {t("playground.seconds")}
                   </span>
                 </div>
               )}
             </div>
+          </Card>
 
-            {/* Cartela search */}
-            <Card className="cartela-check-card">
-              <h3>Check Cartela</h3>
+          <Card className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              {t("playground.cartelaTools")}
+            </h3>
+
+            <Button
+              className="h-10 w-full bg-indigo-600 text-white hover:bg-indigo-700"
+              onClick={openCartelaModal}
+              disabled={!isGameActive}
+            >
+              <Eye className="mr-1 h-4 w-4" /> {t("playground.viewAllCartelas")}
+            </Button>
+
+            <div className="relative py-1 text-center text-xs uppercase tracking-wide text-slate-400">
+              <span className="bg-white px-2 dark:bg-slate-900">
+                {t("playground.orEnterSpecific")}
+              </span>
+              <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-slate-200 dark:bg-slate-700" />
+            </div>
+
+            <Input
+              placeholder={t("playground.cartelaPlaceholderDetailed")}
+              value={cartelaInput}
+              onChange={(e) => setCartelaInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") viewCartela();
+              }}
+              disabled={!isGameActive}
+            />
+
+            <div className="grid grid-cols-2 gap-2">
               <Button
-                className="view-all-btn"
-                onClick={openCartelaModal}
+                className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={checkCartela}
                 disabled={!isGameActive}
               >
-                <Eye className="btn-icon" />
-                View All Cartelas
+                <Check className="mr-1 h-4 w-4" /> {t("playground.check")}
               </Button>
-              <div className="or-divider">
-                <span>or enter specific number</span>
-              </div>
-              <Input
-                placeholder="Enter cartela number (e.g., 001)"
-                value={cartelaInput}
-                onChange={(e) => setCartelaInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") viewCartela();
-                }}
+              <Button
+                className="h-10 w-full"
+                onClick={viewCartela}
+                variant="outline"
                 disabled={!isGameActive}
-              />
-              <div className="cartela-buttons">
-                <Button
-                  className="check-btn"
-                  onClick={checkCartela}
-                  disabled={!isGameActive}
-                >
-                  <Check className="btn-icon" />
-                  Check
-                </Button>
-                <Button
-                  className="view-btn"
-                  onClick={viewCartela}
-                  variant="outline"
-                  disabled={!isGameActive}
-                >
-                  <Eye className="btn-icon" />
-                  View
-                </Button>
-              </div>
-              <div className="cartela-info-hint">
-                {activeCartelas.length
-                  ? `${activeCartelas.length} cartela(s) in game`
-                  : "No cartelas in this game"}
-              </div>
-            </Card>
+              >
+                <Eye className="mr-1 h-4 w-4" /> {t("playground.view")}
+              </Button>
+            </div>
 
-            {/* Win money */}
-            <Card className="win-money-card">
-              <h3>{t("playground.winMoney")}</h3>
-              <div className="win-amount">
-                <span className="currency">{t("playground.birr")}</span>
-                <span className="amount">{calculateWinMoney()}</span>
-              </div>
-            </Card>
-          </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {activeCartelas.length
+                ? `${activeCartelas.length} ${t("playground.cartelasInGame")}`
+                : t("playground.noCartelasInGame")}
+            </div>
+          </Card>
+
+          <Card className="rounded-xl border border-emerald-200 bg-linear-to-br from-emerald-50 to-white p-4 dark:border-emerald-700/50 dark:from-emerald-900/20 dark:to-slate-900">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+              {t("playground.winMoney")}
+            </h3>
+            <div className="mt-3 flex items-end gap-1">
+              <span className="text-base font-medium text-emerald-700 dark:text-emerald-300">
+                {t("playground.birr")}
+              </span>
+              <span className="text-4xl font-black leading-none text-emerald-700 dark:text-emerald-300">
+                {calculateWinMoney()}
+              </span>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

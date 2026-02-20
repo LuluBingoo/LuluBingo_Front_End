@@ -25,7 +25,6 @@ import { usePopup } from "../contexts/PopupContext";
 import { shopApi, authApi } from "../services/api";
 import { ShopProfile, TwoFactorSetup } from "../services/types";
 import { QRCodeSVG } from "qrcode.react";
-import "./Profile.css";
 
 export const Profile: React.FC = () => {
   const { t } = useLanguage();
@@ -170,7 +169,7 @@ export const Profile: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center">Loading profile...</div>;
+    return <div className="p-8 text-center">{t("profile.loading")}</div>;
   }
 
   if (!profile) {
@@ -182,31 +181,37 @@ export const Profile: React.FC = () => {
   }
 
   return (
-    <div className="profile-page">
+    <div className="space-y-6 p-6">
       <motion.div
-        className="profile-header"
+        className="mb-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1>{t("profile.title")}</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          {t("profile.title")}
+        </h1>
       </motion.div>
 
-      <div className="profile-content">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="profile-card">
-            <div className="profile-avatar-section">
+          <Card className="p-5">
+            <div className="flex flex-col items-center text-center">
               <motion.div
-                className="avatar-circle"
+                className="mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-slate-800"
                 whileHover={{ scale: 1.05 }}
               >
-                <User className="avatar-icon" />
+                <User className="h-9 w-9 text-red-700 dark:text-red-400" />
               </motion.div>
-              <h2>{profile.name || profile.username}</h2>
-              <p className="user-role">{profile.shop_code}</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                {profile.name || profile.username}
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-300">
+                {profile.shop_code}
+              </p>
 
               <div className="mt-6 w-full">
                 <div className="text-sm font-medium mb-2 text-gray-400">
@@ -220,17 +225,21 @@ export const Profile: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      className="twofa-power-wrap"
+                      className="mx-auto mt-1 flex items-center gap-3 rounded-full border border-green-500/40 bg-green-500/10 px-3 py-1"
                       onClick={() => openTwoFactorConfirmation("disable")}
                     >
-                      <span className="twofa-power-label">ON</span>
+                      <span className="text-xs font-semibold text-green-500">
+                        ON
+                      </span>
                       <span
-                        className="twofa-power-button twofa-power-button--on"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white"
                         aria-label="Turn off 2FA"
                       >
                         <Power size={18} />
                       </span>
-                      <span className="twofa-power-label">OFF</span>
+                      <span className="text-xs font-semibold text-green-500/70">
+                        OFF
+                      </span>
                     </button>
                   </div>
                 ) : (
@@ -241,17 +250,21 @@ export const Profile: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      className="twofa-power-wrap"
+                      className="mx-auto mt-1 flex items-center gap-3 rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1"
                       onClick={() => openTwoFactorConfirmation("enable")}
                     >
-                      <span className="twofa-power-label">ON</span>
+                      <span className="text-xs font-semibold text-yellow-500">
+                        ON
+                      </span>
                       <span
-                        className="twofa-power-button twofa-power-button--off"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-300 text-slate-700"
                         aria-label="Turn on 2FA"
                       >
                         <Power size={18} />
                       </span>
-                      <span className="twofa-power-label">OFF</span>
+                      <span className="text-xs font-semibold text-yellow-500/70">
+                        OFF
+                      </span>
                     </button>
                   </div>
                 )}
@@ -261,7 +274,7 @@ export const Profile: React.FC = () => {
         </motion.div>
 
         <motion.div
-          className="profile-details"
+          className="space-y-4"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -334,12 +347,14 @@ export const Profile: React.FC = () => {
             </DialogContent>
           </Dialog>
 
-          <Card className="details-card">
-            <h3>{t("profile.personalInfo")}</h3>
-            <form className="profile-form" onSubmit={handleSave}>
-              <div className="form-field">
-                <label>
-                  <User className="field-icon" />
+          <Card className="p-5">
+            <h3 className="mb-4 text-lg font-semibold">
+              {t("profile.personalInfo")}
+            </h3>
+            <form className="space-y-4" onSubmit={handleSave}>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <User className="h-4 w-4" />
                   {t("profile.fullName")}
                 </label>
                 <Input
@@ -348,9 +363,9 @@ export const Profile: React.FC = () => {
                 />
               </div>
 
-              <div className="form-field">
-                <label>
-                  <Mail className="field-icon" />
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <Mail className="h-4 w-4" />
                   {t("profile.email")}
                 </label>
                 <Input
@@ -362,9 +377,9 @@ export const Profile: React.FC = () => {
                 />
               </div>
 
-              <div className="form-field">
-                <label>
-                  <Phone className="field-icon" />
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <Phone className="h-4 w-4" />
                   {t("profile.phone")}
                 </label>
                 <Input
@@ -376,9 +391,9 @@ export const Profile: React.FC = () => {
                 />
               </div>
 
-              <div className="form-field">
-                <label>
-                  <Calendar className="field-icon" />
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <Calendar className="h-4 w-4" />
                   Member Since
                 </label>
                 <Input
@@ -393,41 +408,50 @@ export const Profile: React.FC = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Button type="submit" className="save-button">
+                <Button
+                  type="submit"
+                  className="bg-red-700 text-white shadow-sm hover:bg-red-800"
+                >
                   {t("common.save")} Changes
                 </Button>
               </motion.div>
             </form>
 
             {!profile.two_factor_enabled && showTwoFactorSetup ? (
-              <div className="twofa-inline-section">
-                <div className="twofa-inline-header">
-                  <QrCode size={18} />
-                  <h4>Setup Two-Factor Authentication</h4>
+              <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+                <div className="mb-2 flex items-center gap-2">
+                  <QrCode size={18} className="text-red-700" />
+                  <h4 className="font-semibold">
+                    Setup Two-Factor Authentication
+                  </h4>
                 </div>
-                <p className="twofa-inline-description">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   Scan this QR code with your authenticator app, then enter the
                   6-digit code to enable 2FA.
                 </p>
 
                 {isTwoFactorSetupLoading ? (
-                  <div className="twofa-setup-content">
-                    <p className="twofa-setup-message">Loading 2FA setup...</p>
+                  <div className="mt-3">
+                    <p className="text-sm text-slate-500">
+                      Loading 2FA setup...
+                    </p>
                   </div>
                 ) : twoFactorSetupError ? (
-                  <div className="twofa-setup-content">
-                    <p className="twofa-setup-error">{twoFactorSetupError}</p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm text-red-600">
+                      {twoFactorSetupError}
+                    </p>
                     <Button
                       variant="outline"
                       onClick={startTwoFactorSetup}
-                      className="twofa-retry-btn"
+                      className="h-9"
                     >
                       Retry Setup
                     </Button>
                   </div>
                 ) : twoFactorSetup ? (
-                  <div className="twofa-setup-content">
-                    <div className="twofa-qr-wrap">
+                  <div className="mt-3 space-y-3">
+                    <div className="mx-auto w-fit rounded-lg bg-white p-3">
                       <QRCodeSVG
                         value={twoFactorSetup.provisioning_uri}
                         size={170}
@@ -438,11 +462,11 @@ export const Profile: React.FC = () => {
                       placeholder="Enter 6-digit code"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      className="text-center text-lg tracking-widest twofa-otp-input"
+                      className="text-center text-lg tracking-widest"
                       maxLength={6}
                     />
 
-                    <div className="twofa-inline-actions">
+                    <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -456,7 +480,7 @@ export const Profile: React.FC = () => {
                         Cancel
                       </Button>
                       <Button
-                        className="twofa-enable-btn"
+                        className="bg-red-700 text-white hover:bg-red-800"
                         onClick={enableTwoFactor}
                         disabled={otp.trim().length !== 6}
                       >

@@ -15,7 +15,6 @@ import { Card } from "../components/ui/card";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { authApi } from "../services/api";
-import "./Login.css";
 
 interface LoginProps {
   onLogin: () => void;
@@ -167,23 +166,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="login-page">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-rose-50 via-white to-rose-100 px-4 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
       <motion.div
-        className="login-container"
+        className="relative w-full max-w-md"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="login-card">
+        <Card className="rounded-2xl border border-red-100/80 bg-white/95 p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900/95">
           <motion.div
-            className="login-logo"
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-700/10"
             animate={{ rotate: [0, 10, -10, 0] }}
             transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
           >
-            <Trophy className="logo-trophy" />
+            <Trophy className="h-7 w-7 text-red-700" />
           </motion.div>
 
-          <h1 className="logo-text">LULU Bingo</h1>
+          <h1 className="mb-5 text-center text-2xl font-bold tracking-wide text-red-700">
+            LULU Bingo
+          </h1>
 
           <AnimatePresence mode="wait">
             {/* Step 1: Credentials */}
@@ -195,7 +196,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="login-subtitle">{t("login.subtitle")}</p>
+                <p className="mb-4 text-center text-sm text-slate-500 dark:text-slate-300">
+                  {t("login.subtitle")}
+                </p>
 
                 {error && (
                   <div className="text-red-500 text-sm text-center mb-4">
@@ -203,34 +206,34 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </div>
                 )}
 
-                <form onSubmit={handleCredentialsSubmit} className="login-form">
-                  <div className="input-group">
-                    <Mail className="input-icon" />
+                <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       type="text"
                       placeholder={t("login.username")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="login-input"
+                      className="h-11 pl-10"
                       required
                       disabled={loading}
                     />
                   </div>
 
-                  <div className="input-group">
-                    <Lock className="input-icon" />
+                  <div className="relative">
+                    <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder={t("login.password")}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="login-input"
+                      className="h-11 pl-10 pr-10"
                       required
                       disabled={loading}
                     />
                     <button
                       type="button"
-                      className="toggle-password"
+                      className="absolute top-1/2 right-2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-500 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -243,17 +246,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   >
                     <Button
                       type="submit"
-                      className="login-button"
+                      className="h-11 w-full bg-red-700 text-white hover:bg-red-800"
                       disabled={loading}
                     >
-                      {loading ? "Logging in..." : t("login.button")}
+                      {loading ? t("login.loggingIn") : t("login.button")}
                     </Button>
                   </motion.div>
                 </form>
 
-                <div className="login-footer">
+                <div className="mt-4 text-center">
                   <button
-                    className="forgot-link"
+                    className="inline-flex items-center rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50 dark:border-red-800/70 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-slate-800"
                     onClick={() => setStep("forgot-password")}
                   >
                     {t("login.forgotPassword")}
@@ -271,7 +274,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="login-subtitle">
+                <p className="mb-4 text-center text-sm text-slate-500 dark:text-slate-300">
                   Enter the 6-digit code from your authenticator app
                 </p>
 
@@ -281,8 +284,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </div>
                 )}
 
-                <form onSubmit={handleOtpSubmit} className="login-form">
-                  <div className="otp-container">
+                <form onSubmit={handleOtpSubmit} className="space-y-4">
+                  <div className="flex justify-center gap-2">
                     {otp.map((digit, index) => (
                       <input
                         key={index}
@@ -293,9 +296,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                        className="otp-input"
+                        className="h-11 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/30 dark:border-slate-700 dark:bg-slate-900"
                         required
                         disabled={loading}
+                        title={`OTP digit ${index + 1}`}
+                        aria-label={`OTP digit ${index + 1}`}
                       />
                     ))}
                   </div>
@@ -306,16 +311,19 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   >
                     <Button
                       type="submit"
-                      className="login-button"
+                      className="h-11 w-full bg-red-700 text-white hover:bg-red-800"
                       disabled={loading}
                     >
-                      {loading ? "Verifying..." : "Verify OTP"}
+                      {loading ? t("login.verifying") : "Verify OTP"}
                     </Button>
                   </motion.div>
                 </form>
 
-                <div className="login-footer">
-                  <button className="back-link" onClick={handleBackToLogin}>
+                <div className="mt-4 text-center">
+                  <button
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={handleBackToLogin}
+                  >
                     <ArrowLeft size={16} />
                     Back to Login
                   </button>
@@ -332,7 +340,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="login-subtitle">
+                <p className="mb-4 text-center text-sm text-slate-500 dark:text-slate-300">
                   Enter your email to reset password
                 </p>
 
@@ -344,16 +352,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                 <form
                   onSubmit={handleForgotPasswordSubmit}
-                  className="login-form"
+                  className="space-y-4"
                 >
-                  <div className="input-group">
-                    <Mail className="input-icon" />
+                  <div className="relative">
+                    <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       type="text"
                       placeholder="Username or Email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="login-input"
+                      className="h-11 pl-10"
                       required
                       disabled={loading}
                     />
@@ -365,7 +373,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   >
                     <Button
                       type="submit"
-                      className="login-button"
+                      className="h-11 w-full bg-red-700 text-white hover:bg-red-800"
                       disabled={loading}
                     >
                       {loading ? "Sending..." : "Send Reset Link"}
@@ -373,8 +381,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </motion.div>
                 </form>
 
-                <div className="login-footer">
-                  <button className="back-link" onClick={handleBackToLogin}>
+                <div className="mt-4 text-center">
+                  <button
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={handleBackToLogin}
+                  >
                     <ArrowLeft size={16} />
                     Back to Login
                   </button>
@@ -385,7 +396,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </Card>
 
         <motion.div
-          className="decorative-circles"
+          className="pointer-events-none absolute -z-10"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 180, 360],
@@ -396,9 +407,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             ease: "linear",
           }}
         >
-          <div className="circle circle-1" />
-          <div className="circle circle-2" />
-          <div className="circle circle-3" />
+          <div className="absolute -top-24 -left-24 h-44 w-44 rounded-full bg-red-200/40 blur-2xl" />
+          <div className="absolute -right-24 -bottom-20 h-52 w-52 rounded-full bg-orange-200/40 blur-2xl" />
+          <div className="absolute top-20 right-28 h-28 w-28 rounded-full bg-rose-200/30 blur-xl" />
         </motion.div>
       </motion.div>
     </div>

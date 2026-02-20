@@ -14,7 +14,6 @@ import {
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { shopApi } from "../services/api";
-import "./Settings.css";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -80,38 +79,42 @@ export const Settings: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading settings...</div>;
+    return <div className="p-8 text-center">{t("settings.loading")}</div>;
   }
 
   return (
-    <div className="settings-page">
+    <div className="space-y-6 p-6">
       <motion.div
-        className="settings-header"
+        className="mb-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1>{t("settings.title")}</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          {t("settings.title")}
+        </h1>
       </motion.div>
 
-      <div className="settings-content">
+      <div className="grid gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="settings-card">
-            <div className="settings-section">
-              <div className="section-header">
-                <Bell className="section-icon" />
-                <h3>{t("settings.notifications")}</h3>
+          <Card className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-red-700" />
+                <h3 className="text-lg font-semibold">
+                  {t("settings.notifications")}
+                </h3>
               </div>
-              <div className="settings-items">
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
                       {t("settings.pushNotifications")}
                     </p>
-                    <p className="setting-description">
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.pushNotificationsDesc")}
                     </p>
                   </div>
@@ -120,10 +123,12 @@ export const Settings: React.FC = () => {
                     onCheckedChange={setNotifications}
                   />
                 </div>
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">{t("settings.emailAlerts")}</p>
-                    <p className="setting-description">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.emailAlerts")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.emailAlertsDesc")}
                     </p>
                   </div>
@@ -142,17 +147,21 @@ export const Settings: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="settings-card">
-            <div className="settings-section">
-              <div className="section-header">
-                <Globe className="section-icon" />
-                <h3>{t("settings.languageRegion")}</h3>
+          <Card className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-red-700" />
+                <h3 className="text-lg font-semibold">
+                  {t("settings.languageRegion")}
+                </h3>
               </div>
-              <div className="settings-items">
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">{t("settings.language")}</p>
-                    <p className="setting-description">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.language")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.languageDesc")}
                     </p>
                   </div>
@@ -164,7 +173,7 @@ export const Settings: React.FC = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="select-trigger">
+                    <SelectTrigger className="w-45">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -173,15 +182,17 @@ export const Settings: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">{t("settings.currency")}</p>
-                    <p className="setting-description">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.currency")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.currencyDesc")}
                     </p>
                   </div>
                   <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger className="select-trigger">
+                    <SelectTrigger className="w-45">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -201,17 +212,21 @@ export const Settings: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="settings-card">
-            <div className="settings-section">
-              <div className="section-header">
-                <Lock className="section-icon" />
-                <h3>{t("settings.security")}</h3>
+          <Card className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-red-700" />
+                <h3 className="text-lg font-semibold">
+                  {t("settings.security")}
+                </h3>
               </div>
-              <div className="settings-items">
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">{t("settings.autoBackup")}</p>
-                    <p className="setting-description">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.autoBackup")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.autoBackupDesc")}
                     </p>
                   </div>
@@ -220,18 +235,18 @@ export const Settings: React.FC = () => {
                     onCheckedChange={setAutoBackup}
                   />
                 </div>
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
                       {t("settings.changePassword")}
                     </p>
-                    <p className="setting-description">
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.changePasswordDesc")}
                     </p>
                   </div>
                   <Button
                     variant="outline"
-                    className="action-button"
+                    className="min-w-24"
                     onClick={() =>
                       popup.info("Password change dialog would open here")
                     }
@@ -240,19 +255,21 @@ export const Settings: React.FC = () => {
                   </Button>
                 </div>
 
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">Save Settings</p>
-                    <p className="setting-description">
-                      Sync your current settings with backend.
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.saveSettings")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      {t("settings.syncSettings")}
                     </p>
                   </div>
                   <Button
-                    className="action-button"
+                    className="min-w-24"
                     onClick={handleSaveSettings}
                     disabled={isSaving}
                   >
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving ? t("settings.saving") : t("common.save")}
                   </Button>
                 </div>
               </div>
@@ -265,17 +282,21 @@ export const Settings: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="settings-card">
-            <div className="settings-section">
-              <div className="section-header">
-                <Palette className="section-icon" />
-                <h3>{t("settings.appearance")}</h3>
+          <Card className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-red-700" />
+                <h3 className="text-lg font-semibold">
+                  {t("settings.appearance")}
+                </h3>
               </div>
-              <div className="settings-items">
-                <div className="setting-item">
-                  <div className="setting-info">
-                    <p className="setting-label">{t("settings.themeMode")}</p>
-                    <p className="setting-description">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {t("settings.themeMode")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.themeModeDesc")}
                     </p>
                   </div>

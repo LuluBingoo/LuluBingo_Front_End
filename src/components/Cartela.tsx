@@ -301,7 +301,6 @@ import { Button } from "../components/ui/button";
 import { Trophy, X, UserX, ChevronDown } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
-import "./Cartela.css";
 
 interface CartelaModalProps {
   isOpen: boolean;
@@ -434,9 +433,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
     // BINGO headers
     board.push(
-      <div key="headers" className="cartela-headers">
+      <div key="headers" className="grid grid-cols-5 gap-2">
         {["B", "I", "N", "G", "O"].map((letter) => (
-          <div key={letter} className="cartela-header">
+          <div
+            key={letter}
+            className="rounded-md bg-red-700 py-2 text-center font-bold text-white"
+          >
             {letter}
           </div>
         ))}
@@ -452,8 +454,11 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
         // Center is FREE
         if (row === 2 && col === 2) {
           rowCells.push(
-            <div key={`${row}-${col}`} className="cartela-cell free-space">
-              <span className="cell-number">FREE</span>
+            <div
+              key={`${row}-${col}`}
+              className="relative flex h-14 items-center justify-center rounded-md border border-slate-300 bg-amber-100 dark:border-slate-700 dark:bg-amber-900/40"
+            >
+              <span className="text-sm font-bold">FREE</span>
             </div>,
           );
         } else {
@@ -464,16 +469,18 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
           rowCells.push(
             <div
               key={`${row}-${col}`}
-              className={`cartela-cell ${isCalled ? "called" : ""}`}
+              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
             >
-              <span className="cell-number">{num}</span>
-              {isCalled && <div className="called-indicator">✓</div>}
+              <span>{num}</span>
+              {isCalled && (
+                <div className="absolute right-1 top-1 text-xs">✓</div>
+              )}
             </div>,
           );
         }
       }
       board.push(
-        <div key={`row-${row}`} className="cartela-row">
+        <div key={`row-${row}`} className="grid grid-cols-5 gap-2">
           {rowCells}
         </div>,
       );
@@ -513,7 +520,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
         <>
           {/* Backdrop */}
           <motion.div
-            className="cartela-backdrop"
+            className="fixed inset-0 z-1300 bg-black/60 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -521,47 +528,47 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
           >
             {/* Modal Container */}
             <motion.div
-              className="cartela-modal-container"
+              className="mx-auto my-6 max-w-3xl"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <Card className="cartela-modal">
+              <Card className="border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
                 {/* Header */}
-                <div className="cartela-modal-header">
-                  <h3>Cartela Viewer</h3>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Cartela Viewer</h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={onClose}
-                    className="close-btn"
+                    className="h-8 w-8 p-0"
                   >
                     <X size={20} />
                   </Button>
                 </div>
 
                 {/* Cartela Selector Dropdown */}
-                <div className="cartela-selector">
-                  <label className="selector-label">Select Cartela:</label>
-                  <div className="dropdown-wrapper">
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-medium">
+                    Select Cartela:
+                  </label>
+                  <div className="relative">
                     <button
-                      className="dropdown-trigger"
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-slate-300 px-3 text-sm dark:border-slate-700"
                       onClick={() => setShowDropdown(!showDropdown)}
                     >
-                      <span className="selected-value">
-                        {selectedCartela || "Choose a cartela"}
-                      </span>
+                      <span>{selectedCartela || "Choose a cartela"}</span>
                       <ChevronDown
                         size={18}
-                        className={`dropdown-icon ${showDropdown ? "open" : ""}`}
+                        className={`${showDropdown ? "rotate-180" : ""} transition`}
                       />
                     </button>
 
                     {showDropdown && (
                       <motion.div
-                        className="dropdown-menu"
+                        className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
@@ -570,14 +577,14 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                           cartelaNumbers.map((number) => (
                             <button
                               key={number}
-                              className={`dropdown-item ${selectedCartela === number ? "active" : ""}`}
+                              className={`w-full rounded px-2 py-2 text-left text-sm ${selectedCartela === number ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                               onClick={() => handleSelectCartela(number)}
                             >
                               Cartela {number}
                             </button>
                           ))
                         ) : (
-                          <div className="dropdown-empty">
+                          <div className="px-2 py-2 text-sm text-slate-500">
                             No cartelas available
                           </div>
                         )}
@@ -589,33 +596,43 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                 {/* Cartela display */}
                 {selectedCartela && cartelaData.length > 0 && (
                   <motion.div
-                    className="cartela-content"
+                    className="space-y-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
                   >
                     {/* Cartela Number Badge */}
-                    <div className="cartela-badge">
-                      <span className="badge-label">Cartela</span>
-                      <span className="badge-number">{selectedCartela}</span>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-red-700/10 px-3 py-1 text-red-700 dark:text-red-300">
+                      <span className="text-xs uppercase tracking-wide">
+                        Cartela
+                      </span>
+                      <span className="text-sm font-bold">
+                        {selectedCartela}
+                      </span>
                     </div>
 
                     {/* Bingo Board */}
-                    <div className="cartela-board">{renderCartelaBoard()}</div>
+                    <div className="space-y-2">{renderCartelaBoard()}</div>
 
                     {/* Stats */}
-                    <div className="cartela-stats">
-                      <div className="stat-box">
-                        <span className="stat-label">Called</span>
-                        <span className="stat-value">{calledCount}/24</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
+                        <span className="mr-1 text-xs uppercase text-slate-500">
+                          Called
+                        </span>
+                        <span className="font-semibold">{calledCount}/24</span>
                       </div>
-                      <div className="stat-box">
-                        <span className="stat-label">Remaining</span>
-                        <span className="stat-value">{24 - calledCount}</span>
+                      <div className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
+                        <span className="mr-1 text-xs uppercase text-slate-500">
+                          Remaining
+                        </span>
+                        <span className="font-semibold">
+                          {24 - calledCount}
+                        </span>
                       </div>
                       {isBingo && (
                         <motion.div
-                          className="bingo-badge"
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-sm font-bold text-white"
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ type: "spring", damping: 10 }}
@@ -628,16 +645,16 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
                     {/* Action Buttons */}
                     {gameActive && (
-                      <div className="cartela-actions">
+                      <div className="flex flex-wrap gap-2">
                         <Button
-                          className="winner-btn"
+                          className="bg-emerald-600 text-white hover:bg-emerald-700"
                           onClick={handleDeclareWinner}
                         >
                           <Trophy size={18} />
                           Declare Winner
                         </Button>
                         <Button
-                          className="remove-btn"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
                           variant="outline"
                           onClick={handleRemovePlayer}
                         >
@@ -651,8 +668,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
                 {/* Empty state */}
                 {!selectedCartela && (
-                  <div className="cartela-empty">
-                    <ChevronDown size={48} className="empty-icon" />
+                  <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-500">
+                    <ChevronDown size={48} />
                     <p>Select a cartela from the dropdown above</p>
                   </div>
                 )}

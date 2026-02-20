@@ -102,6 +102,7 @@
 // export default App;
 
 import React, { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -124,8 +125,6 @@ import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { authApi } from "./services/api";
-
-import "./styles/globals.css";
 
 /* ===============================
    TYPES
@@ -163,6 +162,7 @@ function AppLayout({
   username: string;
 }) {
   const navigate = useNavigate();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Handle game creation
   const handleGameCreated = (
@@ -204,11 +204,28 @@ function AppLayout({
   };
 
   return (
-    <div className="app-container">
-      <Sidebar isGameActive={isGameActive} />
-      <div className="main-content">
-        <Header onLogout={onLogout} username={username} />
-        <main className="page-content">
+    <div className="relative flex min-h-screen overflow-hidden bg-linear-to-br from-rose-50 via-white to-rose-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <motion.div
+        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-700/20"
+        animate={{ x: [0, 20, -12, 0], y: [0, 18, 8, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="pointer-events-none absolute right-4 bottom-0 h-80 w-80 rounded-full bg-sky-300/25 blur-3xl dark:bg-indigo-700/20"
+        animate={{ x: [0, -18, 12, 0], y: [0, -14, 6, 0] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <Sidebar isGameActive={isGameActive} isCollapsed={isSidebarCollapsed} />
+      <div
+        className={`relative z-10 flex flex-1 flex-col max-md:ml-50 max-sm:ml-17.5 ${isSidebarCollapsed ? "ml-22" : "ml-62.5"}`}
+      >
+        <Header
+          onLogout={onLogout}
+          username={username}
+          sidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+        />
+        <main className="mt-20 min-h-[calc(100vh-80px)] overflow-y-auto overflow-x-hidden">
           <Routes>
             <Route
               path="/dashboard"
