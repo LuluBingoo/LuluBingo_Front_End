@@ -24,6 +24,8 @@ import {
   GameCompleteRequest,
   ShopBingoConfirmPaymentRequest,
   ShopBingoConfirmPaymentResponse,
+  GameStateResponse,
+  GameNextCallResponse,
   ShopBingoReserveRequest,
   ShopBingoSession,
   ShopBingoSessionCreateRequest,
@@ -218,6 +220,18 @@ export const gamesApi = {
     );
   },
 
+  async createShopGameFromSession(
+    sessionId: string,
+  ): Promise<ShopBingoConfirmPaymentResponse> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Shop mode is not available in mock mode");
+    }
+    return await apiClient.post<ShopBingoConfirmPaymentResponse>(
+      API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
+      {},
+    );
+  },
+
   async getGame(code: string): Promise<Game> {
     if (API_CONFIG.USE_MOCK) {
       return await mockGamesApi.getGame(code);
@@ -230,6 +244,51 @@ export const gamesApi = {
       return await mockGamesApi.getGameDraw(code);
     }
     return await apiClient.get<Game>(API_ENDPOINTS.GAMES.DRAW(code));
+  },
+
+  async getGameState(code: string): Promise<GameStateResponse> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Game state is not available in mock mode");
+    }
+    return await apiClient.get<GameStateResponse>(
+      API_ENDPOINTS.GAMES.STATE(code),
+    );
+  },
+
+  async shuffleGame(
+    code: string,
+  ): Promise<{ game_code: string; status: string; message: string }> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Game shuffle is not available in mock mode");
+    }
+    return await apiClient.post<{
+      game_code: string;
+      status: string;
+      message: string;
+    }>(API_ENDPOINTS.GAMES.SHUFFLE(code), {});
+  },
+
+  async startGame(
+    code: string,
+  ): Promise<{ game_code: string; status: string; started_at: string | null }> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Game start is not available in mock mode");
+    }
+    return await apiClient.post<{
+      game_code: string;
+      status: string;
+      started_at: string | null;
+    }>(API_ENDPOINTS.GAMES.START(code), {});
+  },
+
+  async nextGameCall(code: string): Promise<GameNextCallResponse> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Game call progression is not available in mock mode");
+    }
+    return await apiClient.post<GameNextCallResponse>(
+      API_ENDPOINTS.GAMES.NEXT_CALL(code),
+      {},
+    );
   },
 
   async completeGame(code: string, data: GameCompleteRequest): Promise<Game> {

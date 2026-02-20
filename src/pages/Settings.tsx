@@ -25,6 +25,7 @@ export const Settings: React.FC = () => {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [autoBackup, setAutoBackup] = useState(false);
   const [currency, setCurrency] = useState("birr");
+  const [autoCallSeconds, setAutoCallSeconds] = useState("5");
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -37,6 +38,13 @@ export const Settings: React.FC = () => {
         setEmailAlerts(Boolean(flags.email_alerts ?? true));
         setAutoBackup(Boolean(flags.auto_backup ?? false));
         setCurrency(String(flags.currency ?? "birr"));
+        setAutoCallSeconds(
+          String(
+            flags.auto_call_seconds ??
+              localStorage.getItem("autoCallSeconds") ??
+              "5",
+          ),
+        );
 
         if (flags.language === "en" || flags.language === "am") {
           setLanguage(flags.language);
@@ -62,6 +70,7 @@ export const Settings: React.FC = () => {
         auto_backup: autoBackup,
         currency,
         language,
+        auto_call_seconds: Number.parseInt(autoCallSeconds, 10),
       };
 
       await shopApi.updateProfile({
@@ -69,6 +78,7 @@ export const Settings: React.FC = () => {
       });
 
       setFeatureFlags(updatedFlags);
+      localStorage.setItem("autoCallSeconds", autoCallSeconds);
       popup.success("Settings saved successfully.");
     } catch (error) {
       console.error("Failed to save settings", error);
@@ -253,6 +263,30 @@ export const Settings: React.FC = () => {
                   >
                     {t("settings.change")}
                   </Button>
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Auto-call Timer
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Choose seconds between automatic calls.
+                    </p>
+                  </div>
+                  <Select
+                    value={autoCallSeconds}
+                    onValueChange={setAutoCallSeconds}
+                  >
+                    <SelectTrigger className="w-45">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3s</SelectItem>
+                      <SelectItem value="5">5s</SelectItem>
+                      <SelectItem value="10">10s</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-start justify-between gap-3">

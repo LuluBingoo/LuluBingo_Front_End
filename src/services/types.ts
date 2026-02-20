@@ -86,6 +86,9 @@ export interface Game {
   cartella_numbers: number[][];
   cartella_draw_sequences: number[][];
   draw_sequence: number[];
+  called_numbers?: number[];
+  call_cursor?: number;
+  current_called_number?: number | null;
   status: GameStatus;
   winners: number[];
   created_at: string;
@@ -160,6 +163,27 @@ export interface ShopBingoConfirmPaymentResponse {
   session: ShopBingoSession;
   game_created: boolean;
   game?: Game;
+}
+
+export interface GameStateResponse {
+  game_code: string;
+  status: GameStatus;
+  started_at: string | null;
+  call_cursor: number;
+  current_called_number: number | null;
+  current_called_formatted: string | null;
+  called_numbers: number[];
+}
+
+export interface GameNextCallResponse {
+  game_code: string;
+  called_number?: number;
+  called_formatted?: string;
+  called_numbers: number[];
+  call_cursor?: number;
+  current_called_number?: number;
+  current_called_formatted?: string | null;
+  is_complete: boolean;
 }
 
 // Transaction types

@@ -442,31 +442,11 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     setSubmittingPayment(true);
     try {
-      let latestSession = await gamesApi.getShopSession(session.session_id);
-      setSession(latestSession);
-
-      let createdGame = null as any;
-
-      for (const player of latestSession.players_data) {
-        if (player.paid) {
-          continue;
-        }
-
-        const response = await gamesApi.confirmShopPlayerPayment(
-          latestSession.session_id,
-          {
-            player_name: player.player_name,
-          },
-        );
-
-        latestSession = response.session;
-        setSession(latestSession);
-
-        if (response.game_created && response.game) {
-          createdGame = response.game;
-          break;
-        }
-      }
+      const response = await gamesApi.createShopGameFromSession(
+        session.session_id,
+      );
+      setSession(response.session);
+      const createdGame = response.game;
 
       if (!createdGame) {
         popup.error(t("newGame.createGameFailed"));
@@ -572,7 +552,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             submittingPayment
           }
         >
-          {submittingLock ? t("newGame.locking") : `${t("newGame.lock")} ${currentPlayerName}`}
+          {submittingLock
+            ? t("newGame.locking")
+            : `${t("newGame.lock")} ${currentPlayerName}`}
         </Button>
 
         <Button
@@ -600,12 +582,18 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
               transition={{ delay: 0.1 }}
             >
               <Card className="space-y-4 p-5">
-                <h2 className="text-lg font-semibold">{t("newGame.shopGameConfig")}</h2>
+                <h2 className="text-lg font-semibold">
+                  {t("newGame.shopGameConfig")}
+                </h2>
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">{t("newGame.sessionId")}</label>
+                    <label className="text-sm font-medium">
+                      {t("newGame.sessionId")}
+                    </label>
                     <Input
-                      value={session?.session_id || t("newGame.notConnectedYet")}
+                      value={
+                        session?.session_id || t("newGame.notConnectedYet")
+                      }
                       disabled
                     />
                   </div>
@@ -616,7 +604,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     <Input value={currentPlayerName} disabled />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">{t("newGame.fixedPlayers")}</label>
+                    <label className="text-sm font-medium">
+                      {t("newGame.fixedPlayers")}
+                    </label>
                     <Input
                       value={String(session?.fixed_players || 4)}
                       disabled
@@ -630,7 +620,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      {t("newGame.selectedCartellas")}: {selectedCartellas.length}/4
+                      {t("newGame.selectedCartellas")}:{" "}
+                      {selectedCartellas.length}/4
                     </label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedCartellas.length > 0 ? (
@@ -652,7 +643,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      <Wallet size={16} className="inline mr-1" /> {t("newGame.totalPayable")}
+                      <Wallet size={16} className="inline mr-1" />{" "}
+                      {t("newGame.totalPayable")}
                     </label>
                     <div className="mt-1 text-lg font-bold text-emerald-600">
                       {totalPayable} {t("playground.birr")}
@@ -661,7 +653,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      <Users size={16} className="inline mr-1" /> {t("newGame.playersLocked")}
+                      <Users size={16} className="inline mr-1" />{" "}
+                      {t("newGame.playersLocked")}
                     </label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
                       {totalLockedPlayers}/4 {t("newGame.playersReserved")},{" "}
@@ -679,16 +672,20 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                           key={playerNum}
                           className={`rounded-md px-2 py-1 text-center text-xs font-semibold ${paid ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : reserved ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}
                         >
-                          {t("newGame.pWord")}{playerNum}
+                          {t("newGame.pWord")}
+                          {playerNum}
                         </div>
                       );
                     })}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-                    <label className="text-sm font-medium">{t("newGame.nextStep")}</label>
+                    <label className="text-sm font-medium">
+                      {t("newGame.nextStep")}
+                    </label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                      {t("newGame.selectUpTo4")} {currentPlayerName}{t("newGame.thenLock")}
+                      {t("newGame.selectUpTo4")} {currentPlayerName}
+                      {t("newGame.thenLock")}
                     </div>
                   </div>
                 </div>

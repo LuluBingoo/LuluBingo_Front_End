@@ -362,11 +362,24 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const { t } = useLanguage();
   const popup = usePopup();
 
+  const configuredAutoCallSeconds = Number.parseInt(
+    localStorage.getItem("autoCallSeconds") || "5",
+    10,
+  );
+
   // State for called numbers & auto call
   const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
   const [autoCall, setAutoCall] = useState(false);
-  const [autoCallTimer, setAutoCallTimer] = useState(11);
+  const [autoCallTimer, setAutoCallTimer] = useState(
+    Number.isFinite(configuredAutoCallSeconds) && configuredAutoCallSeconds > 0
+      ? configuredAutoCallSeconds
+      : 5,
+  );
   const [currentCalledNumber, setCurrentCalledNumber] = useState<string>("");
+  const [gameStatus, setGameStatus] = useState<
+    "pending" | "active" | "completed" | "cancelled"
+  >("pending");
+  const [isCallingNumber, setIsCallingNumber] = useState(false);
 
   // State for cartela
   const [cartelaInput, setCartelaInput] = useState("");
@@ -399,14 +412,25 @@ export const Playground: React.FC<PlaygroundProps> = ({
   useEffect(() => {
     if (gameConfig && !isGameActive) {
       setIsGameActive(true);
+      setGameStatus((gameConfig.backendStatus as any) || "pending");
       setActiveCartelas(gameConfig.cartelaNumbers || []);
       setServerCartelaOrder(gameConfig.cartelaNumbers || []);
       setDrawSequence(gameConfig.drawSequence || []);
       setDrawCursor(0);
-      onGameStateChange?.(true);
+      onGameStateChange?.(gameConfig.backendStatus === "active");
       console.log("Game config loaded:", gameConfig);
     }
   }, [gameConfig]);
+
+  useEffect(() => {
+    const saved = Number.parseInt(
+      localStorage.getItem("autoCallSeconds") || "5",
+      10,
+    );
+    if (Number.isFinite(saved) && saved > 0) {
+      setAutoCallTimer(saved);
+    }
+  }, []);
 
   // Sync activeCartelas with gameConfig changes
   useEffect(() => {
@@ -434,18 +458,60 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Notify parent when game state changes
   useEffect(() => {
-    onGameStateChange?.(isGameActive);
-  }, [isGameActive]);
+    onGameStateChange?.(isGameActive && gameStatus === "active");
+  }, [isGameActive, gameStatus]);
+
+  const mapNumberToLabel = (number: number) => {
+    const letter = getNumberLetter(number);
+    return `${letter}${number}`;
+  };
+
+  const syncGameState = async () => {
+    if (!gameConfig?.gameCode) return;
+    try {
+      const state = await gamesApi.getGameState(gameConfig.gameCode);
+      setGameStatus(state.status as any);
+      setCalledNumbers(state.called_numbers || []);
+      if (state.current_called_number) {
+        setCurrentCalledNumber(
+          state.current_called_formatted ||
+            mapNumberToLabel(state.current_called_number),
+        );
+      } else {
+        setCurrentCalledNumber("");
+      }
+      setDrawCursor(state.call_cursor || 0);
+    } catch (error) {
+      console.error("Failed to sync game state", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!gameConfig?.gameCode) return;
+    syncGameState();
+    const interval = window.setInterval(syncGameState, 2000);
+    return () => window.clearInterval(interval);
+  }, [gameConfig?.gameCode]);
 
   // Auto-call functionality
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (autoCall && isGameActive && calledNumbers.length < 75) {
+    if (
+      autoCall &&
+      isGameActive &&
+      gameStatus === "active" &&
+      calledNumbers.length < 75
+    ) {
       interval = setInterval(() => {
         setAutoCallTimer((prev) => {
           if (prev <= 1) {
             callRandomNumber();
-            return 11;
+            return (
+              Number.parseInt(
+                localStorage.getItem("autoCallSeconds") || "5",
+                10,
+              ) || 5
+            );
           }
           return prev - 1;
         });
@@ -465,31 +531,44 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   // Call one random number manually or via auto-call
-  const callRandomNumber = () => {
-    const availableSequence = drawSequence.length
-      ? drawSequence
-      : Array.from({ length: 75 }, (_, i) => i + 1);
+  const callRandomNumber = async () => {
+    if (!gameConfig?.gameCode || isCallingNumber) return;
+    if (gameStatus !== "active") {
+      popup.info("Start the game first.");
+      return;
+    }
 
-    if (drawCursor < availableSequence.length) {
-      const newNumber = availableSequence[drawCursor];
-      if (calledNumbers.includes(newNumber)) {
-        setDrawCursor((previous) => previous + 1);
-        return;
+    setIsCallingNumber(true);
+    try {
+      const response = await gamesApi.nextGameCall(gameConfig.gameCode);
+      setCalledNumbers(response.called_numbers || []);
+
+      const called =
+        response.called_formatted ||
+        (response.called_number
+          ? mapNumberToLabel(response.called_number)
+          : "");
+
+      if (called) {
+        setCurrentCalledNumber(called);
       }
 
-      const letter = getNumberLetter(newNumber);
-      setCalledNumbers((prev) => [...prev, newNumber]);
-      setCurrentCalledNumber(`${letter} ${newNumber}`);
-      setDrawCursor((previous) => previous + 1);
+      if (response.is_complete) {
+        setAutoCall(false);
+        popup.info("All 75 numbers have been called.");
+      }
+    } catch (error) {
+      console.error("Failed to call next number", error);
+      popup.error("Failed to get next number from backend.");
+    } finally {
+      setIsCallingNumber(false);
     }
   };
 
   // Manually call a specific number
   const callSpecificNumber = (number: number) => {
     if (!calledNumbers.includes(number)) {
-      const letter = getNumberLetter(number);
-      setCalledNumbers((prev) => [...prev, number]);
-      setCurrentCalledNumber(`${letter} ${number}`);
+      popup.info("Manual board click calling is disabled. Use Call Number.");
     }
   };
 
@@ -666,8 +745,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       setIsGameActive(false);
+      setGameStatus("cancelled");
       setAutoCall(false);
-      setAutoCallTimer(11);
+      setAutoCallTimer(
+        Number.parseInt(localStorage.getItem("autoCallSeconds") || "5", 10) ||
+          5,
+      );
       setCurrentCalledNumber("");
       setShowCartelaModal(false);
       setSelectedCartela("");
@@ -675,30 +758,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
   };
 
-  // Start a new game
-  const startNewGame = async () => {
-    const confirmed = await popup.confirm({
-      title: "Start new game",
-      description: "Start a new game? This will reset everything.",
-      confirmText: "Start",
-      cancelText: "Cancel",
-    });
-
-    if (confirmed) {
-      setCalledNumbers([]);
-      setAutoCall(false);
-      setAutoCallTimer(11);
+  const startGame = async () => {
+    if (!gameConfig?.gameCode) return;
+    try {
+      await gamesApi.startGame(gameConfig.gameCode);
+      setGameStatus("active");
       setIsGameActive(true);
-      setCurrentCalledNumber("");
-      setShowCartelaModal(false);
-      setSelectedCartela("");
-      setCartelaInput("");
-      setCartelaError("");
-
-      // Reshuffle Bingo board
-      reshuffleBoard();
-
-      if (onStartNewGame) onStartNewGame();
+      setAutoCallTimer(
+        Number.parseInt(localStorage.getItem("autoCallSeconds") || "5", 10) ||
+          5,
+      );
+      popup.success("Game started.");
+      await syncGameState();
+    } catch (error) {
+      console.error("Failed to start game", error);
+      popup.error("Failed to start game.");
     }
   };
 
@@ -722,10 +796,28 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const shuffleNumbers = () => {
+    if (!gameConfig?.gameCode) return;
+    if (gameStatus !== "pending") {
+      popup.warning("Shuffle is locked after game starts.");
+      return;
+    }
+
     setIsShuffling(true);
-    reshuffleBoard();
-    popup.info(t("playground.shuffleAnimated"));
-    window.setTimeout(() => setIsShuffling(false), 650);
+    void (async () => {
+      try {
+        await gamesApi.shuffleGame(gameConfig.gameCode);
+        reshuffleBoard();
+        setCalledNumbers([]);
+        setCurrentCalledNumber("");
+        popup.info(t("playground.shuffleAnimated"));
+        await syncGameState();
+      } catch (error) {
+        console.error("Failed to shuffle game", error);
+        popup.error("Failed to shuffle from backend.");
+      } finally {
+        window.setTimeout(() => setIsShuffling(false), 650);
+      }
+    })();
   };
 
   const calculateWinMoney = () => {
@@ -823,6 +915,28 @@ export const Playground: React.FC<PlaygroundProps> = ({
         </div>
       )}
 
+      <Card className="p-3">
+        <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Called Numbers
+        </h4>
+        <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
+          {calledNumbers.length === 0 ? (
+            <span className="text-sm text-slate-500">
+              No numbers called yet
+            </span>
+          ) : (
+            calledNumbers.map((number) => (
+              <span
+                key={number}
+                className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2 text-xs font-bold text-red-700 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-300"
+              >
+                {mapNumberToLabel(number)}
+              </span>
+            ))
+          )}
+        </div>
+      </Card>
+
       {/* Main content */}
       <div className="space-y-4">
         <div
@@ -833,7 +947,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
               : "w-full"
           }`}
         >
-          <Card className={`space-y-3 p-4 w-full ${isFullscreen ? "max-w-7xl mx-auto flex-1 flex flex-col justify-center" : ""}`}>
+          <Card
+            className={`space-y-3 p-4 w-full ${isFullscreen ? "max-w-7xl mx-auto flex-1 flex flex-col justify-center" : ""}`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Bingo Board
@@ -905,8 +1021,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             </h3>
 
             <div className="space-y-2">
-              {/* Conditional rendering based on game state */}
-              {isGameActive ? (
+              {gameStatus === "active" ? (
                 <>
                   {/* Display current number button */}
                   <Button
@@ -921,9 +1036,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   <Button
                     className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
                     onClick={callRandomNumber}
-                    disabled={calledNumbers.length >= 75}
+                    disabled={calledNumbers.length >= 75 || isCallingNumber}
                   >
-                    {t("playground.callNumber")}
+                    {isCallingNumber
+                      ? "Calling..."
+                      : t("playground.callNumber")}
                   </Button>
 
                   {/* Stop game button */}
@@ -936,29 +1053,35 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     {t("playground.stopGame")}
                   </Button>
                 </>
+              ) : gameStatus === "pending" ? (
+                <>
+                  <Button
+                    className="h-10 w-full"
+                    onClick={shuffleNumbers}
+                    variant="outline"
+                  >
+                    <Shuffle className="mr-1 h-4 w-4" /> Shuffle More
+                  </Button>
+                  <Button
+                    className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                    onClick={startGame}
+                  >
+                    <Play className="mr-1 h-4 w-4" /> Start Game
+                  </Button>
+                </>
               ) : (
-                /* Start new game button (only when no active game) */
+                /* Start new game button (completed/cancelled) */
                 <Button
                   className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={startNewGame}
+                  onClick={onStartNewGame}
                 >
                   <Play className="mr-1 h-4 w-4" />
                   {t("playground.startNewGame")}
                 </Button>
               )}
 
-              {/* Shuffle button (always visible) */}
-              <Button
-                className="h-10 w-full"
-                onClick={shuffleNumbers}
-                variant="outline"
-              >
-                <Shuffle className="mr-1 h-4 w-4" />
-                {t("playground.shuffle")}
-              </Button>
-
               {/* Auto-call section (only when game is active) */}
-              {isGameActive && (
+              {gameStatus === "active" && (
                 <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input

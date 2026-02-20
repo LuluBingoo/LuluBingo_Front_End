@@ -31,8 +31,14 @@ export const API_ENDPOINTS = {
       `/games/games/shop-mode/sessions/${sessionId}/reserve`,
     SHOP_SESSION_CONFIRM: (sessionId: string) =>
       `/games/games/shop-mode/sessions/${sessionId}/confirm-payment`,
+    SHOP_SESSION_CREATE_GAME: (sessionId: string) =>
+      `/games/games/shop-mode/sessions/${sessionId}/create-game`,
     DETAIL: (code: string) => `/games/games/${code}`,
     DRAW: (code: string) => `/games/games/${code}/draw`,
+    STATE: (code: string) => `/games/games/${code}/state`,
+    SHUFFLE: (code: string) => `/games/games/${code}/shuffle`,
+    START: (code: string) => `/games/games/${code}/start`,
+    NEXT_CALL: (code: string) => `/games/games/${code}/next-call`,
     CLAIM: (code: string) => `/games/games/${code}/claim`,
     COMPLETE: (code: string) => `/games/games/${code}/complete`,
     CARTELLA_DRAW: (code: string, cartellaNumber: number) =>
