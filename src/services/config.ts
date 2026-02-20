@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
     SHUFFLE: (code: string) => `/games/games/${code}/shuffle`,
     START: (code: string) => `/games/games/${code}/start`,
     NEXT_CALL: (code: string) => `/games/games/${code}/next-call`,
+    REPORTS: "/games/games/reports",
     CLAIM: (code: string) => `/games/games/${code}/claim`,
     COMPLETE: (code: string) => `/games/games/${code}/complete`,
     CARTELLA_DRAW: (code: string, cartellaNumber: number) =>

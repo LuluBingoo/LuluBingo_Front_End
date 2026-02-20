@@ -91,6 +91,13 @@ export interface Game {
   current_called_number?: number | null;
   status: GameStatus;
   winners: number[];
+  banned_cartellas?: number[];
+  awarded_claims?: Array<Record<string, unknown>>;
+  total_pool?: string;
+  win_percentage?: string;
+  payout_amount?: string;
+  shop_cut_amount?: string;
+  winning_pattern?: string;
   created_at: string;
   started_at: string | null;
   ended_at: string | null;
@@ -110,16 +117,25 @@ export interface GameCompleteRequest {
 
 export interface GameClaimRequest {
   cartella_index: number;
-  called_numbers: number[];
+  called_numbers?: number[];
+  pattern?: "row" | "column" | "diagonal";
 }
 
 export interface GameClaimResponse {
   game_code: string;
   cartella_index: number;
+  pattern?: "row" | "column" | "diagonal";
   is_bingo: boolean;
-  matched_count: number;
-  required_count: number;
-  missing_numbers: number[];
+  is_banned?: boolean;
+  status?: GameStatus;
+  matched_count?: number;
+  required_count?: number;
+  missing_numbers?: number[];
+  detail?: string;
+  winner?: number;
+  total_pool?: string;
+  payout_amount?: string;
+  shop_cut_amount?: string;
 }
 
 export interface ShopBingoPlayer {
@@ -194,8 +210,52 @@ export interface Transaction {
   balance_before: string;
   balance_after: string;
   reference: string;
-  metadata: string;
+  metadata: Record<string, unknown>;
   created_at: string;
+}
+
+export interface GameHistoryItem {
+  game_id: string;
+  date: string;
+  players: number;
+  total_pool: string;
+  winner: string[];
+  shop_cut: string;
+  status: GameStatus;
+}
+
+export interface WinHistoryItem {
+  game_id: string;
+  winner_indexes: number[];
+  winning_pattern: string;
+  payout_amount: string;
+  date: string;
+}
+
+export interface BannedCartellaItem {
+  game_id: string;
+  cartella_index: number;
+  status: string;
+  date: string;
+}
+
+export interface ReportTransactionItem {
+  id: number;
+  game_id: string;
+  type: string;
+  amount: string;
+  balance_before: string;
+  balance_after: string;
+  reference: string;
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface GameAuditReportResponse {
+  game_history: GameHistoryItem[];
+  win_history: WinHistoryItem[];
+  banned_cartellas: BannedCartellaItem[];
+  transactions: ReportTransactionItem[];
 }
 
 export interface TransactionRequest {

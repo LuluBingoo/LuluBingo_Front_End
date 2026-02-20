@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { DollarSign, TrendingUp, Gamepad2, Calendar } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { gamesApi } from "../services/api";
+import { GameAuditReportResponse } from "../services/types";
 
 interface DashboardProps {
   gameConfig?: {
@@ -22,17 +24,100 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isGameActive = false,
 }) => {
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<
+    "games" | "wins" | "banned" | "transactions"
+  >("games");
+  const [dateFilter, setDateFilter] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [txTypeFilter, setTxTypeFilter] = useState("");
+  const [reportData, setReportData] = useState<GameAuditReportResponse>({
+    game_history: [],
+    win_history: [],
+    banned_cartellas: [],
+    transactions: [],
+  });
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
-  // Calculate stats based on current game
-  const gamesToday = isGameActive ? 1 : 0;
-  const availableBalance = gameConfig
-    ? `$${parseFloat(gameConfig.winBirr || "0").toFixed(2)}`
-    : "$818.00";
+  useEffect(() => {
+    const loadReports = async () => {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const data = await gamesApi.getGameAuditReports({
+          search,
+          status: statusFilter,
+          tx_type: txTypeFilter,
+        });
+        setReportData(data);
+      } catch (error) {
+        console.error("Failed to load game reports", error);
+        setLoadError("Failed to load reports.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReports();
+  }, [search, statusFilter, txTypeFilter]);
+
+  const isSameDate = (isoString: string, dateValue: string) => {
+    if (!dateValue) return true;
+    return new Date(isoString).toISOString().slice(0, 10) === dateValue;
+  };
+
+  const filteredGameHistory = useMemo(
+    () =>
+      reportData.game_history.filter((item) =>
+        isSameDate(item.date, dateFilter),
+      ),
+    [reportData.game_history, dateFilter],
+  );
+
+  const filteredWinHistory = useMemo(
+    () =>
+      reportData.win_history.filter((item) =>
+        isSameDate(item.date, dateFilter),
+      ),
+    [reportData.win_history, dateFilter],
+  );
+
+  const filteredBanned = useMemo(
+    () =>
+      reportData.banned_cartellas.filter((item) =>
+        isSameDate(item.date, dateFilter),
+      ),
+    [reportData.banned_cartellas, dateFilter],
+  );
+
+  const filteredTransactions = useMemo(
+    () =>
+      reportData.transactions.filter((item) =>
+        isSameDate(item.created_at, dateFilter),
+      ),
+    [reportData.transactions, dateFilter],
+  );
+
+  const gamesToday = filteredGameHistory.length;
+  const earningToday = filteredGameHistory.reduce(
+    (sum, game) => sum + Number.parseFloat(game.shop_cut || "0"),
+    0,
+  );
+  const latestBalance =
+    filteredTransactions.length > 0
+      ? filteredTransactions[0].balance_after
+      : gameConfig?.winBirr || "0";
+  const depositCountToday = filteredTransactions.filter(
+    (tx) => tx.type === "deposit",
+  ).length;
 
   const stats = [
     {
       label: t("dashboard.deposit"),
-      value: "2",
+      value: depositCountToday.toString(),
       icon: DollarSign,
       iconClass: "text-sky-500",
       bgClass: "bg-sky-500/15",
@@ -46,51 +131,71 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
     {
       label: t("dashboard.earningToday"),
-      value: "$0",
+      value: `${earningToday.toFixed(2)} ETB`,
       icon: TrendingUp,
       iconClass: "text-emerald-500",
       bgClass: "bg-emerald-500/15",
     },
     {
       label: t("dashboard.availableBalance"),
-      value: availableBalance,
+      value: `${Number.parseFloat(latestBalance || "0").toFixed(2)} ETB`,
       icon: DollarSign,
       iconClass: "text-amber-500",
       bgClass: "bg-amber-500/15",
     },
   ];
 
-  // Show current game if active
-  const recentGames =
-    isGameActive && gameConfig
-      ? [
-          {
-            id: parseInt(gameConfig.game) || 1,
-            stake: parseFloat(gameConfig.betBirr) || 10,
-            players: gameConfig.cartelaNumbers?.length || 0,
-            calls: 0,
-            winner: [],
-            bonus: 0,
-            free: 0,
-            status: "PLAYING",
-          },
-        ]
-      : [];
-
   return (
     <div className="space-y-6 p-6">
       <motion.div
-        className="flex justify-end"
+        className="flex flex-wrap items-center justify-between gap-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search game, winner, or reference"
+            className="h-9 w-64 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-red-300 dark:border-slate-700 dark:bg-slate-900"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-red-300 dark:border-slate-700 dark:bg-slate-900"
+            title="Filter game status"
+            aria-label="Filter game status"
+          >
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={txTypeFilter}
+            onChange={(e) => setTxTypeFilter(e.target.value)}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-red-300 dark:border-slate-700 dark:bg-slate-900"
+            title="Filter transaction type"
+            aria-label="Filter transaction type"
+          >
+            <option value="">All transaction types</option>
+            <option value="deposit">Deposit</option>
+            <option value="withdrawal">Withdrawal</option>
+            <option value="bet_debit">Bet Debit</option>
+            <option value="bet_credit">Bet Credit</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+        </div>
         <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
           <Calendar className="h-4 w-4 text-red-700" />
           <input
             type="date"
             className="bg-transparent text-sm outline-none"
-            defaultValue={new Date().toISOString().split("T")[0]}
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
             title="Select date"
             aria-label="Select date"
           />
@@ -131,56 +236,203 @@ export const Dashboard: React.FC<DashboardProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
       >
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-          {t("dashboard.recentGames")}
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <ButtonTab
+            isActive={activeTab === "games"}
+            onClick={() => setActiveTab("games")}
+            label="Game History"
+          />
+          <ButtonTab
+            isActive={activeTab === "wins"}
+            onClick={() => setActiveTab("wins")}
+            label="Win History"
+          />
+          <ButtonTab
+            isActive={activeTab === "banned"}
+            onClick={() => setActiveTab("banned")}
+            label="Banned Cartellas"
+          />
+          <ButtonTab
+            isActive={activeTab === "transactions"}
+            onClick={() => setActiveTab("transactions")}
+            label="Transactions"
+          />
+          {isGameActive && (
+            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300">
+              Live game in progress
+            </Badge>
+          )}
+        </div>
         <Card className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
-                  <th className="px-3 py-2">{t("dashboard.game")}</th>
-                  <th className="px-3 py-2">{t("dashboard.stake")}</th>
-                  <th className="px-3 py-2">{t("dashboard.players")}</th>
-                  <th className="px-3 py-2">{t("dashboard.calls")}</th>
-                  <th className="px-3 py-2">{t("dashboard.winner")}</th>
-                  <th className="px-3 py-2">{t("dashboard.bonus")}</th>
-                  <th className="px-3 py-2">{t("dashboard.free")}</th>
-                  <th className="px-3 py-2">{t("dashboard.status")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentGames.map((game) => (
-                  <motion.tr
-                    key={game.id}
-                    className="border-b border-slate-100 dark:border-slate-800"
-                    whileHover={{ backgroundColor: "rgba(14, 165, 233, 0.05)" }}
-                  >
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900 dark:text-white">
-                        {t("dashboard.game")} {game.id}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">{game.stake}</td>
-                    <td className="px-3 py-2">{game.players}</td>
-                    <td className="px-3 py-2">{game.calls}</td>
-                    <td className="px-3 py-2">
-                      {game.winner.length > 0 ? game.winner.join(", ") : "[]"}
-                    </td>
-                    <td className="px-3 py-2">{game.bonus}</td>
-                    <td className="px-3 py-2">{game.free}</td>
-                    <td className="px-3 py-2">
-                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300">
-                        {t("dashboard.playing")}
-                      </Badge>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+            {loading ? (
+              <div className="p-4 text-sm text-slate-500">
+                Loading reports...
+              </div>
+            ) : loadError ? (
+              <div className="p-4 text-sm text-red-600">{loadError}</div>
+            ) : activeTab === "games" ? (
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+                    <th className="px-3 py-2">Game</th>
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Players</th>
+                    <th className="px-3 py-2">Pool</th>
+                    <th className="px-3 py-2">Winner</th>
+                    <th className="px-3 py-2">Shop Cut</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGameHistory.map((game) => (
+                    <tr
+                      key={game.game_id}
+                      className="border-b border-slate-100 dark:border-slate-800"
+                    >
+                      <td className="px-3 py-2 font-semibold">
+                        {game.game_id}
+                      </td>
+                      <td className="px-3 py-2">
+                        {new Date(game.date).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">{game.players}</td>
+                      <td className="px-3 py-2">{game.total_pool}</td>
+                      <td className="px-3 py-2">
+                        {game.winner.length ? game.winner.join(", ") : "-"}
+                      </td>
+                      <td className="px-3 py-2">{game.shop_cut}</td>
+                      <td className="px-3 py-2">
+                        <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200">
+                          {game.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : activeTab === "wins" ? (
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+                    <th className="px-3 py-2">Game</th>
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Winners</th>
+                    <th className="px-3 py-2">Pattern</th>
+                    <th className="px-3 py-2">Payout</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredWinHistory.map((win) => (
+                    <tr
+                      key={`${win.game_id}-${win.date}`}
+                      className="border-b border-slate-100 dark:border-slate-800"
+                    >
+                      <td className="px-3 py-2 font-semibold">{win.game_id}</td>
+                      <td className="px-3 py-2">
+                        {new Date(win.date).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        {win.winner_indexes
+                          .map((idx) => `Cartella ${idx}`)
+                          .join(", ")}
+                      </td>
+                      <td className="px-3 py-2">
+                        {win.winning_pattern || "-"}
+                      </td>
+                      <td className="px-3 py-2">{win.payout_amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : activeTab === "banned" ? (
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+                    <th className="px-3 py-2">Game</th>
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Cartella</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBanned.map((item) => (
+                    <tr
+                      key={`${item.game_id}-${item.cartella_index}-${item.date}`}
+                      className="border-b border-slate-100 dark:border-slate-800"
+                    >
+                      <td className="px-3 py-2 font-semibold">
+                        {item.game_id}
+                      </td>
+                      <td className="px-3 py-2">
+                        {new Date(item.date).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        Cartella {item.cartella_index}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+                          {item.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+                    <th className="px-3 py-2">Time</th>
+                    <th className="px-3 py-2">Game</th>
+                    <th className="px-3 py-2">Type</th>
+                    <th className="px-3 py-2">Amount</th>
+                    <th className="px-3 py-2">Before</th>
+                    <th className="px-3 py-2">After</th>
+                    <th className="px-3 py-2">Reference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((tx) => (
+                    <tr
+                      key={tx.id}
+                      className="border-b border-slate-100 dark:border-slate-800"
+                    >
+                      <td className="px-3 py-2">
+                        {new Date(tx.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">{tx.game_id || "-"}</td>
+                      <td className="px-3 py-2">{tx.type}</td>
+                      <td className="px-3 py-2">{tx.amount}</td>
+                      <td className="px-3 py-2">{tx.balance_before}</td>
+                      <td className="px-3 py-2">{tx.balance_after}</td>
+                      <td className="px-3 py-2">{tx.reference}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </Card>
       </motion.div>
     </div>
   );
 };
+
+const ButtonTab: React.FC<{
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ label, isActive, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      isActive
+        ? "bg-red-700 text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+    }`}
+  >
+    {label}
+  </button>
+);

@@ -383,6 +383,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // State for cartela
   const [cartelaInput, setCartelaInput] = useState("");
+  const [claimPattern, setClaimPattern] = useState<
+    "row" | "column" | "diagonal"
+  >("row");
   const [showCartelaModal, setShowCartelaModal] = useState(false);
   const [selectedCartela, setSelectedCartela] = useState<string>("");
   const [cartelaError, setCartelaError] = useState("");
@@ -407,6 +410,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [isTogglingFullscreen, setIsTogglingFullscreen] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
   const boardContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const syncInFlightRef = React.useRef(false);
+  const lastSyncErrorLogRef = React.useRef(0);
 
   // Initialize game if config exists
   useEffect(() => {
@@ -467,7 +472,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const syncGameState = async () => {
-    if (!gameConfig?.gameCode) return;
+    if (!gameConfig?.gameCode || syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     try {
       const state = await gamesApi.getGameState(gameConfig.gameCode);
       setGameStatus(state.status as any);
@@ -482,14 +488,24 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
       setDrawCursor(state.call_cursor || 0);
     } catch (error) {
-      console.error("Failed to sync game state", error);
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      const isTimeout = message.includes("timeout");
+      const now = Date.now();
+      if (!isTimeout || now - lastSyncErrorLogRef.current > 10000) {
+        console.error("Failed to sync game state", error);
+        lastSyncErrorLogRef.current = now;
+      }
+    } finally {
+      syncInFlightRef.current = false;
     }
   };
 
   useEffect(() => {
     if (!gameConfig?.gameCode) return;
-    syncGameState();
-    const interval = window.setInterval(syncGameState, 2000);
+    void syncGameState();
+    const interval = window.setInterval(() => {
+      void syncGameState();
+    }, 3000);
     return () => window.clearInterval(interval);
   }, [gameConfig?.gameCode]);
 
@@ -593,23 +609,27 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (gameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(gameConfig.gameCode, {
           cartella_index: winnerIndex,
-          called_numbers: [...new Set(calledNumbers)],
+          pattern: claimPattern,
         });
 
         if (!claim.is_bingo) {
+          if (claim.is_banned) {
+            popup.error(
+              `False claim. Cartela ${cartelaNumber} is now BANNED for this game.`,
+            );
+            return;
+          }
           popup.warning(
-            `Cartela ${cartelaNumber} is not a valid winner yet.\nCalled: ${claim.matched_count}/${claim.required_count}`,
+            claim.detail ||
+              `Cartela ${cartelaNumber} is not a valid winner for ${claimPattern}.`,
           );
           return;
         }
-
-        await gamesApi.completeGame(gameConfig.gameCode, {
-          status: "completed",
-          winners: [winnerIndex],
-        });
       }
+
+      setGameStatus("completed");
       popup.success(
-        `🎉 Cartela ${cartelaNumber} declared as WINNER!\n\nGame completed.`,
+        `🎉 Cartela ${cartelaNumber} declared as WINNER!\n\nGame completed with ${claimPattern} pattern.`,
       );
       setIsGameActive(false);
       setAutoCall(false);
@@ -705,17 +725,26 @@ export const Playground: React.FC<PlaygroundProps> = ({
     try {
       const claim = await gamesApi.claimGame(gameConfig.gameCode, {
         cartella_index: cartellaIndex,
-        called_numbers: [...new Set(calledNumbers)],
+        pattern: claimPattern,
       });
 
       if (claim.is_bingo) {
-        popup.success(`🎉 Cartela ${cartelaNumber} has BINGO!`);
+        popup.success(
+          `🎉 Cartela ${cartelaNumber} has a valid ${claimPattern} claim!`,
+        );
         return;
       }
 
-      const needed = Math.max(0, claim.required_count - claim.matched_count);
+      if (claim.is_banned) {
+        popup.error(
+          `False claim. Cartela ${cartelaNumber} is now BANNED for this game.`,
+        );
+        return;
+      }
+
       popup.info(
-        `Cartela ${cartelaNumber} is active.\nCalled: ${claim.matched_count}/${claim.required_count}\nRemaining: ${needed}`,
+        claim.detail ||
+          `Cartela ${cartelaNumber} does not satisfy ${claimPattern} yet.`,
       );
     } catch (error) {
       console.error("Failed to validate cartela", error);
@@ -1130,6 +1159,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
               }}
               disabled={!isGameActive}
             />
+
+            <select
+              value={claimPattern}
+              onChange={(e) =>
+                setClaimPattern(e.target.value as "row" | "column" | "diagonal")
+              }
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
+              disabled={!isGameActive}
+              title="Select claim pattern"
+              aria-label="Select claim pattern"
+            >
+              <option value="row">Row</option>
+              <option value="column">Column</option>
+              <option value="diagonal">Diagonal</option>
+            </select>
 
             <div className="grid grid-cols-2 gap-2">
               <Button

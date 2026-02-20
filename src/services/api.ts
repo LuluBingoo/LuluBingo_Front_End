@@ -26,6 +26,7 @@ import {
   ShopBingoConfirmPaymentResponse,
   GameStateResponse,
   GameNextCallResponse,
+  GameAuditReportResponse,
   ShopBingoReserveRequest,
   ShopBingoSession,
   ShopBingoSessionCreateRequest,
@@ -306,16 +307,50 @@ export const gamesApi = {
       return {
         game_code: code,
         cartella_index: data.cartella_index,
+        pattern: data.pattern || "row",
         is_bingo: false,
-        matched_count: 0,
-        required_count: 24,
-        missing_numbers: [],
+        is_banned: false,
+        status: "active",
+        detail: "Mock mode response",
       };
     }
     return await apiClient.post<GameClaimResponse>(
       API_ENDPOINTS.GAMES.CLAIM(code),
       data,
     );
+  },
+
+  async getGameAuditReports(filters?: {
+    search?: string;
+    status?: string;
+    tx_type?: string;
+  }): Promise<GameAuditReportResponse> {
+    if (API_CONFIG.USE_MOCK) {
+      return {
+        game_history: [],
+        win_history: [],
+        banned_cartellas: [],
+        transactions: [],
+      };
+    }
+
+    const params = new URLSearchParams();
+    if (filters?.search?.trim()) {
+      params.set("search", filters.search.trim());
+    }
+    if (filters?.status?.trim()) {
+      params.set("status", filters.status.trim());
+    }
+    if (filters?.tx_type?.trim()) {
+      params.set("tx_type", filters.tx_type.trim());
+    }
+
+    const query = params.toString();
+    const endpoint = query
+      ? `${API_ENDPOINTS.GAMES.REPORTS}?${query}`
+      : API_ENDPOINTS.GAMES.REPORTS;
+
+    return await apiClient.get<GameAuditReportResponse>(endpoint);
   },
 
   async getCartellaDraw(code: string, cartellaNumber: number): Promise<any> {
