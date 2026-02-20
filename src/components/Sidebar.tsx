@@ -92,7 +92,6 @@
 //   );
 // };
 
-
 import React from "react";
 import {
   Home,
@@ -112,9 +111,7 @@ interface SidebarProps {
   isGameActive?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  isGameActive = false,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isGameActive = false }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();

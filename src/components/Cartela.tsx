@@ -28,11 +28,11 @@
 //   isWinner?: boolean;
 // }
 
-// export const Cartela: React.FC<CartelaProps> = ({ 
-//   cartelaNumber, 
-//   calledNumbers, 
+// export const Cartela: React.FC<CartelaProps> = ({
+//   cartelaNumber,
+//   calledNumbers,
 //   gameConfig,
-//   onClose 
+//   onClose
 // }) => {
 //   const { t } = useLanguage();
 //   const [searchInput, setSearchInput] = useState(cartelaNumber || '');
@@ -153,7 +153,7 @@
 //         const num = numbers[index];
 //         const isCalled = calledNumbers.includes(num);
 //         const isFreeSpace = row === 2 && col === 2; // Center is free space
-        
+
 //         rowNumbers.push(
 //           <div
 //             key={`${row}-${col}`}
@@ -179,9 +179,9 @@
 //       <div className="cartela-header-section">
 //         <h3>{t('cartela.title')}</h3>
 //         {onClose && (
-//           <Button 
-//             variant="ghost" 
-//             size="sm" 
+//           <Button
+//             variant="ghost"
+//             size="sm"
 //             onClick={onClose}
 //             className="close-btn"
 //           >
@@ -199,7 +199,7 @@
 //           onKeyPress={handleKeyPress}
 //           className="cartela-input"
 //         />
-//         <Button 
+//         <Button
 //           onClick={() => handleSearch()}
 //           className="search-btn"
 //         >
@@ -294,14 +294,14 @@
 //   );
 // };
 
-
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Trophy, X, UserX, ChevronDown } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
-import './Cartela.css';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Trophy, X, UserX, ChevronDown } from "lucide-react";
+import { useLanguage } from "../contexts/LanguageContext";
+import { usePopup } from "../contexts/PopupContext";
+import "./Cartela.css";
 
 interface CartelaModalProps {
   isOpen: boolean;
@@ -309,6 +309,7 @@ interface CartelaModalProps {
   cartelaNumber?: string;
   calledNumbers: number[];
   cartelaNumbers: string[];
+  cartelaDataMap?: Record<string, number[]>;
   onDeclareWinner?: (cartelaNumber: string) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
@@ -317,28 +318,28 @@ interface CartelaModalProps {
 // Generate random cartela numbers (5x5 grid with FREE center)
 const generateCartelaNumbers = (seed: string): number[] => {
   const numbers: number[] = [];
-  
+
   // Use seed to generate consistent numbers for same cartela
   const seedNum = parseInt(seed) || 1;
   const random = (min: number, max: number, offset: number) => {
     const x = Math.sin(seedNum * offset) * 10000;
     return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
   };
-  
+
   // Column ranges for B, I, N, G, O
   const columnRanges = [
-    { min: 1, max: 15 },   // B
-    { min: 16, max: 30 },  // I
-    { min: 31, max: 45 },  // N
-    { min: 46, max: 60 },  // G
-    { min: 61, max: 75 }   // O
+    { min: 1, max: 15 }, // B
+    { min: 16, max: 30 }, // I
+    { min: 31, max: 45 }, // N
+    { min: 46, max: 60 }, // G
+    { min: 61, max: 75 }, // O
   ];
-  
+
   // Generate 5 numbers for each column
   for (let col = 0; col < 5; col++) {
     const { min, max } = columnRanges[col];
     const columnNumbers: number[] = [];
-    
+
     let attempts = 0;
     while (columnNumbers.length < 5 && attempts < 100) {
       const num = random(min, max, col * 100 + columnNumbers.length + attempts);
@@ -347,10 +348,10 @@ const generateCartelaNumbers = (seed: string): number[] => {
       }
       attempts++;
     }
-    
+
     numbers.push(...columnNumbers);
   }
-  
+
   return numbers;
 };
 
@@ -360,22 +361,29 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   cartelaNumber,
   calledNumbers,
   cartelaNumbers,
+  cartelaDataMap,
   onDeclareWinner,
   onRemovePlayer,
-  gameActive = true
+  gameActive = true,
 }) => {
   const { t } = useLanguage();
-  const [selectedCartela, setSelectedCartela] = useState(cartelaNumber || '');
+  const popup = usePopup();
+  const [selectedCartela, setSelectedCartela] = useState(cartelaNumber || "");
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Generate or retrieve cartela data when cartela changes
   useEffect(() => {
     if (selectedCartela) {
-      const generatedNumbers = generateCartelaNumbers(selectedCartela);
-      setCartelaData(generatedNumbers);
+      const providedNumbers = cartelaDataMap?.[selectedCartela];
+      if (providedNumbers && providedNumbers.length > 0) {
+        setCartelaData(providedNumbers);
+      } else {
+        const generatedNumbers = generateCartelaNumbers(selectedCartela);
+        setCartelaData(generatedNumbers);
+      }
     }
-  }, [selectedCartela]);
+  }, [selectedCartela, cartelaDataMap]);
 
   // Initialize with provided cartela number
   useEffect(() => {
@@ -390,18 +398,30 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   };
 
   const getCalledCount = () => {
-    return cartelaData.filter(num => calledNumbers.includes(num)).length;
+    return cartelaData.filter((num) => calledNumbers.includes(num)).length;
   };
 
-  const handleDeclareWinner = () => {
-    if (window.confirm(`Declare cartela ${selectedCartela} as winner?`)) {
+  const handleDeclareWinner = async () => {
+    const confirmed = await popup.confirm({
+      title: `Declare Winner`,
+      description: `Declare cartela ${selectedCartela} as winner?`,
+      confirmText: "Declare",
+      cancelText: "Cancel",
+    });
+    if (confirmed) {
       onDeclareWinner?.(selectedCartela);
       onClose();
     }
   };
 
-  const handleRemovePlayer = () => {
-    if (window.confirm(`Remove cartela ${selectedCartela} from the game?`)) {
+  const handleRemovePlayer = async () => {
+    const confirmed = await popup.confirm({
+      title: "Remove Player",
+      description: `Remove cartela ${selectedCartela} from the game?`,
+      confirmText: "Remove",
+      cancelText: "Cancel",
+    });
+    if (confirmed) {
       onRemovePlayer?.(selectedCartela);
       onClose();
     }
@@ -415,12 +435,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     // BINGO headers
     board.push(
       <div key="headers" className="cartela-headers">
-        {['B', 'I', 'N', 'G', 'O'].map(letter => (
+        {["B", "I", "N", "G", "O"].map((letter) => (
           <div key={letter} className="cartela-header">
             {letter}
           </div>
         ))}
-      </div>
+      </div>,
     );
 
     // Create 5 rows
@@ -428,34 +448,34 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       const rowCells = [];
       for (let col = 0; col < 5; col++) {
         const index = col * 5 + row;
-        
+
         // Center is FREE
         if (row === 2 && col === 2) {
           rowCells.push(
             <div key={`${row}-${col}`} className="cartela-cell free-space">
               <span className="cell-number">FREE</span>
-            </div>
+            </div>,
           );
         } else {
           const adjustedIndex = index > 12 ? index - 1 : index;
           const num = cartelaData[adjustedIndex];
           const isCalled = calledNumbers.includes(num);
-          
+
           rowCells.push(
             <div
               key={`${row}-${col}`}
-              className={`cartela-cell ${isCalled ? 'called' : ''}`}
+              className={`cartela-cell ${isCalled ? "called" : ""}`}
             >
               <span className="cell-number">{num}</span>
               {isCalled && <div className="called-indicator">✓</div>}
-            </div>
+            </div>,
           );
         }
       }
       board.push(
         <div key={`row-${row}`} className="cartela-row">
           {rowCells}
-        </div>
+        </div>,
       );
     }
 
@@ -470,14 +490,22 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     if (isBingo && selectedCartela && gameActive) {
       // Small delay to show the BINGO animation first
       const timer = setTimeout(() => {
-        if (window.confirm(`🎉 BINGO! Cartela ${selectedCartela} has won!\n\nDeclare as winner?`)) {
-          onDeclareWinner?.(selectedCartela);
-        }
+        void (async () => {
+          const confirmed = await popup.confirm({
+            title: "🎉 BINGO!",
+            description: `Cartela ${selectedCartela} has won! Declare as winner?`,
+            confirmText: "Declare",
+            cancelText: "Later",
+          });
+          if (confirmed) {
+            onDeclareWinner?.(selectedCartela);
+          }
+        })();
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
-  }, [isBingo, selectedCartela, gameActive]);
+  }, [isBingo, selectedCartela, gameActive, popup, onDeclareWinner]);
 
   return (
     <AnimatePresence>
@@ -523,14 +551,14 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                       onClick={() => setShowDropdown(!showDropdown)}
                     >
                       <span className="selected-value">
-                        {selectedCartela || 'Choose a cartela'}
+                        {selectedCartela || "Choose a cartela"}
                       </span>
-                      <ChevronDown 
-                        size={18} 
-                        className={`dropdown-icon ${showDropdown ? 'open' : ''}`}
+                      <ChevronDown
+                        size={18}
+                        className={`dropdown-icon ${showDropdown ? "open" : ""}`}
                       />
                     </button>
-                    
+
                     {showDropdown && (
                       <motion.div
                         className="dropdown-menu"
@@ -539,17 +567,19 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                         exit={{ opacity: 0, y: -10 }}
                       >
                         {cartelaNumbers.length > 0 ? (
-                          cartelaNumbers.map(number => (
+                          cartelaNumbers.map((number) => (
                             <button
                               key={number}
-                              className={`dropdown-item ${selectedCartela === number ? 'active' : ''}`}
+                              className={`dropdown-item ${selectedCartela === number ? "active" : ""}`}
                               onClick={() => handleSelectCartela(number)}
                             >
                               Cartela {number}
                             </button>
                           ))
                         ) : (
-                          <div className="dropdown-empty">No cartelas available</div>
+                          <div className="dropdown-empty">
+                            No cartelas available
+                          </div>
                         )}
                       </motion.div>
                     )}
@@ -569,11 +599,9 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                       <span className="badge-label">Cartela</span>
                       <span className="badge-number">{selectedCartela}</span>
                     </div>
-                    
+
                     {/* Bingo Board */}
-                    <div className="cartela-board">
-                      {renderCartelaBoard()}
-                    </div>
+                    <div className="cartela-board">{renderCartelaBoard()}</div>
 
                     {/* Stats */}
                     <div className="cartela-stats">

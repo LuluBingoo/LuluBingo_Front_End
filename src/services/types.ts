@@ -1,9 +1,14 @@
 // Type definitions based on the API schema
 
-export type ShopStatus = 'pending' | 'active' | 'suspended' | 'blocked';
-export type GameStatus = 'pending' | 'active' | 'completed' | 'cancelled';
-export type TwoFactorMethod = 'totp';
-export type TransactionType = 'deposit' | 'withdraw' | 'bet' | 'win' | 'commission';
+export type ShopStatus = "pending" | "active" | "suspended" | "blocked";
+export type GameStatus = "pending" | "active" | "completed" | "cancelled";
+export type TwoFactorMethod = "totp";
+export type TransactionType =
+  | "deposit"
+  | "withdrawal"
+  | "bet_debit"
+  | "bet_credit"
+  | "adjustment";
 
 // User/Shop types
 export interface ShopUser {
@@ -79,7 +84,7 @@ export interface Game {
   num_players: number;
   win_amount: string;
   cartella_numbers: number[][];
-  cartella_draw_sequences: Record<string, any>;
+  cartella_draw_sequences: number[][];
   draw_sequence: number[];
   status: GameStatus;
   winners: number[];
@@ -96,8 +101,65 @@ export interface GameCreateRequest {
 }
 
 export interface GameCompleteRequest {
-  status: 'completed' | 'cancelled';
+  status: "completed" | "cancelled";
   winners: number[];
+}
+
+export interface GameClaimRequest {
+  cartella_index: number;
+  called_numbers: number[];
+}
+
+export interface GameClaimResponse {
+  game_code: string;
+  cartella_index: number;
+  is_bingo: boolean;
+  matched_count: number;
+  required_count: number;
+  missing_numbers: number[];
+}
+
+export interface ShopBingoPlayer {
+  player_name: string;
+  cartella_numbers: number[];
+  bet_per_cartella: string;
+  total_bet: string;
+  paid: boolean;
+  reserved_at?: string;
+  paid_at?: string;
+}
+
+export interface ShopBingoSession {
+  session_id: string;
+  status: "waiting" | "locked" | "cancelled";
+  fixed_players: number;
+  min_bet_per_cartella: string;
+  players_data: ShopBingoPlayer[];
+  locked_cartellas: number[];
+  total_payable: string;
+  created_at: string;
+  updated_at: string;
+  game: number | null;
+}
+
+export interface ShopBingoSessionCreateRequest {
+  min_bet_per_cartella?: string;
+}
+
+export interface ShopBingoReserveRequest {
+  player_name: string;
+  cartella_numbers: number[];
+  bet_per_cartella: string;
+}
+
+export interface ShopBingoConfirmPaymentRequest {
+  player_name: string;
+}
+
+export interface ShopBingoConfirmPaymentResponse {
+  session: ShopBingoSession;
+  game_created: boolean;
+  game?: Game;
 }
 
 // Transaction types
@@ -126,6 +188,7 @@ export interface ProfileUpdateRequest {
   bank_account_name?: string;
   bank_account_number?: string;
   profile_completed?: boolean;
+  feature_flags?: Record<string, any>;
 }
 
 // API Response wrapper

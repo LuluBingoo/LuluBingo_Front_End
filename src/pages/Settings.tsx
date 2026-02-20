@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Bell, Lock, Globe, Palette } from "lucide-react";
 import { Card } from "../components/ui/card";
@@ -12,13 +12,76 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { useLanguage } from "../contexts/LanguageContext";
+import { usePopup } from "../contexts/PopupContext";
+import { shopApi } from "../services/api";
 import "./Settings.css";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
+  const popup = usePopup();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [featureFlags, setFeatureFlags] = useState<Record<string, any>>({});
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [autoBackup, setAutoBackup] = useState(false);
+  const [currency, setCurrency] = useState("birr");
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const profile = await shopApi.getProfile();
+        const flags = profile.feature_flags || {};
+
+        setFeatureFlags(flags);
+        setNotifications(Boolean(flags.push_notifications ?? true));
+        setEmailAlerts(Boolean(flags.email_alerts ?? true));
+        setAutoBackup(Boolean(flags.auto_backup ?? false));
+        setCurrency(String(flags.currency ?? "birr"));
+
+        if (flags.language === "en" || flags.language === "am") {
+          setLanguage(flags.language);
+        }
+      } catch (error) {
+        console.error("Failed to load settings", error);
+        popup.error("Failed to load settings from backend.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [popup, setLanguage]);
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    try {
+      const updatedFlags = {
+        ...featureFlags,
+        push_notifications: notifications,
+        email_alerts: emailAlerts,
+        auto_backup: autoBackup,
+        currency,
+        language,
+      };
+
+      await shopApi.updateProfile({
+        feature_flags: updatedFlags,
+      });
+
+      setFeatureFlags(updatedFlags);
+      popup.success("Settings saved successfully.");
+    } catch (error) {
+      console.error("Failed to save settings", error);
+      popup.error("Failed to save settings.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading settings...</div>;
+  }
 
   return (
     <div className="settings-page">
@@ -95,9 +158,11 @@ export const Settings: React.FC = () => {
                   </div>
                   <Select
                     value={language}
-                    onValueChange={(value: string) =>
-                      setLanguage(value as "en" | "am")
-                    }
+                    onValueChange={(value: string) => {
+                      if (value === "en" || value === "am") {
+                        setLanguage(value);
+                      }
+                    }}
                   >
                     <SelectTrigger className="select-trigger">
                       <SelectValue />
@@ -115,7 +180,7 @@ export const Settings: React.FC = () => {
                       {t("settings.currencyDesc")}
                     </p>
                   </div>
-                  <Select defaultValue="birr">
+                  <Select value={currency} onValueChange={setCurrency}>
                     <SelectTrigger className="select-trigger">
                       <SelectValue />
                     </SelectTrigger>
@@ -168,10 +233,26 @@ export const Settings: React.FC = () => {
                     variant="outline"
                     className="action-button"
                     onClick={() =>
-                      alert("Password change dialog would open here")
+                      popup.info("Password change dialog would open here")
                     }
                   >
                     {t("settings.change")}
+                  </Button>
+                </div>
+
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <p className="setting-label">Save Settings</p>
+                    <p className="setting-description">
+                      Sync your current settings with backend.
+                    </p>
+                  </div>
+                  <Button
+                    className="action-button"
+                    onClick={handleSaveSettings}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </div>

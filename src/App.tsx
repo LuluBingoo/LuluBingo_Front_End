@@ -62,7 +62,7 @@
 //         return <Dashboard />;
 //       case 'playground':
 //         return (
-//           <Playground 
+//           <Playground
 //             gameConfig={gameConfig}
 //             onStartNewGame={handleStartNewGame}
 //           />
@@ -82,9 +82,9 @@
 //     <ThemeProvider>
 //       <LanguageProvider>
 //         <div className="app-container">
-//           <Sidebar 
-//             currentPage={currentPage} 
-//             onNavigate={setCurrentPage} 
+//           <Sidebar
+//             currentPage={currentPage}
+//             onNavigate={setCurrentPage}
 //             isGameActive={isGameActive}
 //           />
 //           <div className="main-content">
@@ -101,31 +101,31 @@
 
 // export default App;
 
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
   useNavigate,
-} from 'react-router-dom';
+} from "react-router-dom";
 
-import { ThemeProvider } from './contexts/ThemeContext';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
+import { PopupProvider } from "./contexts/PopupContext";
 
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
+import { Sidebar } from "./components/Sidebar";
+import { Header } from "./components/Header";
 
-import { Dashboard } from './pages/Dashboard';
-import { Playground } from './pages/Playground';
-import { NewGame } from './pages/NewGame';
-import { Profile } from './pages/Profile';
-import { Settings } from './pages/Settings';
-import { Login } from './pages/Login';
-import { authApi } from './services/api';
+import { Dashboard } from "./pages/Dashboard";
+import { Playground } from "./pages/Playground";
+import { NewGame } from "./pages/NewGame";
+import { Profile } from "./pages/Profile";
+import { Settings } from "./pages/Settings";
+import { Login } from "./pages/Login";
+import { authApi } from "./services/api";
 
-import './styles/globals.css';
+import "./styles/globals.css";
 
 /* ===============================
    TYPES
@@ -136,7 +136,12 @@ interface GameConfig {
   numPlayers: string;
   winBirr: string;
   selectedPatterns: number[];
+  gameCode?: string;
   cartelaNumbers?: string[];
+  cartelaData?: number[][];
+  drawSequence?: number[];
+  cartellaDrawSequences?: number[][];
+  backendStatus?: string;
 }
 
 /* ===============================
@@ -148,19 +153,21 @@ function AppLayout({
   isGameActive,
   setIsGameActive,
   onLogout,
+  username,
 }: {
   gameConfig: GameConfig | null;
   setGameConfig: React.Dispatch<React.SetStateAction<GameConfig | null>>;
   isGameActive: boolean;
   setIsGameActive: React.Dispatch<React.SetStateAction<boolean>>;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
+  username: string;
 }) {
   const navigate = useNavigate();
 
   // Handle game creation
   const handleGameCreated = (
-    config: Omit<GameConfig, 'selectedPatterns'>,
-    patterns: number[]
+    config: Omit<GameConfig, "selectedPatterns">,
+    patterns: number[],
   ) => {
     const fullConfig: GameConfig = {
       ...config,
@@ -169,14 +176,14 @@ function AppLayout({
 
     setGameConfig(fullConfig);
     setIsGameActive(true);
-    navigate('/playground');
+    navigate("/playground");
   };
 
   // Handle starting new game
   const handleStartNewGame = () => {
     setGameConfig(null);
     setIsGameActive(false);
-    navigate('/newgame');
+    navigate("/newgame");
   };
 
   // Handle game state changes from Playground
@@ -189,7 +196,9 @@ function AppLayout({
     if (gameConfig && gameConfig.cartelaNumbers) {
       setGameConfig({
         ...gameConfig,
-        cartelaNumbers: gameConfig.cartelaNumbers.filter(c => c !== cartelaNumber)
+        cartelaNumbers: gameConfig.cartelaNumbers.filter(
+          (c) => c !== cartelaNumber,
+        ),
       });
     }
   };
@@ -198,10 +207,18 @@ function AppLayout({
     <div className="app-container">
       <Sidebar isGameActive={isGameActive} />
       <div className="main-content">
-        <Header onLogout={onLogout} />
+        <Header onLogout={onLogout} username={username} />
         <main className="page-content">
           <Routes>
-            <Route path="/dashboard" element={<Dashboard gameConfig={gameConfig} isGameActive={isGameActive} />} />
+            <Route
+              path="/dashboard"
+              element={
+                <Dashboard
+                  gameConfig={gameConfig}
+                  isGameActive={isGameActive}
+                />
+              }
+            />
 
             <Route
               path="/playground"
@@ -236,17 +253,39 @@ function AppLayout({
    MAIN APP
 ================================ */
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(authApi.isAuthenticated());
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [isGameActive, setIsGameActive] = useState(false);
+  const [username, setUsername] = useState("Shop User");
+
+  const loadMe = async () => {
+    try {
+      const response = await authApi.getMe();
+      const displayName =
+        response.user.name?.trim() ||
+        response.user.username?.trim() ||
+        "Shop User";
+      setUsername(displayName);
+    } catch (error) {
+      console.error("Failed to load current user", error);
+      setUsername("Shop User");
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadMe();
+    }
+  }, [isLoggedIn]);
 
   const handleLogout = async () => {
     try {
       await authApi.logout();
     } catch (error) {
-      console.error('Logout failed', error);
+      console.error("Logout failed", error);
     } finally {
       setIsLoggedIn(false);
+      setUsername("Shop User");
       setGameConfig(null);
       setIsGameActive(false);
     }
@@ -255,23 +294,25 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <Router>
-          {!isLoggedIn ? (
-            <Login onLogin={() => setIsLoggedIn(true)} />
-          ) : (
-            <AppLayout
-              gameConfig={gameConfig}
-              setGameConfig={setGameConfig}
-              isGameActive={isGameActive}
-              setIsGameActive={setIsGameActive}
-              onLogout={handleLogout}
-            />
-          )}
-        </Router>
+        <PopupProvider>
+          <Router>
+            {!isLoggedIn ? (
+              <Login onLogin={() => setIsLoggedIn(true)} />
+            ) : (
+              <AppLayout
+                gameConfig={gameConfig}
+                setGameConfig={setGameConfig}
+                isGameActive={isGameActive}
+                setIsGameActive={setIsGameActive}
+                onLogout={handleLogout}
+                username={username}
+              />
+            )}
+          </Router>
+        </PopupProvider>
       </LanguageProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
-

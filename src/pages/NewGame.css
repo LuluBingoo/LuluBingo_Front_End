@@ -19,13 +19,48 @@
 
 .new-game-header h1 {
   margin: 0;
-  color: #7A0000;
+  color: #7a0000;
   font-size: large;
   font-weight: bold;
 }
 
 .dark .new-game-header h1 {
-  color: #FFEBEE;
+  color: #ffebee;
+}
+
+.shop75-pages {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.shop75-page-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.shop75-payable {
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #047857;
+}
+
+.shop75-players {
+  font-weight: 600;
+}
+
+.shop75-locked {
+  background: #e2e8f0 !important;
+  color: #64748b !important;
+  border-color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7;
+}
+
+.dark .shop75-locked {
+  background: #1f2937 !important;
+  color: #94a3b8 !important;
+  border-color: #475569 !important;
 }
 
 .new-game-content {
@@ -36,8 +71,8 @@
 }
 
 .config-card {
-  background: #FFF5F7;
-  border: 1px solid #FFE8EC;
+  background: #fff5f7;
+  border: 1px solid #ffe8ec;
   padding: 2rem;
 }
 
@@ -47,8 +82,8 @@
 }
 
 .patterns-card {
-  background: #FFF5F7;
-  border: 1px solid #FFE8EC;
+  background: #fff5f7;
+  border: 1px solid #ffe8ec;
   padding: 2rem;
 }
 
@@ -66,13 +101,13 @@
 
 .dark .config-card h2,
 .dark .patterns-card h2 {
-  color: #FFEBEE;
+  color: #ffebee;
 }
 
 .config-form {
   display: grid;
   /* grid-template-columns: repeat(4, 1fr); */
-   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1.3rem;
 }
 
@@ -83,7 +118,7 @@
 }
 
 .form-group label {
-  color: #7A0000;
+  color: #7a0000;
 }
 
 .dark .form-group label {
@@ -102,12 +137,12 @@
 
 .pattern-box {
   aspect-ratio: 1;
-  border: 2px solid #FFE8EC;
-  background: #FFE8EC;
+  border: 2px solid #ffe8ec;
+  background: #ffe8ec;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #7A0000;
+  color: #7a0000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,12 +157,12 @@
 }
 
 .pattern-box:hover {
-  border-color: #B3001B;
+  border-color: #b3001b;
   box-shadow: 0 0 8px rgba(179, 0, 27, 0.3);
 }
 
 .pattern-box.selected {
-  background: linear-gradient(135deg, #B3001B 0%, #8B0015 100%);
+  background: linear-gradient(135deg, #b3001b 0%, #8b0015 100%);
   color: white;
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(179, 0, 27, 0.4);
@@ -147,7 +182,7 @@
 }
 
 .check-icon svg {
-  color: #B3001B;
+  color: #b3001b;
 }
 
 .action-buttons {
@@ -169,19 +204,19 @@
 .range-btn,
 .clear-btn {
   padding: 1rem 2rem;
-  border: 2px solid #B3001B;
-  color: #B3001B;
+  border: 2px solid #b3001b;
+  color: #b3001b;
 }
 
 .dark .range-btn,
 .dark .clear-btn {
-  border-color: #D32F2F;
-  color: #D32F2F;
+  border-color: #d32f2f;
+  color: #d32f2f;
 }
 
 .range-btn:hover,
 .clear-btn:hover {
-  background: #FFE8EC;
+  background: #ffe8ec;
 }
 
 .dark .range-btn:hover,
@@ -195,7 +230,7 @@
 }
 
 .patterns-grid::-webkit-scrollbar-track {
-  background: #FFE8EC;
+  background: #ffe8ec;
   border-radius: 4px;
 }
 
@@ -204,12 +239,12 @@
 }
 
 .patterns-grid::-webkit-scrollbar-thumb {
-  background: #B3001B;
+  background: #b3001b;
   border-radius: 4px;
 }
 
 .patterns-grid::-webkit-scrollbar-thumb:hover {
-  background: #8B0015;
+  background: #8b0015;
 }
 
 /* Tablet */
@@ -308,7 +343,6 @@
   }
 }
 
-
 /* NewGame.css */
 .new-game {
   padding: 20px;
@@ -355,13 +389,15 @@
   flex-direction: column;
 }
 
-.config-card, .patterns-card {
+.config-card,
+.patterns-card {
   height: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
 }
 
-.config-card h2, .patterns-card h2 {
+.config-card h2,
+.patterns-card h2 {
   margin: 0 0 20px 0;
   color: #1e293b;
   font-size: 1.5rem;
@@ -539,7 +575,7 @@
   .new-game-content {
     grid-template-columns: 1fr;
   }
-  
+
   .patterns-grid {
     grid-template-columns: repeat(8, 1fr);
   }
@@ -549,13 +585,13 @@
   .patterns-grid {
     grid-template-columns: repeat(6, 1fr);
   }
-  
+
   .patterns-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .patterns-stats {
     text-align: left;
   }
@@ -565,12 +601,13 @@
   .patterns-grid {
     grid-template-columns: repeat(5, 1fr);
   }
-  
+
   .action-buttons {
     flex-direction: column;
   }
-  
-  .confirm-btn, .clear-btn {
+
+  .confirm-btn,
+  .clear-btn {
     width: 100%;
   }
 }
