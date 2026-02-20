@@ -553,9 +553,70 @@ export const Playground: React.FC<PlaygroundProps> = ({
     cartelaNumber: string,
     pattern?: string | null,
   ) => {
+    const playWinnerCelebrationSound = () => {
+      if (typeof window === "undefined") return;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+
+      if (!AudioContextClass) return;
+
+      const audioContext = new AudioContextClass();
+      const startTime = audioContext.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+
+      notes.forEach((frequency, index) => {
+        const noteStart = startTime + index * 0.11;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(frequency, noteStart);
+
+        gainNode.gain.setValueAtTime(0.0001, noteStart);
+        gainNode.gain.exponentialRampToValueAtTime(0.16, noteStart + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.13);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + 0.14);
+      });
+
+      window.setTimeout(() => {
+        void audioContext.close();
+      }, 900);
+    };
+
     setWinnerCelebration({ cartela: cartelaNumber, pattern: pattern || null });
+    playWinnerCelebrationSound();
     window.setTimeout(() => setWinnerCelebration(null), 4200);
   };
+
+  const winnerConfetti = React.useMemo(
+    () =>
+      Array.from({ length: 44 }, (_, index) => {
+        const colorClasses = [
+          "bg-rose-400",
+          "bg-amber-400",
+          "bg-emerald-400",
+          "bg-sky-400",
+          "bg-violet-400",
+        ] as const;
+        return {
+          id: index,
+          startX: Math.random() * 100,
+          driftX: (Math.random() - 0.5) * 280,
+          rotate: (Math.random() - 0.5) * 520,
+          delay: Math.random() * 0.35,
+          duration: 2.4 + Math.random() * 1.3,
+          size: 7 + Math.random() * 7,
+          colorClass: colorClasses[index % colorClasses.length],
+        };
+      }),
+    [],
+  );
 
   const syncGameState = async () => {
     if (!gameConfig?.gameCode || syncInFlightRef.current) return;
@@ -1280,8 +1341,33 @@ export const Playground: React.FC<PlaygroundProps> = ({
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.85, y: 20, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                className="w-full max-w-2xl rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
+                className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
               >
+                <div className="pointer-events-none absolute inset-0">
+                  {winnerConfetti.map((piece) => (
+                    <motion.div
+                      key={piece.id}
+                      className={`absolute top-[-18px] left-1/2 rounded-sm ${piece.colorClass}`}
+                      style={{
+                        width: `${piece.size}px`,
+                        height: `${Math.max(5, piece.size - 1)}px`,
+                        marginLeft: `${piece.startX - 50}%`,
+                      }}
+                      initial={{ opacity: 0, y: -25, x: 0, rotate: 0 }}
+                      animate={{
+                        opacity: [0, 1, 1, 0.9, 0],
+                        y: [0, 45, 130, 250, 390],
+                        x: [0, piece.driftX * 0.35, piece.driftX],
+                        rotate: [0, piece.rotate],
+                      }}
+                      transition={{
+                        duration: piece.duration,
+                        delay: piece.delay,
+                        ease: "easeOut",
+                      }}
+                    />
+                  ))}
+                </div>
                 <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24">
                   <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
                 </div>
