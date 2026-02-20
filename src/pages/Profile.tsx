@@ -215,13 +215,13 @@ export const Profile: React.FC = () => {
 
               <div className="mt-6 w-full">
                 <div className="text-sm font-medium mb-2 text-gray-400">
-                  Security
+                  {t("profile.security")}
                 </div>
                 {profile.two_factor_enabled ? (
                   <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20 text-center">
                     <div className="flex items-center justify-center gap-2 text-green-500 mb-2">
                       <Shield size={18} />
-                      <span className="font-semibold">2FA Enabled</span>
+                      <span className="font-semibold">{t("profile.twoFactorEnabled")}</span>
                     </div>
                     <button
                       type="button"
@@ -229,7 +229,7 @@ export const Profile: React.FC = () => {
                       onClick={() => openTwoFactorConfirmation("disable")}
                     >
                       <span className="text-xs font-semibold text-green-500">
-                        ON
+                        {t("profile.on")}
                       </span>
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white"
@@ -238,7 +238,7 @@ export const Profile: React.FC = () => {
                         <Power size={18} />
                       </span>
                       <span className="text-xs font-semibold text-green-500/70">
-                        OFF
+                        {t("profile.off")}
                       </span>
                     </button>
                   </div>
@@ -246,7 +246,7 @@ export const Profile: React.FC = () => {
                   <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20 text-center">
                     <div className="flex items-center justify-center gap-2 text-yellow-500 mb-2">
                       <Shield size={18} />
-                      <span className="font-semibold">2FA Disabled</span>
+                      <span className="font-semibold">{t("profile.twoFactorDisabled")}</span>
                     </div>
                     <button
                       type="button"
@@ -254,7 +254,7 @@ export const Profile: React.FC = () => {
                       onClick={() => openTwoFactorConfirmation("enable")}
                     >
                       <span className="text-xs font-semibold text-yellow-500">
-                        ON
+                        {t("profile.on")}
                       </span>
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-300 text-slate-700"
@@ -263,7 +263,7 @@ export const Profile: React.FC = () => {
                         <Power size={18} />
                       </span>
                       <span className="text-xs font-semibold text-yellow-500/70">
-                        OFF
+                        {t("profile.off")}
                       </span>
                     </button>
                   </div>
@@ -394,7 +394,7 @@ export const Profile: React.FC = () => {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                   <Calendar className="h-4 w-4" />
-                  Member Since
+                  {t("profile.memberSince")}
                 </label>
                 <Input
                   defaultValue={new Date(
@@ -412,7 +412,7 @@ export const Profile: React.FC = () => {
                   type="submit"
                   className="bg-red-700 text-white shadow-sm hover:bg-red-800"
                 >
-                  {t("common.save")} Changes
+                  {t("profile.saveChanges")}
                 </Button>
               </motion.div>
             </form>

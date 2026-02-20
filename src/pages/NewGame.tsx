@@ -248,7 +248,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     return Math.min(reservedCount + 1, 4);
   }, [session]);
 
-  const currentPlayerName = `Player ${nextPlayerNumber}`;
+  const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
 
   const lockedByOthers = useMemo(() => {
     if (!session) return new Set<number>();
@@ -572,7 +572,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             submittingPayment
           }
         >
-          {submittingLock ? "Locking..." : `Lock ${currentPlayerName}`}
+          {submittingLock ? t("newGame.locking") : `${t("newGame.lock")} ${currentPlayerName}`}
         </Button>
 
         <Button
@@ -586,7 +586,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         </Button>
 
         <Button variant="outline" onClick={handleClear}>
-          {t("common.clear")} Selection
+          {t("common.clear")}
         </Button>
       </motion.div>
 
@@ -600,23 +600,23 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
               transition={{ delay: 0.1 }}
             >
               <Card className="space-y-4 p-5">
-                <h2 className="text-lg font-semibold">Shop Game Config</h2>
+                <h2 className="text-lg font-semibold">{t("newGame.shopGameConfig")}</h2>
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Session ID</label>
+                    <label className="text-sm font-medium">{t("newGame.sessionId")}</label>
                     <Input
-                      value={session?.session_id || "Not connected yet"}
+                      value={session?.session_id || t("newGame.notConnectedYet")}
                       disabled
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium">
-                      Current Player
+                      {t("newGame.currentPlayer")}
                     </label>
                     <Input value={currentPlayerName} disabled />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Fixed Players</label>
+                    <label className="text-sm font-medium">{t("newGame.fixedPlayers")}</label>
                     <Input
                       value={String(session?.fixed_players || 4)}
                       disabled
@@ -624,13 +624,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium">
-                      Bet / Cartella (ETB)
+                      {t("newGame.betPerCartella")}
                     </label>
                     <Input type="number" value={betPerCartella} disabled />
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      Selected Cartellas: {selectedCartellas.length}/4
+                      {t("newGame.selectedCartellas")}: {selectedCartellas.length}/4
                     </label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedCartellas.length > 0 ? (
@@ -644,7 +644,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                         ))
                       ) : (
                         <span className="text-sm text-slate-500">
-                          No cartellas selected
+                          {t("newGame.noCartellasSelected")}
                         </span>
                       )}
                     </div>
@@ -652,20 +652,20 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      <Wallet size={16} className="inline mr-1" /> Total Payable
+                      <Wallet size={16} className="inline mr-1" /> {t("newGame.totalPayable")}
                     </label>
                     <div className="mt-1 text-lg font-bold text-emerald-600">
-                      {totalPayable} ETB
+                      {totalPayable} {t("playground.birr")}
                     </div>
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      <Users size={16} className="inline mr-1" /> Players Locked
+                      <Users size={16} className="inline mr-1" /> {t("newGame.playersLocked")}
                     </label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                      {totalLockedPlayers}/4 players reserved,{" "}
-                      {totalPaidPlayers}/4 paid
+                      {totalLockedPlayers}/4 {t("newGame.playersReserved")},{" "}
+                      {totalPaidPlayers}/4 {t("newGame.paid")}
                     </div>
                   </div>
 
@@ -679,17 +679,16 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                           key={playerNum}
                           className={`rounded-md px-2 py-1 text-center text-xs font-semibold ${paid ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : reserved ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}
                         >
-                          P{playerNum}
+                          {t("newGame.pWord")}{playerNum}
                         </div>
                       );
                     })}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-                    <label className="text-sm font-medium">Next Step</label>
+                    <label className="text-sm font-medium">{t("newGame.nextStep")}</label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                      Select up to 4 cartellas for {currentPlayerName}, then
-                      lock to continue.
+                      {t("newGame.selectUpTo4")} {currentPlayerName}{t("newGame.thenLock")}
                     </div>
                   </div>
                 </div>
@@ -705,7 +704,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
               <Card className="space-y-3 p-5">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold">
-                    Cartella Selection (1–200)
+                    {t("newGame.cartellaSelection")}
                   </h2>
                   <div className="flex items-center gap-2">
                     <Button
@@ -754,11 +753,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   })}
                 </div>
                 <div className="space-y-1 text-sm text-slate-500 dark:text-slate-300">
-                  <p>• Fixed mode: exactly 4 players required to start.</p>
-                  <p>• A player can hold at most 4 cartellas.</p>
-                  <p>
-                    • Locked cartellas are disabled in real time for others.
-                  </p>
+                  <p>{t("newGame.fixedModeInfo")}</p>
+                  <p>{t("newGame.maxCartellasInfo")}</p>
+                  <p>{t("newGame.lockedConfigInfo")}</p>
                 </div>
               </Card>
             </motion.div>

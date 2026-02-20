@@ -735,33 +735,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return calledNumbers.length * 10;
   };
 
-  const toggleFullscreen = async () => {
-    if (isTogglingFullscreen) return;
-
-    setIsTogglingFullscreen(true);
-    try {
-      if (!document.fullscreenElement) {
-        await boardContainerRef.current?.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error("Failed to toggle fullscreen", error);
-      popup.error("Fullscreen is not available on this device/browser.");
-    } finally {
-      setIsTogglingFullscreen(false);
-    }
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
     };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+  }, [isFullscreen]);
 
   return (
     <div className="space-y-4 p-6">
@@ -838,8 +825,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       {/* Main content */}
       <div className="space-y-4">
-        <div ref={boardContainerRef} className="w-full">
-          <Card className="space-y-3 p-4">
+        <div
+          ref={boardContainerRef}
+          className={`transition-all duration-300 ${
+            isFullscreen
+              ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-100 p-4 dark:bg-slate-950 sm:p-8 overflow-y-auto"
+              : "w-full"
+          }`}
+        >
+          <Card className={`space-y-3 p-4 w-full ${isFullscreen ? "max-w-7xl mx-auto flex-1 flex flex-col justify-center" : ""}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Bingo Board
@@ -847,7 +841,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
               <Button
                 variant="outline"
                 onClick={toggleFullscreen}
-                disabled={isTogglingFullscreen}
                 className="h-9"
               >
                 {isFullscreen ? (
@@ -876,21 +869,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
               {Object.entries(bingoRows).map(([letter, numbers]) => (
                 <div
                   key={letter}
-                  className="grid grid-cols-[48px_1fr] items-center gap-2"
+                  className="grid grid-cols-[64px_1fr] md:grid-cols-[80px_1fr] items-center gap-2 md:gap-4"
                 >
                   <motion.div
-                    className="flex h-10 items-center justify-center rounded-md bg-red-700 font-bold text-white"
+                    className="flex h-12 md:h-16 lg:h-20 items-center justify-center rounded-xl bg-red-700 text-3xl md:text-4xl lg:text-5xl font-black text-white shadow-md w-full"
                     whileHover={{ scale: 1.05 }}
                   >
                     {letter}
                   </motion.div>
                   <div
-                    className={`grid gap-2 ${isFullscreen ? "grid-cols-15" : "grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15"}`}
+                    className={`grid gap-2 md:gap-3 grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15`}
                   >
                     {numbers.map((num) => (
                       <motion.div
                         key={num}
-                        className={`flex h-10 cursor-pointer items-center justify-center rounded-md border text-sm font-semibold transition ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"}`}
+                        className={`flex h-12 md:h-16 lg:h-20 cursor-pointer items-center justify-center rounded-xl border-2 text-lg md:text-xl lg:text-2xl font-bold transition-all shadow-sm ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"}`}
                         whileHover={{ scale: 1.1 }}
                         onClick={() => isGameActive && callSpecificNumber(num)}
                       >
