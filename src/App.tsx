@@ -163,6 +163,7 @@ function AppLayout({
 }) {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
 
   // Handle game creation
   const handleGameCreated = (
@@ -221,17 +222,23 @@ function AppLayout({
         animate={{ x: [0, 20, -10, 0], y: [0, -15, 20, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
       />
-      <Sidebar isGameActive={isGameActive} isCollapsed={isSidebarCollapsed} />
+      {!isPlaygroundFullscreen && (
+        <Sidebar isGameActive={isGameActive} isCollapsed={isSidebarCollapsed} />
+      )}
       <div
-        className={`relative z-10 flex flex-1 flex-col max-md:ml-50 max-sm:ml-17.5 ${isSidebarCollapsed ? "ml-22" : "ml-62.5"}`}
+        className={`relative z-10 flex flex-1 flex-col ${isPlaygroundFullscreen ? "ml-0" : `max-md:ml-50 max-sm:ml-17.5 ${isSidebarCollapsed ? "ml-22" : "ml-62.5"}`}`}
       >
-        <Header
-          onLogout={onLogout}
-          username={username}
-          sidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-        <main className="mt-20 min-h-[calc(100vh-80px)] overflow-y-auto overflow-x-hidden">
+        {!isPlaygroundFullscreen && (
+          <Header
+            onLogout={onLogout}
+            username={username}
+            sidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+          />
+        )}
+        <main
+          className={`${isPlaygroundFullscreen ? "mt-0 min-h-screen" : "mt-20 min-h-[calc(100vh-80px)]"} overflow-y-auto overflow-x-hidden`}
+        >
           <Routes>
             <Route
               path="/dashboard"
@@ -251,6 +258,7 @@ function AppLayout({
                   onStartNewGame={handleStartNewGame}
                   onGameStateChange={handleGameStateChange}
                   onCartelaRemoved={handleCartelaRemoved}
+                  onFullscreenChange={setIsPlaygroundFullscreen}
                 />
               }
             />

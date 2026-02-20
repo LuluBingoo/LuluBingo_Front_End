@@ -337,6 +337,7 @@ import {
   Minimize,
   Flame,
   Monitor,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -353,6 +354,7 @@ interface PlaygroundProps {
     numPlayers: string;
     winBirr: string;
     selectedPatterns: number[];
+    backendStatus?: "pending" | "active" | "completed" | "cancelled";
     gameCode?: string;
     cartelaNumbers?: string[];
     cartelaData?: number[][];
@@ -361,6 +363,7 @@ interface PlaygroundProps {
   onStartNewGame?: () => void;
   onGameStateChange?: (isActive: boolean) => void;
   onCartelaRemoved?: (cartelaNumber: string) => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 export const Playground: React.FC<PlaygroundProps> = ({
@@ -368,6 +371,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   onStartNewGame,
   onGameStateChange,
   onCartelaRemoved,
+  onFullscreenChange,
 }) => {
   const { t } = useLanguage();
   const popup = usePopup();
@@ -424,11 +428,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [callStreak, setCallStreak] = useState(0);
   const [streakBoost, setStreakBoost] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [showFullscreenHud, setShowFullscreenHud] = useState(true);
+  const [showRadialControls, setShowRadialControls] = useState(false);
   const boardContainerRef = React.useRef<HTMLDivElement | null>(null);
   const syncInFlightRef = React.useRef(false);
   const lastSyncErrorLogRef = React.useRef(0);
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
+  const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
 
   // Initialize game if config exists
   useEffect(() => {
@@ -867,7 +874,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const shuffleNumbers = () => {
-    if (!gameConfig?.gameCode) return;
+    const gameCode = gameConfig?.gameCode;
+    if (!gameCode) return;
     if (gameStatus !== "pending") {
       popup.warning("Shuffle is locked after game starts.");
       return;
@@ -876,7 +884,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsShuffling(true);
     void (async () => {
       try {
-        await gamesApi.shuffleGame(gameConfig.gameCode);
+        await gamesApi.shuffleGame(gameCode);
         reshuffleBoard();
         setCalledNumbers([]);
         setCurrentCalledNumber("");
@@ -914,6 +922,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [isFullscreen]);
 
   useEffect(() => {
+    onFullscreenChange?.(isFullscreen);
+    return () => {
+      onFullscreenChange?.(false);
+    };
+  }, [isFullscreen, onFullscreenChange]);
+
+  useEffect(() => {
     if (!isGameActive || gameStatus !== "active") {
       setCallStreak(0);
       return;
@@ -941,6 +956,50 @@ export const Playground: React.FC<PlaygroundProps> = ({
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      setShowFullscreenHud(true);
+      setShowRadialControls(false);
+      if (fullscreenHudTimeoutRef.current) {
+        window.clearTimeout(fullscreenHudTimeoutRef.current);
+        fullscreenHudTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    const scheduleHide = () => {
+      if (fullscreenHudTimeoutRef.current) {
+        window.clearTimeout(fullscreenHudTimeoutRef.current);
+      }
+      fullscreenHudTimeoutRef.current = window.setTimeout(() => {
+        setShowFullscreenHud(false);
+      }, 4000);
+    };
+
+    const onActivity = () => {
+      setShowFullscreenHud(true);
+      setShowRadialControls(false);
+      scheduleHide();
+    };
+
+    onActivity();
+    window.addEventListener("mousemove", onActivity);
+    window.addEventListener("touchstart", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity);
+    window.addEventListener("click", onActivity);
+
+    return () => {
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("touchstart", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("click", onActivity);
+      if (fullscreenHudTimeoutRef.current) {
+        window.clearTimeout(fullscreenHudTimeoutRef.current);
+        fullscreenHudTimeoutRef.current = null;
+      }
+    };
   }, [isFullscreen]);
 
   return (
@@ -1046,14 +1105,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
           ref={boardContainerRef}
           className={`transition-all duration-300 ${
             isFullscreen
-              ? "fixed inset-0 z-[1100] flex flex-col bg-linear-to-br from-slate-900 via-slate-950 to-black p-2 sm:p-3 overflow-hidden"
+              ? "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-slate-900 via-slate-950 to-black p-2 sm:p-3 overflow-hidden"
               : "w-full"
           }`}
         >
           <Card
             className={`space-y-3 p-4 w-full ${isFullscreen ? "h-full border-0 bg-transparent p-0 shadow-none" : ""}`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2 transition-all duration-300 ${
+                isFullscreen
+                  ? showFullscreenHud
+                    ? "opacity-100 translate-y-0"
+                    : "pointer-events-none -translate-y-3 opacity-0"
+                  : "opacity-100"
+              }`}
+            >
               <h3
                 className={`text-lg font-semibold ${isFullscreen ? "text-white" : "text-slate-900 dark:text-slate-100"}`}
               >
@@ -1115,10 +1182,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
               {Object.entries(bingoRows).map(([letter, numbers]) => (
                 <div
                   key={letter}
-                  className={`grid items-center gap-2 md:gap-4 ${isFullscreen ? isTheaterMode ? "grid-cols-[72px_1fr] sm:grid-cols-[92px_1fr]" : "grid-cols-[52px_1fr] sm:grid-cols-[72px_1fr]" : "grid-cols-[64px_1fr] md:grid-cols-[80px_1fr]"}`}
+                  className={`grid items-center gap-2 md:gap-4 ${isFullscreen ? (isTheaterMode ? "grid-cols-[72px_1fr] sm:grid-cols-[92px_1fr]" : "grid-cols-[52px_1fr] sm:grid-cols-[72px_1fr]") : "grid-cols-[64px_1fr] md:grid-cols-[80px_1fr]"}`}
                 >
                   <motion.div
-                    className={`flex items-center justify-center rounded-xl bg-red-700 font-black text-white shadow-md w-full ${isFullscreen ? isTheaterMode ? "h-14 text-3xl sm:h-18 sm:text-4xl" : "h-11 text-2xl sm:h-14 sm:text-3xl" : "h-12 md:h-16 lg:h-20 text-3xl md:text-4xl lg:text-5xl"}`}
+                    className={`flex items-center justify-center rounded-xl bg-red-700 font-black text-white shadow-md w-full ${isFullscreen ? (isTheaterMode ? "h-14 text-3xl sm:h-18 sm:text-4xl" : "h-11 text-2xl sm:h-14 sm:text-3xl") : "h-12 md:h-16 lg:h-20 text-3xl md:text-4xl lg:text-5xl"}`}
                     whileHover={{ scale: 1.05 }}
                   >
                     {letter}
@@ -1129,7 +1196,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     {numbers.map((num) => (
                       <motion.div
                         key={num}
-                        className={`flex cursor-pointer items-center justify-center rounded-xl border-2 font-bold transition-all shadow-sm ${isFullscreen ? isTheaterMode ? "h-12 text-lg sm:h-14 sm:text-xl md:h-16 md:text-2xl" : "h-10 text-base sm:h-12 sm:text-lg md:h-14 md:text-xl" : "h-12 md:h-16 lg:h-20 text-lg md:text-xl lg:text-2xl"} ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"}`}
+                        className={`flex cursor-pointer items-center justify-center rounded-xl border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-12 text-lg sm:h-14 sm:text-xl md:h-16 md:text-2xl" : "h-10 text-base sm:h-12 sm:text-lg md:h-14 md:text-xl") : "h-12 md:h-16 lg:h-20 text-lg md:text-xl lg:text-2xl"} ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"}`}
                         whileHover={{ scale: 1.1 }}
                         onClick={() => isGameActive && callSpecificNumber(num)}
                       >
@@ -1154,10 +1221,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 1.2, y: -40 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="pointer-events-none fixed inset-0 z-[1200] flex items-center justify-center"
+                  className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
                 >
                   <motion.div
-                    className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-white/60 bg-gradient-to-br from-red-400 via-red-600 to-red-800 text-5xl font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]"
+                    className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 text-5xl font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]"
                     animate={{ rotate: [0, -4, 4, 0] }}
                     transition={{ duration: 0.35 }}
                   >
@@ -1167,11 +1234,131 @@ export const Playground: React.FC<PlaygroundProps> = ({
               )}
             </AnimatePresence>
 
-            <div className="pointer-events-none fixed right-5 bottom-5 z-[1150] flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
-              <div className="rounded-full border border-slate-500/50 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-slate-100 backdrop-blur">
-                Heat{" "}
-                {Math.min(100, Math.round((calledNumbers.length / 75) * 100))}%
-              </div>
+            <div className="pointer-events-none fixed right-5 bottom-5 z-1150 flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
+              <AnimatePresence>
+                {showFullscreenHud && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    className="rounded-full border border-slate-500/50 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-slate-100 backdrop-blur"
+                  >
+                    Heat{" "}
+                    {Math.min(
+                      100,
+                      Math.round((calledNumbers.length / 75) * 100),
+                    )}
+                    %
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {showFullscreenHud ? (
+                  <motion.div
+                    key="expanded-controls"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    className="pointer-events-auto flex items-center gap-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={shuffleNumbers}
+                      disabled={gameStatus !== "pending" || isShuffling}
+                      className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-700 text-white transition hover:scale-105 hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-55"
+                      title="Shuffle"
+                      aria-label="Shuffle"
+                    >
+                      <Shuffle className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (gameStatus === "active") {
+                          setAutoCall((prev) => !prev);
+                        }
+                      }}
+                      disabled={
+                        gameStatus !== "active" || calledNumbers.length >= 75
+                      }
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-white transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
+                        autoCall
+                          ? "bg-emerald-600 hover:bg-emerald-500"
+                          : "bg-slate-700 hover:bg-slate-600"
+                      }`}
+                      title="Auto Call"
+                      aria-label="Auto Call"
+                    >
+                      <Play className="h-5 w-5" />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="radial-controls"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="pointer-events-auto relative flex items-center justify-end"
+                  >
+                    <AnimatePresence>
+                      {showRadialControls && (
+                        <>
+                          <motion.button
+                            initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                            animate={{ opacity: 1, x: -58, y: -8, scale: 1 }}
+                            exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                            transition={{ duration: 0.2 }}
+                            type="button"
+                            onClick={shuffleNumbers}
+                            disabled={gameStatus !== "pending" || isShuffling}
+                            className="absolute inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-700 text-white shadow-lg transition hover:bg-slate-600 disabled:opacity-55"
+                            title="Shuffle"
+                            aria-label="Shuffle"
+                          >
+                            <Shuffle className="h-4 w-4" />
+                          </motion.button>
+                          <motion.button
+                            initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                            animate={{ opacity: 1, x: -8, y: -58, scale: 1 }}
+                            exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                            transition={{ duration: 0.2 }}
+                            type="button"
+                            onClick={() => {
+                              if (gameStatus === "active") {
+                                setAutoCall((prev) => !prev);
+                              }
+                            }}
+                            disabled={
+                              gameStatus !== "active" ||
+                              calledNumbers.length >= 75
+                            }
+                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition disabled:opacity-55 ${
+                              autoCall
+                                ? "bg-emerald-600 hover:bg-emerald-500"
+                                : "bg-slate-700 hover:bg-slate-600"
+                            }`}
+                            title="Auto Call"
+                            aria-label="Auto Call"
+                          >
+                            <Play className="h-4 w-4" />
+                          </motion.button>
+                        </>
+                      )}
+                    </AnimatePresence>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowRadialControls((prev) => !prev)}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-700 text-white shadow-lg transition hover:bg-slate-600"
+                      title="More controls"
+                      aria-label="More controls"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <button
                 type="button"
                 onClick={() => {
