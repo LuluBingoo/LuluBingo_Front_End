@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import {
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  Shield,
-  Power,
-  QrCode,
-} from "lucide-react";
+import { User, Mail, Phone, Calendar, Shield, QrCode } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Switch } from "../components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -214,64 +207,54 @@ export const Profile: React.FC = () => {
               </p>
 
               <div className="mt-6 w-full">
-                <div className="text-sm font-medium mb-2 text-gray-400">
+                <div className="mb-2 text-sm font-medium text-gray-400">
                   {t("profile.security")}
                 </div>
-                {profile.two_factor_enabled ? (
-                  <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20 text-center">
-                    <div className="flex items-center justify-center gap-2 text-green-500 mb-2">
-                      <Shield size={18} />
-                      <span className="font-semibold">
-                        {t("profile.twoFactorEnabled")}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="mx-auto mt-1 flex items-center gap-3 rounded-full border border-green-500/40 bg-green-500/10 px-3 py-1"
-                      onClick={() => openTwoFactorConfirmation("disable")}
-                    >
-                      <span className="text-xs font-semibold text-green-500">
-                        {t("profile.on")}
-                      </span>
-                      <span
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white"
-                        aria-label="Turn off 2FA"
-                      >
-                        <Power size={18} />
-                      </span>
-                      <span className="text-xs font-semibold text-green-500/70">
-                        {t("profile.off")}
-                      </span>
-                    </button>
+                <div
+                  className={`rounded-lg border p-4 text-center ${
+                    profile.two_factor_enabled
+                      ? "border-green-500/20 bg-green-500/10"
+                      : "border-yellow-500/20 bg-yellow-500/10"
+                  }`}
+                >
+                  <div
+                    className={`mb-3 flex items-center justify-center gap-2 ${
+                      profile.two_factor_enabled
+                        ? "text-green-500"
+                        : "text-yellow-500"
+                    }`}
+                  >
+                    <Shield size={18} />
+                    <span className="font-semibold">
+                      {profile.two_factor_enabled
+                        ? t("profile.twoFactorEnabled")
+                        : t("profile.twoFactorDisabled")}
+                    </span>
                   </div>
-                ) : (
-                  <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20 text-center">
-                    <div className="flex items-center justify-center gap-2 text-yellow-500 mb-2">
-                      <Shield size={18} />
-                      <span className="font-semibold">
-                        {t("profile.twoFactorDisabled")}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="mx-auto mt-1 flex items-center gap-3 rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1"
-                      onClick={() => openTwoFactorConfirmation("enable")}
+
+                  <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-slate-300 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <Switch
+                      checked={profile.two_factor_enabled}
+                      onCheckedChange={(checked) =>
+                        openTwoFactorConfirmation(
+                          checked ? "enable" : "disable",
+                        )
+                      }
+                      aria-label="Toggle Two-Factor Authentication"
+                      className="h-7 w-13"
+                    />
+
+                    <span
+                      className={`text-xs font-semibold tracking-wide ${
+                        profile.two_factor_enabled
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}
                     >
-                      <span className="text-xs font-semibold text-yellow-500">
-                        {t("profile.on")}
-                      </span>
-                      <span
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-300 text-slate-700"
-                        aria-label="Turn on 2FA"
-                      >
-                        <Power size={18} />
-                      </span>
-                      <span className="text-xs font-semibold text-yellow-500/70">
-                        {t("profile.off")}
-                      </span>
-                    </button>
+                      {profile.two_factor_enabled ? "ON" : "OFF"}
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </Card>
