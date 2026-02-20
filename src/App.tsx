@@ -204,16 +204,22 @@ function AppLayout({
   };
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-linear-to-br from-rose-50 via-white to-rose-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="relative flex min-h-screen overflow-hidden bg-white dark:bg-slate-950">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] opacity-60"></div>
       <motion.div
-        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-700/20"
-        animate={{ x: [0, 20, -12, 0], y: [0, 18, 8, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -top-40 -left-20 h-96 w-96 rounded-full bg-linear-to-br from-sky-400/20 to-blue-500/10 blur-3xl dark:from-blue-900/20 dark:to-slate-900/10"
+        animate={{ x: [0, 40, -20, 0], y: [0, 20, 15, 0] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="pointer-events-none absolute right-4 bottom-0 h-80 w-80 rounded-full bg-sky-300/25 blur-3xl dark:bg-indigo-700/20"
-        animate={{ x: [0, -18, 12, 0], y: [0, -14, 6, 0] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute right-0 bottom-0 h-96 w-96 rounded-full bg-linear-to-tl from-indigo-400/20 to-purple-500/10 blur-3xl dark:from-indigo-900/20 dark:to-slate-900/10"
+        animate={{ x: [0, -30, 25, 0], y: [0, -20, 10, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="pointer-events-none absolute top-1/3 left-1/3 h-64 w-64 rounded-full bg-linear-to-tr from-amber-300/15 to-orange-400/10 blur-3xl dark:from-transparent dark:to-transparent"
+        animate={{ x: [0, 20, -10, 0], y: [0, -15, 20, 0] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
       />
       <Sidebar isGameActive={isGameActive} isCollapsed={isSidebarCollapsed} />
       <div

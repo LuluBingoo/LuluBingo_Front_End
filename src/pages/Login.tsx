@@ -166,7 +166,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-rose-50 via-white to-rose-100 px-4 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white px-4 py-10 dark:bg-slate-950">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] opacity-60"></div>
       <motion.div
         className="relative w-full max-w-md"
         initial={{ opacity: 0, scale: 0.9 }}
@@ -289,7 +290,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     {otp.map((digit, index) => (
                       <input
                         key={index}
-                        ref={(el) => (otpInputRefs.current[index] = el)}
+                        ref={(el) => { otpInputRefs.current[index] = el; }}
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
@@ -407,9 +408,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             ease: "linear",
           }}
         >
-          <div className="absolute -top-24 -left-24 h-44 w-44 rounded-full bg-red-200/40 blur-2xl" />
-          <div className="absolute -right-24 -bottom-20 h-52 w-52 rounded-full bg-orange-200/40 blur-2xl" />
-          <div className="absolute top-20 right-28 h-28 w-28 rounded-full bg-rose-200/30 blur-xl" />
+          <div className="absolute -top-24 -left-24 h-44 w-44 rounded-full bg-linear-to-br from-sky-300/30 to-blue-400/20 blur-2xl dark:from-blue-900/20 dark:to-slate-900/10" />
+          <div className="absolute -right-24 -bottom-20 h-52 w-52 rounded-full bg-linear-to-tl from-indigo-300/30 to-purple-400/20 blur-2xl dark:from-indigo-900/20 dark:to-slate-900/10" />
+          <div className="absolute top-20 right-28 h-28 w-28 rounded-full bg-linear-to-tr from-amber-300/30 to-orange-400/20 blur-xl dark:from-transparent dark:to-transparent" />
+          <div className="absolute -bottom-10 left-20 h-32 w-32 rounded-full bg-linear-to-bl from-rose-300/30 to-pink-400/20 blur-xl dark:from-transparent dark:to-transparent" />
         </motion.div>
       </motion.div>
     </div>
