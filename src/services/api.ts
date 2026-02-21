@@ -115,7 +115,9 @@ export const authApi = {
     return await apiClient.get<TwoFactorSetup>(API_ENDPOINTS.AUTH.SETUP_2FA);
   },
 
-  async send2FAEmailCode(purpose: "enable" | "disable"): Promise<void> {
+  async send2FAEmailCode(
+    purpose: "enable" | "disable" | "change_password",
+  ): Promise<void> {
     if (API_CONFIG.USE_MOCK) {
       return;
     }

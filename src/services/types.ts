@@ -77,6 +77,8 @@ export interface AuthTokenResponse {
 export interface ChangePasswordRequest {
   current_password: string;
   new_password: string;
+  method?: TwoFactorMethod;
+  otp?: string;
 }
 
 export interface TwoFactorSetup {

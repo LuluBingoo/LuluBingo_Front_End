@@ -6,6 +6,14 @@ import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -15,9 +23,10 @@ import {
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { shopApi } from "../services/api";
+import { authApi, shopApi } from "../services/api";
 import { Input } from "../components/ui/input";
 import { setCurrencySetting } from "../services/settings";
+import { TwoFactorMethod } from "../services/types";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -32,12 +41,43 @@ export const Settings: React.FC = () => {
   const [currency, setCurrency] = useState("birr");
   const [autoCallSeconds, setAutoCallSeconds] = useState("5");
   const [cutPercentage, setCutPercentage] = useState("10");
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordOtp, setPasswordOtp] = useState("");
+  const [password2faEnabled, setPassword2faEnabled] = useState(false);
+  const [password2faMethods, setPassword2faMethods] = useState<
+    TwoFactorMethod[]
+  >([]);
+  const [password2faMethod, setPassword2faMethod] =
+    useState<TwoFactorMethod>("totp");
+
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordOtp("");
+  };
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const profile = await shopApi.getProfile();
         const flags = profile.feature_flags || {};
+
+        const methods =
+          Array.isArray(profile.two_factor_methods) &&
+          profile.two_factor_methods.length > 0
+            ? profile.two_factor_methods
+            : profile.two_factor_enabled
+              ? [profile.two_factor_method || "totp"]
+              : [];
+        setPassword2faEnabled(Boolean(profile.two_factor_enabled));
+        setPassword2faMethods(methods as TwoFactorMethod[]);
+        setPassword2faMethod((methods[0] as TwoFactorMethod) || "totp");
 
         setFeatureFlags(flags);
         setNotifications(Boolean(flags.push_notifications ?? true));
@@ -120,6 +160,74 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleSendPasswordOtp = async () => {
+    if (isSendingPasswordOtp) return;
+    if (password2faMethod !== "email_code") {
+      popup.info("Use your authenticator app code for this method.");
+      return;
+    }
+
+    setIsSendingPasswordOtp(true);
+    try {
+      await authApi.send2FAEmailCode("change_password");
+      popup.success("Verification code sent to your email.");
+    } catch (error) {
+      console.error("Failed to send password change OTP", error);
+      popup.error("Failed to send verification code.");
+    } finally {
+      setIsSendingPasswordOtp(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (isChangingPassword) return;
+
+    if (!currentPassword.trim() || !newPassword.trim()) {
+      popup.warning("Please enter current and new password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      popup.warning("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      popup.warning("New password and confirmation do not match.");
+      return;
+    }
+
+    if (password2faEnabled && passwordOtp.trim().length === 0) {
+      popup.warning("Enter OTP code to confirm password change.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await authApi.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        method: password2faEnabled ? password2faMethod : undefined,
+        otp: password2faEnabled ? passwordOtp : undefined,
+      });
+      popup.success("Password changed successfully.");
+      setShowPasswordDialog(false);
+      resetPasswordForm();
+    } catch (error: any) {
+      console.error("Failed to change password", error);
+      const errorData = error?.data || error?.response?.data || {};
+      const detail =
+        errorData?.otp ||
+        errorData?.new_password ||
+        errorData?.current_password ||
+        errorData?.detail ||
+        "Failed to change password.";
+      popup.error(Array.isArray(detail) ? detail[0] : String(detail));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
@@ -149,6 +257,113 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
+      <Dialog
+        open={showPasswordDialog}
+        onOpenChange={(open) => {
+          setShowPasswordDialog(open);
+          if (!open) {
+            resetPasswordForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your current password, new password, and confirm with 2FA.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <Input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              disabled={isChangingPassword}
+            />
+            <Input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isChangingPassword}
+            />
+            <Input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isChangingPassword}
+            />
+
+            {password2faEnabled && (
+              <>
+                {password2faMethods.length > 1 && (
+                  <Select
+                    value={password2faMethod}
+                    onValueChange={(value) =>
+                      setPassword2faMethod(value as TwoFactorMethod)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select 2FA method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {password2faMethods.includes("totp") && (
+                        <SelectItem value="totp">Authenticator App</SelectItem>
+                      )}
+                      {password2faMethods.includes("email_code") && (
+                        <SelectItem value="email_code">Email Code</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                <Input
+                  type="text"
+                  maxLength={6}
+                  placeholder={
+                    password2faMethod === "email_code"
+                      ? "Enter email OTP code"
+                      : "Enter authenticator OTP code"
+                  }
+                  value={passwordOtp}
+                  onChange={(e) => setPasswordOtp(e.target.value)}
+                  disabled={isChangingPassword}
+                />
+
+                {password2faMethod === "email_code" && (
+                  <Button
+                    variant="outline"
+                    onClick={handleSendPasswordOtp}
+                    disabled={isSendingPasswordOtp || isChangingPassword}
+                  >
+                    {isSendingPasswordOtp ? "Sending..." : "Send OTP to Email"}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPasswordDialog(false)}
+              disabled={isChangingPassword}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={isChangingPassword}
+            >
+              {isChangingPassword ? "Changing..." : "Change Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <motion.div
         className="mb-2"
         initial={{ opacity: 0, y: 20 }}
@@ -312,9 +527,7 @@ export const Settings: React.FC = () => {
                   <Button
                     variant="outline"
                     className="min-w-24"
-                    onClick={() =>
-                      popup.info("Password change dialog would open here")
-                    }
+                    onClick={() => setShowPasswordDialog(true)}
                   >
                     {t("settings.change")}
                   </Button>

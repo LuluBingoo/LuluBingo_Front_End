@@ -1469,7 +1469,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
               className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
             >
               <motion.div
-                className={`${isFullscreen ? "h-36 w-36 text-5xl" : "h-28 w-28 text-4xl"} flex items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]`}
+                className={`${isFullscreen ? "h-48 w-48 text-7xl" : "h-40 w-40 text-6xl"} flex items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]`}
                 animate={{ rotate: [0, -4, 4, 0] }}
                 transition={{ duration: 0.35 }}
               >
