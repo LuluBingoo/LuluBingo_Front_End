@@ -28,6 +28,11 @@ const labels = {
     amharic: "አማርኛ",
     noCalled: "No numbers have been called yet.",
     boardTitle: "BINGO Cartella",
+    invalidInput: "Please enter valid game and cartella values.",
+    gameInactive: "This game is not active right now.",
+    cartellaNotFound: "Game or cartella not found.",
+    loadFailed: "Failed to load cartella.",
+    rateLimited: "Too many requests. Please try again in {seconds}s.",
   },
   am: {
     title: "የህዝብ ካርቴላ መፈተሻ",
@@ -48,6 +53,11 @@ const labels = {
     amharic: "አማርኛ",
     noCalled: "ገና ምንም ቁጥር አልተጠራም።",
     boardTitle: "የBINGO ካርቴላ",
+    invalidInput: "እባክዎ ትክክለኛ መረጃ ያስገቡ።",
+    gameInactive: "ይህ ጨዋታ አሁን ንቁ አይደለም።",
+    cartellaNotFound: "ጨዋታው ወይም ካርቴላው አልተገኘም።",
+    loadFailed: "መረጃ ማምጣት አልተቻለም።",
+    rateLimited: "ብዙ ጥያቄዎች ተልከዋል። ከ {seconds} ሰከንድ በኋላ ደግመው ይሞክሩ።",
   },
 } as const;
 
@@ -105,6 +115,29 @@ export const PublicCartella: React.FC = () => {
     return rowWin || colWin || mainDiag || antiDiag;
   }, [grid, markedSet]);
 
+  const resolvePublicError = (err: any) => {
+    const status = err?.status ?? err?.response?.status;
+    const data = err?.data || err?.response?.data || {};
+    const detail = String(data?.detail || "").toLowerCase();
+    const retryAfter = Number(data?.retry_after_seconds || 0);
+
+    if (status === 429 || data?.error_code === "rate_limited") {
+      const seconds =
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60;
+      return copy.rateLimited.replace("{seconds}", String(seconds));
+    }
+
+    if (status === 400 && detail.includes("not active")) {
+      return copy.gameInactive;
+    }
+
+    if (status === 404 || detail.includes("not found")) {
+      return copy.cartellaNotFound;
+    }
+
+    return copy.loadFailed;
+  };
+
   const handleLoad = async () => {
     setError("");
     setData(null);
@@ -116,11 +149,7 @@ export const PublicCartella: React.FC = () => {
       !Number.isFinite(parsedCartella) ||
       parsedCartella <= 0
     ) {
-      setError(
-        language === "am"
-          ? "እባክዎ ትክክለኛ መረጃ ያስገቡ።"
-          : "Please enter valid game and cartella values.",
-      );
+      setError(copy.invalidInput);
       return;
     }
 
@@ -132,11 +161,7 @@ export const PublicCartella: React.FC = () => {
       );
       setData(response);
     } catch (err: any) {
-      const res = err?.data || err?.response?.data;
-      setError(
-        res?.detail ||
-          (language === "am" ? "መረጃ ማምጣት አልተቻለም።" : "Failed to load cartella."),
-      );
+      setError(resolvePublicError(err));
     } finally {
       setLoading(false);
     }
