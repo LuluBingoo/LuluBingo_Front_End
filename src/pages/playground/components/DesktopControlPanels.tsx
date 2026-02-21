@@ -142,15 +142,6 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                 <Play className="mr-1 h-4 w-4" />
                 {isStartingGame ? "Starting..." : "Start Game"}
               </Button>
-              <Button
-                className="h-10 w-full"
-                onClick={closeGameWithoutWinner}
-                variant="destructive"
-                disabled={isStoppingGame || isStartingGame}
-              >
-                <X className="mr-1 h-4 w-4" />
-                {isStoppingGame ? "Closing..." : "Close Without Winner"}
-              </Button>
             </>
           ) : (
             <Button

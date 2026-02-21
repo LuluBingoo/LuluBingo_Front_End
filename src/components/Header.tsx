@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { Moon, Sun, User, LogOut, PlusCircle, Trophy } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  Moon,
+  Sun,
+  User,
+  LogOut,
+  PlusCircle,
+  Trophy,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
@@ -23,8 +32,22 @@ export const Header: React.FC<HeaderProps> = ({
   const { t } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [isSiteFullscreen, setIsSiteFullscreen] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsSiteFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    syncFullscreenState();
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+    };
+  }, []);
 
   const handleToggleTheme = async () => {
     if (isSavingTheme) {
@@ -84,6 +107,19 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleToggleSiteFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.error("Failed to toggle fullscreen", error);
+      popup.error("Failed to toggle fullscreen mode.");
+    }
+  };
+
   return (
     <motion.header
       className={`fixed top-0 right-0 z-40 grid h-20 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-red-100 bg-white/95 px-3 sm:px-4 md:px-6 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90 max-md:left-50 max-sm:left-17.5 ${sidebarCollapsed ? "left-22" : "left-62.5"}`}
@@ -126,6 +162,21 @@ export const Header: React.FC<HeaderProps> = ({
             <Moon className="h-5 w-5" />
           ) : (
             <Sun className="h-5 w-5" />
+          )}
+        </motion.button>
+
+        <motion.button
+          className="rounded-full border border-red-200 p-2 text-slate-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
+          onClick={handleToggleSiteFullscreen}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isSiteFullscreen ? (
+            <Minimize2 className="h-5 w-5" />
+          ) : (
+            <Maximize2 className="h-5 w-5" />
           )}
         </motion.button>
 

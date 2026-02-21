@@ -43,6 +43,19 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
   isGameActive,
   callSpecificNumber,
 }) => {
+  const decorativeParticles = React.useMemo(
+    () =>
+      Array.from({ length: 22 }, (_, index) => ({
+        id: index,
+        left: ((index * 11.7) % 100) + "%",
+        size: 3 + (index % 5),
+        delay: (index % 7) * 0.35,
+        duration: 5.5 + (index % 6) * 0.9,
+        drift: ((index % 9) - 4) * 10,
+      })),
+    [],
+  );
+
   return (
     <div
       ref={boardContainerRef}
@@ -55,10 +68,45 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
       }`}
     >
       <Card
-        className={`space-y-3 p-4 w-full ${isFullscreen ? "h-full border-0 bg-transparent p-0 shadow-none" : ""}`}
+        className={`relative space-y-3 overflow-hidden p-4 w-full ${isFullscreen ? "h-full border-0 bg-transparent p-0 shadow-none" : ""}`}
       >
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[42%] overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-t from-amber-500/18 via-fuchsia-500/8 to-transparent dark:from-sky-500/16 dark:via-indigo-500/10" />
+          <div
+            className="absolute inset-0 opacity-45 dark:opacity-35"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 12% 18%, rgba(255,255,255,0.6) 0.9px, transparent 1.3px), radial-gradient(circle at 78% 42%, rgba(255,255,255,0.4) 1px, transparent 1.5px)",
+              backgroundSize: "22px 22px, 28px 28px",
+            }}
+          />
+          {decorativeParticles.map((particle) => (
+            <motion.span
+              key={particle.id}
+              className="absolute bottom-0 rounded-full bg-white/55 shadow-[0_0_10px_rgba(255,255,255,0.45)] dark:bg-sky-200/45"
+              style={{
+                left: particle.left,
+                width: `${particle.size}px`,
+                height: `${particle.size}px`,
+              }}
+              animate={{
+                y: [0, -36, -88, -138],
+                x: [0, particle.drift * 0.35, particle.drift],
+                opacity: [0, 0.85, 0.6, 0],
+                scale: [0.8, 1.1, 1, 0.7],
+              }}
+              transition={{
+                duration: particle.duration,
+                delay: particle.delay,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+            />
+          ))}
+        </div>
+
         <div
-          className={`flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2 transition-all duration-300 ${
+          className={`relative z-10 flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2 transition-all duration-300 ${
             isFullscreen
               ? showFullscreenHud
                 ? "opacity-100 translate-y-0"
@@ -114,7 +162,7 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
         </div>
 
         <motion.div
-          className={`space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
+          className={`relative z-10 space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
           animate={
             isShuffling
               ? { scale: [1, 0.99, 1.01, 1], opacity: [1, 0.9, 1] }

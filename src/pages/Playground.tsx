@@ -1264,7 +1264,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
           setAutoCall={setAutoCall}
           showRadialControls={showRadialControls}
           setShowRadialControls={setShowRadialControls}
-          closeGameWithoutWinner={closeGameWithoutWinner}
           isStoppingGame={isStoppingGame}
           isCallingNumber={isCallingNumber}
           isStartingGame={isStartingGame}

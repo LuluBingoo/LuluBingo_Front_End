@@ -1,6 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { MoreHorizontal, Play, Shuffle, X } from "lucide-react";
+import { MoreHorizontal, Play, Shuffle } from "lucide-react";
 import { GameStatus } from "../types";
 import { ShuffleSpeedPresets } from "./ShuffleSpeedPresets";
 
@@ -18,7 +18,6 @@ interface FullscreenControlsProps {
   setAutoCall: React.Dispatch<React.SetStateAction<boolean>>;
   showRadialControls: boolean;
   setShowRadialControls: React.Dispatch<React.SetStateAction<boolean>>;
-  closeGameWithoutWinner: () => Promise<void>;
   isStoppingGame: boolean;
   isCallingNumber: boolean;
   isStartingGame: boolean;
@@ -40,7 +39,6 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   setAutoCall,
   showRadialControls,
   setShowRadialControls,
-  closeGameWithoutWinner,
   isStoppingGame,
   isCallingNumber,
   isStartingGame,
@@ -191,20 +189,6 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
         )}
       </AnimatePresence>
       <div className="pointer-events-auto flex items-center gap-2">
-        {(gameStatus === "active" || gameStatus === "pending") && (
-          <button
-            type="button"
-            onClick={() => {
-              void closeGameWithoutWinner();
-            }}
-            disabled={isStoppingGame || isCallingNumber || isStartingGame}
-            className="inline-flex h-12 min-w-12 items-center justify-center rounded-full bg-slate-900 px-3 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            title="Close Without Winner"
-            aria-label="Close Without Winner"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
         <button
           type="button"
           onClick={() => {
