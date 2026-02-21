@@ -349,6 +349,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
+import { formatCurrency } from "../services/settings";
 
 interface PlaygroundProps {
   gameConfig?: {
@@ -399,6 +400,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     "pending" | "active" | "completed" | "cancelled"
   >("pending");
   const [isCallingNumber, setIsCallingNumber] = useState(false);
+  const [isStartingGame, setIsStartingGame] = useState(false);
+  const [isStoppingGame, setIsStoppingGame] = useState(false);
 
   // State for cartela
   const [cartelaInput, setCartelaInput] = useState("");
@@ -805,10 +808,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         const patternText = claim.pattern ? `\nPattern: ${claim.pattern}` : "";
         const payoutText = claim.payout_amount
-          ? `\nPayout: ${claim.payout_amount}`
+          ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
           : "";
         const cutText = claim.shop_cut_amount
-          ? `\nShop Cut: ${claim.shop_cut_amount}`
+          ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
           : "";
 
         triggerWinnerCelebration(cartelaNumber, claim.pattern);
@@ -925,10 +928,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (claim.is_bingo) {
         const patternText = claim.pattern ? ` (${claim.pattern})` : "";
         const payoutText = claim.payout_amount
-          ? `\nPayout: ${claim.payout_amount}`
+          ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
           : "";
         const cutText = claim.shop_cut_amount
-          ? `\nShop Cut: ${claim.shop_cut_amount}`
+          ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
           : "";
 
         triggerWinnerCelebration(matchedCartela, claim.pattern);
@@ -960,6 +963,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Stop the current game
   const stopGame = async () => {
+    if (isStoppingGame) return;
     const confirmed = await popup.confirm({
       title: "Stop game",
       description: "Are you sure you want to stop the current game?",
@@ -968,6 +972,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     });
 
     if (confirmed) {
+      setIsStoppingGame(true);
       try {
         if (gameConfig?.gameCode) {
           await gamesApi.completeGame(gameConfig.gameCode, {
@@ -977,6 +982,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
         }
       } catch (error) {
         console.error("Failed to cancel game", error);
+      } finally {
+        setIsStoppingGame(false);
       }
 
       setIsGameActive(false);
@@ -994,7 +1001,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const startGame = async () => {
-    if (!gameConfig?.gameCode) return;
+    if (isStartingGame || !gameConfig?.gameCode) return;
+    setIsStartingGame(true);
     try {
       await gamesApi.startGame(gameConfig.gameCode);
       setGameStatus("active");
@@ -1008,6 +1016,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     } catch (error) {
       console.error("Failed to start game", error);
       popup.error("Failed to start game.");
+    } finally {
+      setIsStartingGame(false);
     }
   };
 
@@ -1177,7 +1187,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
               {t("playground.stake")}
             </span>
             <span className="font-semibold">
-              {gameConfig?.betBirr ? `${gameConfig.betBirr} BIRR` : "BINGO"}
+              {gameConfig?.betBirr
+                ? formatCurrency(gameConfig.betBirr)
+                : "BINGO"}
             </span>
           </div>
           <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
@@ -1185,6 +1197,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
               {t("playground.winPrice")}
             </span>
             <span className="font-semibold">{calculateWinMoney()}</span>
+            <span className="ml-2 text-xs uppercase text-slate-500">
+              {formatCurrency(calculateWinMoney())}
+            </span>
           </div>
           <div className="rounded-md bg-red-700 px-3 py-2 text-white">
             <span className="font-semibold">
@@ -1607,6 +1622,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
                 }}
                 disabled={
                   isCallingNumber ||
+                  isStartingGame ||
+                  isStoppingGame ||
                   calledNumbers.length >= 75 ||
                   gameStatus === "completed" ||
                   gameStatus === "cancelled"
@@ -1652,7 +1669,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     <Button
                       className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
                       onClick={callRandomNumber}
-                      disabled={calledNumbers.length >= 75 || isCallingNumber}
+                      disabled={
+                        calledNumbers.length >= 75 ||
+                        isCallingNumber ||
+                        isStoppingGame
+                      }
                     >
                       {isCallingNumber
                         ? "Calling..."
@@ -1664,9 +1685,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       className="h-10 w-full"
                       onClick={stopGame}
                       variant="destructive"
+                      disabled={isStoppingGame || isCallingNumber}
                     >
                       <X className="mr-1 h-4 w-4" />
-                      {t("playground.stopGame")}
+                      {isStoppingGame
+                        ? "Stopping..."
+                        : t("playground.stopGame")}
                     </Button>
                   </>
                 ) : gameStatus === "pending" ? (
@@ -1675,14 +1699,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       className="h-10 w-full"
                       onClick={shuffleNumbers}
                       variant="outline"
+                      disabled={isStartingGame}
                     >
                       <Shuffle className="mr-1 h-4 w-4" /> Shuffle More
                     </Button>
                     <Button
                       className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
                       onClick={startGame}
+                      disabled={isStartingGame}
                     >
-                      <Play className="mr-1 h-4 w-4" /> Start Game
+                      <Play className="mr-1 h-4 w-4" />
+                      {isStartingGame ? "Starting..." : "Start Game"}
                     </Button>
                   </>
                 ) : (
@@ -1787,11 +1814,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
                 {t("playground.winMoney")}
               </h3>
               <div className="mt-3 flex items-end gap-1">
-                <span className="text-base font-medium text-emerald-700 dark:text-emerald-300">
-                  {t("playground.birr")}
-                </span>
                 <span className="text-4xl font-black leading-none text-emerald-700 dark:text-emerald-300">
-                  {calculateWinMoney()}
+                  {formatCurrency(calculateWinMoney())}
                 </span>
               </div>
             </Card>

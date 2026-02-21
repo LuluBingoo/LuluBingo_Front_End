@@ -212,6 +212,7 @@ import { usePopup } from "../contexts/PopupContext";
 import { gamesApi } from "../services/api";
 import { ShopBingoPlayer, ShopBingoSession } from "../services/types";
 import { useNavigate } from "react-router-dom";
+import { formatCurrency, getCurrencyLabel } from "../services/settings";
 
 interface NewGameProps {
   onGameCreated: (config: GameConfig, patterns: number[]) => void;
@@ -244,6 +245,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [betPerCartella, setBetPerCartella] = useState("20");
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const currencyLabel = getCurrencyLabel();
 
   const nextPlayerNumber = useMemo(() => {
     const reservedCount =
@@ -390,7 +392,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const handleLockBet = () => {
     const parsed = Number.parseFloat(betInput);
     if (!Number.isFinite(parsed) || parsed < 20) {
-      popup.warning("Minimum bet per cartella is 20 ETB.");
+      popup.warning(`Minimum bet per cartella is 20 ${currencyLabel}.`);
       return;
     }
     const locked = parsed.toFixed(2);
@@ -641,7 +643,11 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             : t("newGame.checkPayment")}
         </Button>
 
-        <Button variant="outline" onClick={handleClear}>
+        <Button
+          variant="outline"
+          onClick={handleClear}
+          disabled={submittingLock || submittingPayment}
+        >
           {t("common.clear")}
         </Button>
       </motion.div>
@@ -721,7 +727,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       {t("newGame.totalPayable")}
                     </label>
                     <div className="mt-1 text-lg font-bold text-emerald-600">
-                      {totalPayable} {t("playground.birr")}
+                      {formatCurrency(totalPayable)}
                     </div>
                   </div>
 

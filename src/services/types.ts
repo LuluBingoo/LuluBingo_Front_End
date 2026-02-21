@@ -30,6 +30,9 @@ export interface ShopUser {
   profile_completed: boolean;
   two_factor_enabled: boolean;
   two_factor_method: TwoFactorMethod;
+  two_factor_totp_enabled?: boolean;
+  two_factor_email_enabled?: boolean;
+  two_factor_methods?: TwoFactorMethod[];
   must_change_password: boolean;
   created_at: string;
 }
@@ -52,6 +55,9 @@ export interface ShopProfile {
   feature_flags: Record<string, any>;
   two_factor_enabled: boolean;
   two_factor_method: TwoFactorMethod;
+  two_factor_totp_enabled?: boolean;
+  two_factor_email_enabled?: boolean;
+  two_factor_methods?: TwoFactorMethod[];
   created_at: string;
 }
 
@@ -97,6 +103,7 @@ export interface Game {
   cartella_statuses?: Record<string, "active" | "banned" | "winner">;
   awarded_claims?: Array<Record<string, unknown>>;
   total_pool?: string;
+  cut_percentage?: string;
   win_percentage?: string;
   payout_amount?: string;
   shop_cut_amount?: string;
@@ -139,6 +146,7 @@ export interface GameClaimResponse {
   detail?: string;
   winner?: number;
   total_pool?: string;
+  cut_percentage?: string;
   payout_amount?: string;
   shop_cut_amount?: string;
 }

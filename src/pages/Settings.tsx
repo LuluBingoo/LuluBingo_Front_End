@@ -16,11 +16,13 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { shopApi } from "../services/api";
+import { Input } from "../components/ui/input";
+import { setCurrencySetting } from "../services/settings";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const popup = usePopup();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [featureFlags, setFeatureFlags] = useState<Record<string, any>>({});
@@ -29,6 +31,7 @@ export const Settings: React.FC = () => {
   const [autoBackup, setAutoBackup] = useState(false);
   const [currency, setCurrency] = useState("birr");
   const [autoCallSeconds, setAutoCallSeconds] = useState("5");
+  const [cutPercentage, setCutPercentage] = useState("10");
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -48,10 +51,28 @@ export const Settings: React.FC = () => {
               "5",
           ),
         );
+        const fallbackCut =
+          flags.cut_percentage ??
+          (flags.win_percentage != null
+            ? Math.max(
+                0,
+                Math.min(100, 100 - Number(flags.win_percentage || 90)),
+              )
+            : 10);
+        setCutPercentage(String(fallbackCut));
 
         if (flags.language === "en" || flags.language === "am") {
           setLanguage(flags.language);
         }
+        if (flags.theme === "light" || flags.theme === "dark") {
+          setTheme(flags.theme);
+        }
+
+        localStorage.setItem(
+          "autoCallSeconds",
+          String(flags.auto_call_seconds ?? "5"),
+        );
+        setCurrencySetting(flags.currency ?? "birr");
       } catch (error) {
         console.error("Failed to load settings", error);
         popup.error("Failed to load settings from backend.");
@@ -73,6 +94,11 @@ export const Settings: React.FC = () => {
         auto_backup: autoBackup,
         currency,
         language,
+        theme,
+        cut_percentage: Math.max(
+          0,
+          Math.min(100, Number.parseFloat(cutPercentage || "10") || 10),
+        ),
         auto_call_seconds: Number.parseInt(autoCallSeconds, 10),
       };
 
@@ -82,6 +108,9 @@ export const Settings: React.FC = () => {
 
       setFeatureFlags(updatedFlags);
       localStorage.setItem("autoCallSeconds", autoCallSeconds);
+      setCurrencySetting(currency);
+      localStorage.setItem("language", language);
+      localStorage.setItem("theme", theme);
       popup.success("Settings saved successfully.");
     } catch (error) {
       console.error("Failed to save settings", error);
@@ -318,6 +347,26 @@ export const Settings: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">
+                      Cut Percentage
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Deducted from total winner pool for each game.
+                    </p>
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={cutPercentage}
+                    onChange={(e) => setCutPercentage(e.target.value)}
+                    className="w-45"
+                  />
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
                       {t("settings.saveSettings")}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-300">
@@ -363,7 +412,9 @@ export const Settings: React.FC = () => {
                   <Button
                     variant="outline"
                     className="min-w-32"
-                    onClick={toggleTheme}
+                    onClick={() =>
+                      setTheme(theme === "dark" ? "light" : "dark")
+                    }
                   >
                     {theme === "dark" ? (
                       <>

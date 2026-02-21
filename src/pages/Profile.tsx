@@ -29,6 +29,7 @@ export const Profile: React.FC = () => {
   const popup = usePopup();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ShopProfile | null>(null);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
 
   // 2FA State
   const [twoFactorSetup, setTwoFactorSetup] = useState<TwoFactorSetup | null>(
@@ -47,6 +48,8 @@ export const Profile: React.FC = () => {
   const [twoFactorConfirmAction, setTwoFactorConfirmAction] = useState<
     "enable" | "disable" | null
   >(null);
+  const [twoFactorTargetMethod, setTwoFactorTargetMethod] =
+    useState<TwoFactorMethod>("totp");
   const [disableOtp, setDisableOtp] = useState("");
   const [selectedTwoFactorMethod, setSelectedTwoFactorMethod] =
     useState<TwoFactorMethod>("totp");
@@ -56,6 +59,25 @@ export const Profile: React.FC = () => {
     "enable" | "disable"
   >("enable");
   const [isSendingEmailCode, setIsSendingEmailCode] = useState(false);
+  const [isTwoFactorSubmitting, setIsTwoFactorSubmitting] = useState(false);
+  const [isTwoFactorConfirming, setIsTwoFactorConfirming] = useState(false);
+
+  const isMethodEnabled = (method: TwoFactorMethod) => {
+    if (!profile) return false;
+    if (method === "totp") {
+      return Boolean(profile.two_factor_totp_enabled);
+    }
+    return Boolean(profile.two_factor_email_enabled);
+  };
+
+  const selectedMethodEnabled = isMethodEnabled(selectedTwoFactorMethod);
+
+  const enabledMethodsText = [
+    isMethodEnabled("totp") ? "Authenticator" : null,
+    isMethodEnabled("email_code") ? "Email Code" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   useEffect(() => {
     loadProfile();
@@ -65,7 +87,13 @@ export const Profile: React.FC = () => {
     try {
       const data = await shopApi.getProfile();
       setProfile(data);
-      setSelectedTwoFactorMethod(data.two_factor_method || "totp");
+      if (data.two_factor_totp_enabled) {
+        setSelectedTwoFactorMethod("totp");
+      } else if (data.two_factor_email_enabled) {
+        setSelectedTwoFactorMethod("email_code");
+      } else {
+        setSelectedTwoFactorMethod(data.two_factor_method || "totp");
+      }
     } catch (error) {
       console.error("Failed to load profile", error);
     } finally {
@@ -81,7 +109,8 @@ export const Profile: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    if (!profile || isProfileSaving) return;
+    setIsProfileSaving(true);
     try {
       await shopApi.updateProfile({
         name: profile.name,
@@ -105,10 +134,13 @@ export const Profile: React.FC = () => {
         data?.detail ||
         "Failed to update profile.";
       popup.error(String(detail));
+    } finally {
+      setIsProfileSaving(false);
     }
   };
 
   const startTwoFactorSetup = async () => {
+    if (isTwoFactorSetupLoading) return;
     setShowTwoFactorSetup(true);
     setIsTwoFactorSetupLoading(true);
     setTwoFactorSetupError(null);
@@ -130,11 +162,13 @@ export const Profile: React.FC = () => {
   };
 
   const enableTwoFactor = async () => {
+    if (isTwoFactorSubmitting) return;
     if (!otp.trim()) {
       popup.warning("Please enter OTP code.");
       return;
     }
 
+    setIsTwoFactorSubmitting(true);
     try {
       await authApi.enable2FA(otp, "totp");
       popup.success("Two-factor authentication enabled successfully!");
@@ -145,20 +179,21 @@ export const Profile: React.FC = () => {
     } catch (error) {
       console.error("Failed to enable 2FA", error);
       popup.error("Invalid OTP or server error.");
+    } finally {
+      setIsTwoFactorSubmitting(false);
     }
   };
 
   const disableTwoFactor = async () => {
+    if (isTwoFactorSubmitting) return;
     if (!disableOtp.trim()) {
       popup.warning("Please enter OTP code.");
       return;
     }
 
+    setIsTwoFactorSubmitting(true);
     try {
-      await authApi.disable2FA(
-        disableOtp,
-        profile?.two_factor_method || "totp",
-      );
+      await authApi.disable2FA(disableOtp, twoFactorTargetMethod);
       popup.success("Two-factor authentication disabled.");
       setShowDisableTwoFactorDialog(false);
       setDisableOtp("");
@@ -166,10 +201,13 @@ export const Profile: React.FC = () => {
     } catch (error) {
       console.error("Failed to disable 2FA", error);
       popup.error("Failed to disable 2FA. Invalid OTP?");
+    } finally {
+      setIsTwoFactorSubmitting(false);
     }
   };
 
   const sendEmailCode = async (purpose: "enable" | "disable") => {
+    if (isSendingEmailCode) return;
     setIsSendingEmailCode(true);
     try {
       await authApi.send2FAEmailCode(purpose);
@@ -183,11 +221,13 @@ export const Profile: React.FC = () => {
   };
 
   const enableTwoFactorWithEmail = async () => {
+    if (isTwoFactorSubmitting) return;
     if (!emailCode.trim()) {
       popup.warning("Please enter the email code.");
       return;
     }
 
+    setIsTwoFactorSubmitting(true);
     try {
       await authApi.enable2FA(emailCode, "email_code");
       popup.success("Email-code two-factor authentication enabled.");
@@ -197,15 +237,19 @@ export const Profile: React.FC = () => {
     } catch (error) {
       console.error("Failed to enable email 2FA", error);
       popup.error("Invalid or expired email code.");
+    } finally {
+      setIsTwoFactorSubmitting(false);
     }
   };
 
   const disableTwoFactorWithEmail = async () => {
+    if (isTwoFactorSubmitting) return;
     if (!emailCode.trim()) {
       popup.warning("Please enter the email code.");
       return;
     }
 
+    setIsTwoFactorSubmitting(true);
     try {
       await authApi.disable2FA(emailCode, "email_code");
       popup.success("Two-factor authentication disabled.");
@@ -215,39 +259,48 @@ export const Profile: React.FC = () => {
     } catch (error) {
       console.error("Failed to disable email 2FA", error);
       popup.error("Invalid or expired email code.");
+    } finally {
+      setIsTwoFactorSubmitting(false);
     }
   };
 
   const openTwoFactorConfirmation = (action: "enable" | "disable") => {
+    setTwoFactorTargetMethod(selectedTwoFactorMethod);
     setTwoFactorConfirmAction(action);
     setShowTwoFactorConfirmDialog(true);
   };
 
-  const confirmTwoFactorAction = () => {
+  const confirmTwoFactorAction = async () => {
+    if (isTwoFactorConfirming) return;
+    setIsTwoFactorConfirming(true);
     const action = twoFactorConfirmAction;
     setShowTwoFactorConfirmDialog(false);
 
-    if (action === "enable") {
-      if (selectedTwoFactorMethod === "email_code") {
-        setEmailCodePurpose("enable");
-        setEmailCode("");
-        setShowEmailCodeDialog(true);
-        void sendEmailCode("enable");
+    try {
+      if (action === "enable") {
+        if (twoFactorTargetMethod === "email_code") {
+          setEmailCodePurpose("enable");
+          setEmailCode("");
+          setShowEmailCodeDialog(true);
+          await sendEmailCode("enable");
+          return;
+        }
+        await startTwoFactorSetup();
         return;
       }
-      startTwoFactorSetup();
-      return;
-    }
 
-    if (action === "disable") {
-      if ((profile?.two_factor_method || "totp") === "email_code") {
-        setEmailCodePurpose("disable");
-        setEmailCode("");
-        setShowEmailCodeDialog(true);
-        void sendEmailCode("disable");
-        return;
+      if (action === "disable") {
+        if (twoFactorTargetMethod === "email_code") {
+          setEmailCodePurpose("disable");
+          setEmailCode("");
+          setShowEmailCodeDialog(true);
+          await sendEmailCode("disable");
+          return;
+        }
+        setShowDisableTwoFactorDialog(true);
       }
-      setShowDisableTwoFactorDialog(true);
+    } finally {
+      setIsTwoFactorConfirming(false);
     }
   };
 
@@ -360,7 +413,12 @@ export const Profile: React.FC = () => {
                       }
                       className="h-8"
                       onClick={() => setSelectedTwoFactorMethod("totp")}
-                      disabled={profile.two_factor_enabled}
+                      disabled={
+                        isTwoFactorSetupLoading ||
+                        isTwoFactorSubmitting ||
+                        isSendingEmailCode ||
+                        isTwoFactorConfirming
+                      }
                     >
                       Authenticator
                     </Button>
@@ -373,26 +431,34 @@ export const Profile: React.FC = () => {
                       }
                       className="h-8"
                       onClick={() => setSelectedTwoFactorMethod("email_code")}
-                      disabled={profile.two_factor_enabled}
+                      disabled={
+                        isTwoFactorSetupLoading ||
+                        isTwoFactorSubmitting ||
+                        isSendingEmailCode ||
+                        isTwoFactorConfirming
+                      }
                     >
                       Email Code
                     </Button>
                   </div>
 
                   <div className="mb-3 text-xs text-slate-500 dark:text-slate-300">
-                    Method:{" "}
-                    {profile.two_factor_enabled
-                      ? profile.two_factor_method
-                      : selectedTwoFactorMethod}
+                    Enabled: {enabledMethodsText || "None"}
                   </div>
 
                   <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-slate-300 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
                     <Switch
-                      checked={profile.two_factor_enabled}
+                      checked={selectedMethodEnabled}
                       onCheckedChange={(checked) =>
                         openTwoFactorConfirmation(
                           checked ? "enable" : "disable",
                         )
+                      }
+                      disabled={
+                        isTwoFactorSetupLoading ||
+                        isTwoFactorSubmitting ||
+                        isSendingEmailCode ||
+                        isTwoFactorConfirming
                       }
                       aria-label="Toggle Two-Factor Authentication"
                       className="h-7 w-13"
@@ -405,7 +471,7 @@ export const Profile: React.FC = () => {
                           : "text-amber-600 dark:text-amber-400"
                       }`}
                     >
-                      {profile.two_factor_enabled ? "ON" : "OFF"}
+                      {selectedMethodEnabled ? "ON" : "OFF"}
                     </span>
                   </div>
                 </div>
@@ -428,24 +494,42 @@ export const Profile: React.FC = () => {
               <DialogHeader>
                 <DialogTitle>
                   {twoFactorConfirmAction === "enable"
-                    ? "Turn ON Two-Factor Authentication"
-                    : "Turn OFF Two-Factor Authentication"}
+                    ? `Turn ON ${
+                        twoFactorTargetMethod === "totp"
+                          ? "Authenticator"
+                          : "Email Code"
+                      }`
+                    : `Turn OFF ${
+                        twoFactorTargetMethod === "totp"
+                          ? "Authenticator"
+                          : "Email Code"
+                      }`}
                 </DialogTitle>
                 <DialogDescription>
                   {twoFactorConfirmAction === "enable"
-                    ? "Do you want to turn ON 2FA security for this account?"
-                    : "Do you want to turn OFF 2FA security for this account?"}
+                    ? "Do you want to enable this 2FA method?"
+                    : "Do you want to disable this 2FA method?"}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setShowTwoFactorConfirmDialog(false)}
+                  disabled={isTwoFactorConfirming}
                 >
                   Cancel
                 </Button>
-                <Button onClick={confirmTwoFactorAction}>
-                  {twoFactorConfirmAction === "enable" ? "Turn ON" : "Turn OFF"}
+                <Button
+                  onClick={() => {
+                    void confirmTwoFactorAction();
+                  }}
+                  disabled={isTwoFactorConfirming}
+                >
+                  {isTwoFactorConfirming
+                    ? "Please wait..."
+                    : twoFactorConfirmAction === "enable"
+                      ? "Turn ON"
+                      : "Turn OFF"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -475,14 +559,18 @@ export const Profile: React.FC = () => {
                     setShowDisableTwoFactorDialog(false);
                     setDisableOtp("");
                   }}
+                  disabled={isTwoFactorSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   className="bg-red-500 hover:bg-red-600 text-white"
                   onClick={disableTwoFactor}
+                  disabled={
+                    isTwoFactorSubmitting || disableOtp.trim().length !== 6
+                  }
                 >
-                  Disable 2FA
+                  {isTwoFactorSubmitting ? "Disabling..." : "Disable 2FA"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -516,13 +604,14 @@ export const Profile: React.FC = () => {
                     setShowEmailCodeDialog(false);
                     setEmailCode("");
                   }}
+                  disabled={isSendingEmailCode || isTwoFactorSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => sendEmailCode(emailCodePurpose)}
-                  disabled={isSendingEmailCode}
+                  disabled={isSendingEmailCode || isTwoFactorSubmitting}
                 >
                   {isSendingEmailCode ? "Sending..." : "Resend Code"}
                 </Button>
@@ -534,8 +623,11 @@ export const Profile: React.FC = () => {
                       void disableTwoFactorWithEmail();
                     }
                   }}
+                  disabled={
+                    isTwoFactorSubmitting || emailCode.trim().length !== 6
+                  }
                 >
-                  Confirm
+                  {isTwoFactorSubmitting ? "Confirming..." : "Confirm"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -607,8 +699,9 @@ export const Profile: React.FC = () => {
                 <Button
                   type="submit"
                   className="bg-red-700 text-white shadow-sm hover:bg-red-800"
+                  disabled={isProfileSaving}
                 >
-                  {t("profile.saveChanges")}
+                  {isProfileSaving ? "Saving..." : t("profile.saveChanges")}
                 </Button>
               </motion.div>
             </form>
@@ -641,8 +734,9 @@ export const Profile: React.FC = () => {
                       variant="outline"
                       onClick={startTwoFactorSetup}
                       className="h-9"
+                      disabled={isTwoFactorSetupLoading}
                     >
-                      Retry Setup
+                      {isTwoFactorSetupLoading ? "Retrying..." : "Retry Setup"}
                     </Button>
                   </div>
                 ) : twoFactorSetup ? (
@@ -672,15 +766,18 @@ export const Profile: React.FC = () => {
                           setIsTwoFactorSetupLoading(false);
                           setOtp("");
                         }}
+                        disabled={isTwoFactorSubmitting}
                       >
                         Cancel
                       </Button>
                       <Button
                         className="bg-red-700 text-white hover:bg-red-800"
                         onClick={enableTwoFactor}
-                        disabled={otp.trim().length !== 6}
+                        disabled={
+                          otp.trim().length !== 6 || isTwoFactorSubmitting
+                        }
                       >
-                        Enable 2FA
+                        {isTwoFactorSubmitting ? "Enabling..." : "Enable 2FA"}
                       </Button>
                     </div>
                   </div>

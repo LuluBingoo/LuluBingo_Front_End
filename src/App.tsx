@@ -126,7 +126,10 @@ import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { PublicCartella } from "./pages/PublicCartella";
-import { authApi } from "./services/api";
+import { authApi, shopApi } from "./services/api";
+import { useTheme } from "./contexts/ThemeContext";
+import { useLanguage } from "./contexts/LanguageContext";
+import { setCurrencySetting } from "./services/settings";
 
 /* ===============================
    TYPES
@@ -165,8 +168,52 @@ function AppLayout({
   username: string;
 }) {
   const navigate = useNavigate();
+  const { setTheme } = useTheme();
+  const { setLanguage } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncUserSettings = async () => {
+      try {
+        const profile = await shopApi.getProfile();
+        if (!isMounted) return;
+
+        const flags =
+          profile.feature_flags && typeof profile.feature_flags === "object"
+            ? profile.feature_flags
+            : {};
+
+        if (flags.language === "en" || flags.language === "am") {
+          setLanguage(flags.language);
+          localStorage.setItem("language", flags.language);
+        }
+
+        if (flags.theme === "light" || flags.theme === "dark") {
+          setTheme(flags.theme);
+          localStorage.setItem("theme", flags.theme);
+        }
+
+        setCurrencySetting(flags.currency ?? "birr");
+
+        if (flags.auto_call_seconds != null) {
+          localStorage.setItem(
+            "autoCallSeconds",
+            String(flags.auto_call_seconds),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to sync profile settings", error);
+      }
+    };
+
+    void syncUserSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, [setLanguage, setTheme]);
 
   // Handle game creation
   const handleGameCreated = (

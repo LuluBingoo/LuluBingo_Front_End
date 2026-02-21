@@ -7,6 +7,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { useLanguage } from "../contexts/LanguageContext";
 import { gamesApi } from "../services/api";
 import { GameAuditReportResponse } from "../services/types";
+import { formatCurrency } from "../services/settings";
 
 interface DashboardProps {
   gameConfig?: {
@@ -144,14 +145,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
     {
       label: t("dashboard.earningToday"),
-      value: `${earningToday.toFixed(2)} ETB`,
+      value: formatCurrency(earningToday),
       icon: TrendingUp,
       iconClass: "text-emerald-500",
       bgClass: "bg-emerald-500/15",
     },
     {
       label: t("dashboard.availableBalance"),
-      value: `${Number.parseFloat(latestBalance || "0").toFixed(2)} ETB`,
+      value: formatCurrency(latestBalance || "0"),
       icon: DollarSign,
       iconClass: "text-amber-500",
       bgClass: "bg-amber-500/15",
@@ -396,11 +397,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {new Date(game.date).toLocaleString()}
                       </td>
                       <td className="px-3 py-2">{game.players}</td>
-                      <td className="px-3 py-2">{game.total_pool}</td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(game.total_pool || "0")}
+                      </td>
                       <td className="px-3 py-2">
                         {game.winner.length ? game.winner.join(", ") : "-"}
                       </td>
-                      <td className="px-3 py-2">{game.shop_cut}</td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(game.shop_cut || "0")}
+                      </td>
                       <td className="px-3 py-2">
                         <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200">
                           {game.status}
@@ -439,7 +444,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <td className="px-3 py-2">
                         {win.winning_pattern || "-"}
                       </td>
-                      <td className="px-3 py-2">{win.payout_amount}</td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(win.payout_amount || "0")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -502,9 +509,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </td>
                       <td className="px-3 py-2">{tx.game_id || "-"}</td>
                       <td className="px-3 py-2">{tx.type}</td>
-                      <td className="px-3 py-2">{tx.amount}</td>
-                      <td className="px-3 py-2">{tx.balance_before}</td>
-                      <td className="px-3 py-2">{tx.balance_after}</td>
+                      <td className="px-3 py-2">{formatCurrency(tx.amount)}</td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(tx.balance_before)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(tx.balance_after)}
+                      </td>
                       <td className="px-3 py-2">{tx.reference}</td>
                     </tr>
                   ))}
