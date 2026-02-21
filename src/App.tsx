@@ -118,6 +118,7 @@ import { PopupProvider } from "./contexts/PopupContext";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { BackgroundEffects } from "./components/BackgroundEffects";
+import { BackendStatusBadge } from "./components/BackendStatusBadge";
 
 import { Dashboard } from "./pages/Dashboard";
 import { Playground } from "./pages/Playground";
@@ -126,6 +127,16 @@ import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { PublicCartella } from "./pages/PublicCartella";
+import {
+  Error400Page,
+  Error401Page,
+  Error403Page,
+  Error404Page,
+  Error418Page,
+  Error429Page,
+  Error500Page,
+  Error503Page,
+} from "./pages/ErrorPages";
 import { authApi, shopApi } from "./services/api";
 import { useTheme } from "./contexts/ThemeContext";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -313,7 +324,7 @@ function AppLayout({
             <Route path="/settings" element={<Settings />} />
 
             {/* Default */}
-            <Route path="*" element={<Navigate to="/playground" replace />} />
+            <Route path="*" element={<Error404Page />} />
           </Routes>
         </main>
       </div>
@@ -368,8 +379,17 @@ function App() {
       <LanguageProvider>
         <PopupProvider>
           <Router>
+            <BackendStatusBadge />
             <Routes>
               <Route path="/public/cartella" element={<PublicCartella />} />
+              <Route path="/error/400" element={<Error400Page />} />
+              <Route path="/error/401" element={<Error401Page />} />
+              <Route path="/error/403" element={<Error403Page />} />
+              <Route path="/error/404" element={<Error404Page />} />
+              <Route path="/error/418" element={<Error418Page />} />
+              <Route path="/error/429" element={<Error429Page />} />
+              <Route path="/error/500" element={<Error500Page />} />
+              <Route path="/error/503" element={<Error503Page />} />
               <Route
                 path="/*"
                 element={

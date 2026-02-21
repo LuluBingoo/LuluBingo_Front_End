@@ -661,6 +661,7 @@ export const Profile: React.FC = () => {
                     handleChange("contact_email", e.target.value)
                   }
                   required
+                  disabled
                 />
               </div>
 
@@ -676,6 +677,7 @@ export const Profile: React.FC = () => {
                     handleChange("contact_phone", e.target.value)
                   }
                   required
+                  disabled
                 />
               </div>
 

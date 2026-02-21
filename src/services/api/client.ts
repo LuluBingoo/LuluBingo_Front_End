@@ -1,5 +1,6 @@
 // HTTP Client for API calls
 import { API_CONFIG } from "../config";
+import { markBackendOffline, markBackendOnline } from "../backendHealth";
 
 export class ApiError extends Error {
   constructor(
@@ -14,6 +15,18 @@ export class ApiError extends Error {
 
 class ApiClient {
   private token: string | null = null;
+
+  private redirectToServiceUnavailable() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.location.pathname === "/error/503") {
+      return;
+    }
+
+    window.location.assign("/error/503");
+  }
 
   setToken(token: string | null) {
     this.token = token;
@@ -69,6 +82,11 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
+      if (response.status === 503) {
+        markBackendOffline("Service unavailable");
+        this.redirectToServiceUnavailable();
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError(
@@ -79,6 +97,8 @@ class ApiClient {
         );
       }
 
+      markBackendOnline();
+
       return await response.json();
     } catch (error) {
       if (error instanceof ApiError) {
@@ -87,11 +107,17 @@ class ApiClient {
 
       if (error instanceof Error) {
         if (error.name === "AbortError") {
+          markBackendOffline("Request timeout");
+          this.redirectToServiceUnavailable();
           throw new ApiError("Request timeout", 408);
         }
+        markBackendOffline(error.message || "Backend unavailable");
+        this.redirectToServiceUnavailable();
         throw new ApiError(error.message, 0);
       }
 
+      markBackendOffline("Unknown backend connectivity error");
+      this.redirectToServiceUnavailable();
       throw new ApiError("Unknown error occurred", 0);
     }
   }
