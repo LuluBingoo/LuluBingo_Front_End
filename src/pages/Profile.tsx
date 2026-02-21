@@ -16,7 +16,11 @@ import {
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
 import { shopApi, authApi } from "../services/api";
-import { ShopProfile, TwoFactorSetup } from "../services/types";
+import {
+  ShopProfile,
+  TwoFactorMethod,
+  TwoFactorSetup,
+} from "../services/types";
 import { QRCodeSVG } from "qrcode.react";
 
 export const Profile: React.FC = () => {
@@ -43,6 +47,14 @@ export const Profile: React.FC = () => {
     "enable" | "disable" | null
   >(null);
   const [disableOtp, setDisableOtp] = useState("");
+  const [selectedTwoFactorMethod, setSelectedTwoFactorMethod] =
+    useState<TwoFactorMethod>("totp");
+  const [emailCode, setEmailCode] = useState("");
+  const [showEmailCodeDialog, setShowEmailCodeDialog] = useState(false);
+  const [emailCodePurpose, setEmailCodePurpose] = useState<
+    "enable" | "disable"
+  >("enable");
+  const [isSendingEmailCode, setIsSendingEmailCode] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -52,6 +64,7 @@ export const Profile: React.FC = () => {
     try {
       const data = await shopApi.getProfile();
       setProfile(data);
+      setSelectedTwoFactorMethod(data.two_factor_method || "totp");
     } catch (error) {
       console.error("Failed to load profile", error);
     } finally {
@@ -80,7 +93,17 @@ export const Profile: React.FC = () => {
       popup.success("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to update profile", error);
-      popup.error("Failed to update profile.");
+      const err = error as any;
+      const data = err?.data || err?.response?.data || {};
+      const firstField = Object.keys(data)[0];
+      const detail =
+        (firstField &&
+          (Array.isArray(data[firstField])
+            ? data[firstField][0]
+            : data[firstField])) ||
+        data?.detail ||
+        "Failed to update profile.";
+      popup.error(String(detail));
     }
   };
 
@@ -112,7 +135,7 @@ export const Profile: React.FC = () => {
     }
 
     try {
-      await authApi.enable2FA(otp);
+      await authApi.enable2FA(otp, "totp");
       popup.success("Two-factor authentication enabled successfully!");
       setShowTwoFactorSetup(false);
       setTwoFactorSetup(null);
@@ -131,7 +154,10 @@ export const Profile: React.FC = () => {
     }
 
     try {
-      await authApi.disable2FA(disableOtp);
+      await authApi.disable2FA(
+        disableOtp,
+        profile?.two_factor_method || "totp",
+      );
       popup.success("Two-factor authentication disabled.");
       setShowDisableTwoFactorDialog(false);
       setDisableOtp("");
@@ -139,6 +165,55 @@ export const Profile: React.FC = () => {
     } catch (error) {
       console.error("Failed to disable 2FA", error);
       popup.error("Failed to disable 2FA. Invalid OTP?");
+    }
+  };
+
+  const sendEmailCode = async (purpose: "enable" | "disable") => {
+    setIsSendingEmailCode(true);
+    try {
+      await authApi.send2FAEmailCode(purpose);
+      popup.success("Verification code sent to your email.");
+    } catch (error) {
+      console.error("Failed to send email code", error);
+      popup.error("Failed to send email code.");
+    } finally {
+      setIsSendingEmailCode(false);
+    }
+  };
+
+  const enableTwoFactorWithEmail = async () => {
+    if (!emailCode.trim()) {
+      popup.warning("Please enter the email code.");
+      return;
+    }
+
+    try {
+      await authApi.enable2FA(emailCode, "email_code");
+      popup.success("Email-code two-factor authentication enabled.");
+      setShowEmailCodeDialog(false);
+      setEmailCode("");
+      loadProfile();
+    } catch (error) {
+      console.error("Failed to enable email 2FA", error);
+      popup.error("Invalid or expired email code.");
+    }
+  };
+
+  const disableTwoFactorWithEmail = async () => {
+    if (!emailCode.trim()) {
+      popup.warning("Please enter the email code.");
+      return;
+    }
+
+    try {
+      await authApi.disable2FA(emailCode, "email_code");
+      popup.success("Two-factor authentication disabled.");
+      setShowEmailCodeDialog(false);
+      setEmailCode("");
+      loadProfile();
+    } catch (error) {
+      console.error("Failed to disable email 2FA", error);
+      popup.error("Invalid or expired email code.");
     }
   };
 
@@ -152,11 +227,25 @@ export const Profile: React.FC = () => {
     setShowTwoFactorConfirmDialog(false);
 
     if (action === "enable") {
+      if (selectedTwoFactorMethod === "email_code") {
+        setEmailCodePurpose("enable");
+        setEmailCode("");
+        setShowEmailCodeDialog(true);
+        void sendEmailCode("enable");
+        return;
+      }
       startTwoFactorSetup();
       return;
     }
 
     if (action === "disable") {
+      if ((profile?.two_factor_method || "totp") === "email_code") {
+        setEmailCodePurpose("disable");
+        setEmailCode("");
+        setShowEmailCodeDialog(true);
+        void sendEmailCode("disable");
+        return;
+      }
       setShowDisableTwoFactorDialog(true);
     }
   };
@@ -205,6 +294,9 @@ export const Profile: React.FC = () => {
               <p className="text-sm text-slate-500 dark:text-slate-300">
                 {profile.shop_code}
               </p>
+              <p className="mt-1 text-xs font-semibold tracking-wide text-red-700 dark:text-red-300">
+                {profile.human_shop_id || "-"}
+              </p>
 
               <div className="mt-6 w-full">
                 <div className="mb-2 text-sm font-medium text-gray-400">
@@ -230,6 +322,42 @@ export const Profile: React.FC = () => {
                         ? t("profile.twoFactorEnabled")
                         : t("profile.twoFactorDisabled")}
                     </span>
+                  </div>
+
+                  <div className="mb-3 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={
+                        selectedTwoFactorMethod === "totp"
+                          ? "default"
+                          : "outline"
+                      }
+                      className="h-8"
+                      onClick={() => setSelectedTwoFactorMethod("totp")}
+                      disabled={profile.two_factor_enabled}
+                    >
+                      Authenticator
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        selectedTwoFactorMethod === "email_code"
+                          ? "default"
+                          : "outline"
+                      }
+                      className="h-8"
+                      onClick={() => setSelectedTwoFactorMethod("email_code")}
+                      disabled={profile.two_factor_enabled}
+                    >
+                      Email Code
+                    </Button>
+                  </div>
+
+                  <div className="mb-3 text-xs text-slate-500 dark:text-slate-300">
+                    Method:{" "}
+                    {profile.two_factor_enabled
+                      ? profile.two_factor_method
+                      : selectedTwoFactorMethod}
                   </div>
 
                   <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-slate-300 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -305,7 +433,7 @@ export const Profile: React.FC = () => {
               <DialogHeader>
                 <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
                 <DialogDescription>
-                  Enter your authenticator OTP code to disable 2FA.
+                  Enter your OTP code to disable 2FA.
                 </DialogDescription>
               </DialogHeader>
               <Input
@@ -329,6 +457,59 @@ export const Profile: React.FC = () => {
                   onClick={disableTwoFactor}
                 >
                   Disable 2FA
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={showEmailCodeDialog}
+            onOpenChange={setShowEmailCodeDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {emailCodePurpose === "enable"
+                    ? "Enable Email-Code 2FA"
+                    : "Disable Email-Code 2FA"}
+                </DialogTitle>
+                <DialogDescription>
+                  Enter the 6-digit code sent to your email.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                placeholder="Enter 6-digit code"
+                value={emailCode}
+                onChange={(e) => setEmailCode(e.target.value)}
+                maxLength={6}
+              />
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailCodeDialog(false);
+                    setEmailCode("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => sendEmailCode(emailCodePurpose)}
+                  disabled={isSendingEmailCode}
+                >
+                  {isSendingEmailCode ? "Sending..." : "Resend Code"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (emailCodePurpose === "enable") {
+                      void enableTwoFactorWithEmail();
+                    } else {
+                      void disableTwoFactorWithEmail();
+                    }
+                  }}
+                >
+                  Confirm
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -361,6 +542,7 @@ export const Profile: React.FC = () => {
                   onChange={(e) =>
                     handleChange("contact_email", e.target.value)
                   }
+                  required
                 />
               </div>
 
@@ -375,6 +557,7 @@ export const Profile: React.FC = () => {
                   onChange={(e) =>
                     handleChange("contact_phone", e.target.value)
                   }
+                  required
                 />
               </div>
 

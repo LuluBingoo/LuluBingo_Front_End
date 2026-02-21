@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
     ENABLE_2FA: "/auth/2fa/enable",
     DISABLE_2FA: "/auth/2fa/disable",
     SETUP_2FA: "/auth/2fa/setup",
+    EMAIL_2FA_CODE: "/auth/2fa/email-code",
   },
   // Games
   GAMES: {

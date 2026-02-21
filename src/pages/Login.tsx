@@ -45,6 +45,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   // OTP
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpMethod, setOtpMethod] = useState<"totp" | "email_code">("totp");
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Forgot Password
@@ -64,6 +65,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } catch (err: any) {
       const errorData = err?.data || err?.response?.data || {};
       if (errorData?.otp) {
+        setOtpMethod(
+          errorData?.two_factor_method === "email_code" ? "email_code" : "totp",
+        );
         setStep("otp");
       } else if (errorData?.non_field_errors?.length) {
         setError(errorData.non_field_errors[0]);
@@ -277,7 +281,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 transition={{ duration: 0.3 }}
               >
                 <p className="mb-4 text-center text-sm text-slate-500 dark:text-slate-300">
-                  Enter the 6-digit code from your authenticator app
+                  Enter the 6-digit verification code
+                </p>
+
+                <p className="mb-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Method:{" "}
+                  {otpMethod === "email_code"
+                    ? "Email Code"
+                    : "Authenticator App"}
                 </p>
 
                 {error && (

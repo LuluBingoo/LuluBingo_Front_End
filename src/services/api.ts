@@ -114,20 +114,35 @@ export const authApi = {
     return await apiClient.get<TwoFactorSetup>(API_ENDPOINTS.AUTH.SETUP_2FA);
   },
 
-  async enable2FA(otp: string): Promise<ShopUser> {
+  async send2FAEmailCode(purpose: "enable" | "disable"): Promise<void> {
+    if (API_CONFIG.USE_MOCK) {
+      return;
+    }
+    await apiClient.post(API_ENDPOINTS.AUTH.EMAIL_2FA_CODE, { purpose });
+  },
+
+  async enable2FA(
+    otp: string,
+    method: "totp" | "email_code" = "totp",
+  ): Promise<ShopUser> {
     if (API_CONFIG.USE_MOCK) {
       return await mockAuthApi.enable2FA(otp);
     }
     return await apiClient.post<ShopUser>(API_ENDPOINTS.AUTH.ENABLE_2FA, {
+      method,
       otp,
     });
   },
 
-  async disable2FA(otp: string): Promise<ShopUser> {
+  async disable2FA(
+    otp: string,
+    method: "totp" | "email_code" = "totp",
+  ): Promise<ShopUser> {
     if (API_CONFIG.USE_MOCK) {
       return await mockAuthApi.disable2FA(otp);
     }
     return await apiClient.post<ShopUser>(API_ENDPOINTS.AUTH.DISABLE_2FA, {
+      method,
       otp,
     });
   },

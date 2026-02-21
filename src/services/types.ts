@@ -2,7 +2,7 @@
 
 export type ShopStatus = "pending" | "active" | "suspended" | "blocked";
 export type GameStatus = "pending" | "active" | "completed" | "cancelled";
-export type TwoFactorMethod = "totp";
+export type TwoFactorMethod = "totp" | "email_code";
 export type TransactionType =
   | "deposit"
   | "withdrawal"
@@ -16,6 +16,7 @@ export interface ShopUser {
   username: string;
   name: string;
   shop_code: string;
+  human_shop_id?: string | null;
   status: ShopStatus;
   contact_phone: string;
   contact_email: string;
@@ -37,6 +38,7 @@ export interface ShopProfile {
   username: string;
   name: string;
   shop_code: string;
+  human_shop_id?: string | null;
   contact_phone: string;
   contact_email: string;
   bank_name: string;
