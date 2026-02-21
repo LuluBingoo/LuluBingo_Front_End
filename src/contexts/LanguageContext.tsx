@@ -4,6 +4,7 @@ import React, {
   ReactNode,
   useMemo,
   useState,
+  useCallback,
 } from "react";
 import i18next from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
@@ -47,11 +48,14 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
     (i18n.language as Language) || "en",
   );
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem("language", lang);
-    void i18n.changeLanguage(lang);
-  };
+  const setLanguage = useCallback(
+    (lang: Language) => {
+      setLanguageState(lang);
+      localStorage.setItem("language", lang);
+      void i18n.changeLanguage(lang);
+    },
+    [i18n],
+  );
 
   const value = useMemo(
     () => ({
@@ -59,7 +63,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
       setLanguage,
       t: (key: string) => i18nTranslate(key),
     }),
-    [language, i18nTranslate],
+    [language, setLanguage, i18nTranslate],
   );
 
   return (

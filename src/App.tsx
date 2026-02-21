@@ -101,7 +101,7 @@
 
 // export default App;
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   BrowserRouter as Router,
@@ -170,10 +170,16 @@ function AppLayout({
   const navigate = useNavigate();
   const { setTheme } = useTheme();
   const { setLanguage } = useLanguage();
+  const settingsSyncedRef = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
 
   useEffect(() => {
+    if (settingsSyncedRef.current) {
+      return;
+    }
+    settingsSyncedRef.current = true;
+
     let isMounted = true;
 
     const syncUserSettings = async () => {
