@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { toast, Toaster } from "sonner";
 import { useTheme } from "./ThemeContext";
+import type { ExternalToast } from "sonner";
 
 type ConfirmOptions = {
   title: string;
@@ -34,6 +35,7 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
   const { theme } = useTheme();
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
+  const activeToastRef = useRef<string | number | undefined>(undefined);
   useEffect(() => {
     return () => {
       if (resolverRef.current) {
@@ -49,19 +51,53 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
     setConfirmState(null);
   };
 
-  const value = useMemo<PopupContextValue>(
-    () => ({
+  const value = useMemo<PopupContextValue>(() => {
+    const pushToast = (
+      mode: "success" | "error" | "info" | "warning",
+      message: string,
+      title?: string,
+    ) => {
+      if (activeToastRef.current !== undefined) {
+        toast.dismiss(activeToastRef.current);
+      }
+
+      const options: ExternalToast = {
+        description: title,
+        onDismiss: () => {
+          activeToastRef.current = undefined;
+        },
+        onAutoClose: () => {
+          activeToastRef.current = undefined;
+        },
+      };
+
+      if (mode === "success") {
+        activeToastRef.current = toast.success(message, options);
+        return;
+      }
+      if (mode === "error") {
+        activeToastRef.current = toast.error(message, options);
+        return;
+      }
+      if (mode === "warning") {
+        activeToastRef.current = toast.warning(message, options);
+        return;
+      }
+      activeToastRef.current = toast.info(message, options);
+    };
+
+    return {
       success: (message, title) => {
-        toast.success(message, { description: title });
+        pushToast("success", message, title);
       },
       error: (message, title) => {
-        toast.error(message, { description: title });
+        pushToast("error", message, title);
       },
       info: (message, title) => {
-        toast.info(message, { description: title });
+        pushToast("info", message, title);
       },
       warning: (message, title) => {
-        toast.warning(message, { description: title });
+        pushToast("warning", message, title);
       },
       confirm: (options) =>
         new Promise<boolean>((resolve) => {
@@ -71,9 +107,8 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
           resolverRef.current = resolve;
           setConfirmState(options);
         }),
-    }),
-    [],
-  );
+    };
+  }, []);
 
   return (
     <PopupContext.Provider value={value}>
@@ -82,6 +117,7 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
         theme={theme}
         richColors
         position="top-right"
+        visibleToasts={1}
         closeButton
         className="z-1400!"
         toastOptions={{

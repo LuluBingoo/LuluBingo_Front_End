@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { DollarSign, TrendingUp, Gamepad2, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  DollarSign,
+  TrendingUp,
+  Gamepad2,
+  Calendar,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
 import { useLanguage } from "../contexts/LanguageContext";
+import { usePopup } from "../contexts/PopupContext";
 import { gamesApi } from "../services/api";
 import { GameAuditReportResponse } from "../services/types";
 import { formatCurrency } from "../services/settings";
@@ -21,10 +31,19 @@ interface DashboardProps {
   isGameActive?: boolean;
 }
 
+type SortDirection = "asc" | "desc";
+
+type SortConfig = {
+  key: string;
+  direction: SortDirection;
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({
   gameConfig,
   isGameActive = false,
 }) => {
+  const navigate = useNavigate();
+  const popup = usePopup();
   const { t } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
   const [activeTab, setActiveTab] = useState<
@@ -47,6 +66,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [sortByTab, setSortByTab] = useState<Record<string, SortConfig>>({
+    games: { key: "date", direction: "desc" },
+    wins: { key: "date", direction: "desc" },
+    banned: { key: "date", direction: "desc" },
+    transactions: { key: "created_at", direction: "desc" },
+  });
 
   useEffect(() => {
     const reportDateFilters = (() => {
@@ -98,22 +123,117 @@ export const Dashboard: React.FC<DashboardProps> = ({
     rangeEnd,
   ]);
 
-  const filteredGameHistory = useMemo(
-    () => reportData.game_history,
-    [reportData.game_history],
-  );
-  const filteredWinHistory = useMemo(
-    () => reportData.win_history,
-    [reportData.win_history],
-  );
-  const filteredBanned = useMemo(
-    () => reportData.banned_cartellas,
-    [reportData.banned_cartellas],
-  );
-  const filteredTransactions = useMemo(
-    () => reportData.transactions,
-    [reportData.transactions],
-  );
+  const filteredGameHistory = useMemo(() => {
+    const config = sortByTab.games;
+    const items = [...reportData.game_history];
+    items.sort((a, b) => {
+      const direction = config.direction === "asc" ? 1 : -1;
+      if (config.key === "players") {
+        return (a.players - b.players) * direction;
+      }
+      if (config.key === "total_pool") {
+        return (
+          (Number.parseFloat(a.total_pool || "0") -
+            Number.parseFloat(b.total_pool || "0")) *
+          direction
+        );
+      }
+      if (config.key === "shop_cut") {
+        return (
+          (Number.parseFloat(a.shop_cut || "0") -
+            Number.parseFloat(b.shop_cut || "0")) *
+          direction
+        );
+      }
+      if (config.key === "date") {
+        return (
+          (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
+        );
+      }
+      return (
+        String((a as any)[config.key] || "").localeCompare(
+          String((b as any)[config.key] || ""),
+        ) * direction
+      );
+    });
+    return items;
+  }, [reportData.game_history, sortByTab.games]);
+
+  const filteredWinHistory = useMemo(() => {
+    const config = sortByTab.wins;
+    const items = [...reportData.win_history];
+    items.sort((a, b) => {
+      const direction = config.direction === "asc" ? 1 : -1;
+      if (config.key === "payout_amount") {
+        return (
+          (Number.parseFloat(a.payout_amount || "0") -
+            Number.parseFloat(b.payout_amount || "0")) *
+          direction
+        );
+      }
+      if (config.key === "date") {
+        return (
+          (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
+        );
+      }
+      return (
+        String((a as any)[config.key] || "").localeCompare(
+          String((b as any)[config.key] || ""),
+        ) * direction
+      );
+    });
+    return items;
+  }, [reportData.win_history, sortByTab.wins]);
+
+  const filteredBanned = useMemo(() => {
+    const config = sortByTab.banned;
+    const items = [...reportData.banned_cartellas];
+    items.sort((a, b) => {
+      const direction = config.direction === "asc" ? 1 : -1;
+      if (config.key === "cartella_index") {
+        return (a.cartella_index - b.cartella_index) * direction;
+      }
+      if (config.key === "date") {
+        return (
+          (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
+        );
+      }
+      return (
+        String((a as any)[config.key] || "").localeCompare(
+          String((b as any)[config.key] || ""),
+        ) * direction
+      );
+    });
+    return items;
+  }, [reportData.banned_cartellas, sortByTab.banned]);
+
+  const filteredTransactions = useMemo(() => {
+    const config = sortByTab.transactions;
+    const items = [...reportData.transactions];
+    items.sort((a, b) => {
+      const direction = config.direction === "asc" ? 1 : -1;
+      if (["amount", "balance_before", "balance_after"].includes(config.key)) {
+        return (
+          (Number.parseFloat((a as any)[config.key] || "0") -
+            Number.parseFloat((b as any)[config.key] || "0")) *
+          direction
+        );
+      }
+      if (config.key === "created_at") {
+        return (
+          (new Date(a.created_at).getTime() -
+            new Date(b.created_at).getTime()) *
+          direction
+        );
+      }
+      return (
+        String((a as any)[config.key] || "").localeCompare(
+          String((b as any)[config.key] || ""),
+        ) * direction
+      );
+    });
+    return items;
+  }, [reportData.transactions, sortByTab.transactions]);
 
   const gamesToday = filteredGameHistory.length;
   const earningToday = filteredGameHistory.reduce(
@@ -166,6 +286,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
     reportData.win_history.length === 0 &&
     reportData.banned_cartellas.length === 0 &&
     reportData.transactions.length === 0;
+
+  const openGameWithConfirm = async (gameId?: string | null) => {
+    if (!gameId) return;
+    const confirmed = await popup.confirm({
+      title: "Open game",
+      description: `You are about to open game ${gameId} in Playground. Continue?`,
+      confirmText: "Open",
+      cancelText: "Cancel",
+    });
+
+    if (confirmed) {
+      navigate(`/playground?game=${encodeURIComponent(gameId)}`);
+    }
+  };
+
+  const toggleSort = (tab: keyof typeof sortByTab, key: string) => {
+    setSortByTab((prev) => {
+      const current = prev[tab];
+      if (current.key === key) {
+        return {
+          ...prev,
+          [tab]: {
+            key,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          },
+        };
+      }
+      return {
+        ...prev,
+        [tab]: { key, direction: "asc" },
+      };
+    });
+  };
+
+  const getSortIcon = (tab: keyof typeof sortByTab, key: string) => {
+    const current = sortByTab[tab];
+    if (current.key !== key) {
+      return <ArrowUpDown className="h-3.5 w-3.5" />;
+    }
+    return current.direction === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5" />
+    );
+  };
 
   if (isInitialLoading) {
     return (
@@ -376,11 +541,43 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
                     <th className="px-3 py-2">Game</th>
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2">Players</th>
-                    <th className="px-3 py-2">Pool</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("games", "date")}
+                      >
+                        Date {getSortIcon("games", "date")}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("games", "players")}
+                      >
+                        Players {getSortIcon("games", "players")}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("games", "total_pool")}
+                      >
+                        Pool {getSortIcon("games", "total_pool")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Winner</th>
-                    <th className="px-3 py-2">Shop Cut</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("games", "shop_cut")}
+                      >
+                        Shop Cut {getSortIcon("games", "shop_cut")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Status</th>
                   </tr>
                 </thead>
@@ -391,7 +588,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       className="border-b border-slate-100 dark:border-slate-800"
                     >
                       <td className="px-3 py-2 font-semibold">
-                        {game.game_id}
+                        <button
+                          type="button"
+                          onClick={() => void openGameWithConfirm(game.game_id)}
+                          className="cursor-pointer text-red-700 underline-offset-2 hover:underline dark:text-red-300"
+                        >
+                          {game.game_id}
+                        </button>
                       </td>
                       <td className="px-3 py-2">
                         {new Date(game.date).toLocaleString()}
@@ -420,10 +623,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
                     <th className="px-3 py-2">Game</th>
-                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("wins", "date")}
+                      >
+                        Date {getSortIcon("wins", "date")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Winners</th>
                     <th className="px-3 py-2">Pattern</th>
-                    <th className="px-3 py-2">Payout</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("wins", "payout_amount")}
+                      >
+                        Payout {getSortIcon("wins", "payout_amount")}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -432,7 +651,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       key={`${win.game_id}-${win.date}`}
                       className="border-b border-slate-100 dark:border-slate-800"
                     >
-                      <td className="px-3 py-2 font-semibold">{win.game_id}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => void openGameWithConfirm(win.game_id)}
+                          className="cursor-pointer text-red-700 underline-offset-2 hover:underline dark:text-red-300"
+                        >
+                          {win.game_id}
+                        </button>
+                      </td>
                       <td className="px-3 py-2">
                         {new Date(win.date).toLocaleString()}
                       </td>
@@ -456,8 +683,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
                     <th className="px-3 py-2">Game</th>
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2">Cartella</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("banned", "date")}
+                      >
+                        Date {getSortIcon("banned", "date")}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("banned", "cartella_index")}
+                      >
+                        Cartella {getSortIcon("banned", "cartella_index")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Status</th>
                   </tr>
                 </thead>
@@ -468,7 +711,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       className="border-b border-slate-100 dark:border-slate-800"
                     >
                       <td className="px-3 py-2 font-semibold">
-                        {item.game_id}
+                        <button
+                          type="button"
+                          onClick={() => void openGameWithConfirm(item.game_id)}
+                          className="cursor-pointer text-red-700 underline-offset-2 hover:underline dark:text-red-300"
+                        >
+                          {item.game_id}
+                        </button>
                       </td>
                       <td className="px-3 py-2">
                         {new Date(item.date).toLocaleString()}
@@ -489,12 +738,48 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
-                    <th className="px-3 py-2">Time</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("transactions", "created_at")}
+                      >
+                        Time {getSortIcon("transactions", "created_at")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Game</th>
                     <th className="px-3 py-2">Type</th>
-                    <th className="px-3 py-2">Amount</th>
-                    <th className="px-3 py-2">Before</th>
-                    <th className="px-3 py-2">After</th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() => toggleSort("transactions", "amount")}
+                      >
+                        Amount {getSortIcon("transactions", "amount")}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() =>
+                          toggleSort("transactions", "balance_before")
+                        }
+                      >
+                        Before {getSortIcon("transactions", "balance_before")}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 whitespace-nowrap"
+                        onClick={() =>
+                          toggleSort("transactions", "balance_after")
+                        }
+                      >
+                        After {getSortIcon("transactions", "balance_after")}
+                      </button>
+                    </th>
                     <th className="px-3 py-2">Reference</th>
                   </tr>
                 </thead>
@@ -507,7 +792,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <td className="px-3 py-2">
                         {new Date(tx.created_at).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2">{tx.game_id || "-"}</td>
+                      <td className="px-3 py-2">
+                        {tx.game_id ? (
+                          <button
+                            type="button"
+                            onClick={() => void openGameWithConfirm(tx.game_id)}
+                            className="cursor-pointer text-red-700 underline-offset-2 hover:underline dark:text-red-300"
+                          >
+                            {tx.game_id}
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td className="px-3 py-2">{tx.type}</td>
                       <td className="px-3 py-2">{formatCurrency(tx.amount)}</td>
                       <td className="px-3 py-2">

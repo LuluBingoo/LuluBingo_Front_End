@@ -101,6 +101,8 @@ import {
   Settings,
   Trophy,
   Circle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -109,11 +111,13 @@ import { useLanguage } from "../contexts/LanguageContext";
 interface SidebarProps {
   isGameActive?: boolean;
   isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isGameActive = false,
   isCollapsed = false,
+  onToggleCollapse,
 }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -134,16 +138,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
       animate={{ x: 0 }}
       transition={{ type: "spring", stiffness: 100 }}
     >
+      {isCollapsed && (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="fixed top-4 left-25 z-80 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-md transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          aria-label={t("header.toggleSidebar")}
+          title={t("header.toggleSidebar")}
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      )}
+
       {/* LOGO */}
       <div className="mb-6 flex items-center justify-between gap-2 px-2">
         <div className="flex items-center gap-2">
           <Trophy className="h-6 w-6 text-red-700 max-sm:mx-auto" />
-          <h2
-            className={`text-lg font-bold text-red-700 max-sm:hidden ${isCollapsed ? "hidden" : "block"}`}
-          >
-            LULU Bingo
-          </h2>
         </div>
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            aria-label={t("header.toggleSidebar")}
+            title={t("header.toggleSidebar")}
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="mb-2 h-px bg-slate-200 dark:bg-slate-700" />

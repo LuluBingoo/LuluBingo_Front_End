@@ -198,17 +198,26 @@ function AppLayout({
         const profile = await shopApi.getProfile();
         if (!isMounted) return;
 
+        const savedLanguage = localStorage.getItem("language");
+        const savedTheme = localStorage.getItem("theme");
+
         const flags =
           profile.feature_flags && typeof profile.feature_flags === "object"
             ? profile.feature_flags
             : {};
 
-        if (flags.language === "en" || flags.language === "am") {
+        if (
+          !savedLanguage &&
+          (flags.language === "en" || flags.language === "am")
+        ) {
           setLanguage(flags.language);
           localStorage.setItem("language", flags.language);
         }
 
-        if (flags.theme === "light" || flags.theme === "dark") {
+        if (
+          !savedTheme &&
+          (flags.theme === "light" || flags.theme === "dark")
+        ) {
           setTheme(flags.theme);
           localStorage.setItem("theme", flags.theme);
         }
@@ -275,7 +284,11 @@ function AppLayout({
     <div className="relative flex min-h-screen overflow-hidden bg-white dark:bg-slate-950">
       <BackgroundEffects />
       {!isPlaygroundFullscreen && (
-        <Sidebar isGameActive={isGameActive} isCollapsed={isSidebarCollapsed} />
+        <Sidebar
+          isGameActive={isGameActive}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        />
       )}
       <div
         className={`relative z-10 flex flex-1 flex-col ${isPlaygroundFullscreen ? "ml-0" : `max-md:ml-50 max-sm:ml-17.5 ${isSidebarCollapsed ? "ml-22" : "ml-62.5"}`}`}
@@ -285,7 +298,6 @@ function AppLayout({
             onLogout={onLogout}
             username={username}
             sidebarCollapsed={isSidebarCollapsed}
-            onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
           />
         )}
         <main

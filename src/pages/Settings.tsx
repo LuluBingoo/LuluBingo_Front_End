@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Bell, Lock, Globe, Palette, Moon, Sun } from "lucide-react";
 import { Card } from "../components/ui/card";
@@ -44,6 +44,7 @@ export const Settings: React.FC = () => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
+  const featureFlagsRef = useRef<Record<string, any>>({});
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -60,6 +61,27 @@ export const Settings: React.FC = () => {
     setNewPassword("");
     setConfirmPassword("");
     setPasswordOtp("");
+  };
+
+  const persistFeatureFlagsPatch = async (
+    patch: Record<string, any>,
+    errorMessage: string,
+  ) => {
+    const nextFlags = {
+      ...featureFlagsRef.current,
+      ...patch,
+    };
+    featureFlagsRef.current = nextFlags;
+    setFeatureFlags(nextFlags);
+
+    try {
+      await shopApi.updateProfile({
+        feature_flags: nextFlags,
+      });
+    } catch (error) {
+      console.error("Failed to auto-save feature flags", error);
+      popup.error(errorMessage);
+    }
   };
 
   useEffect(() => {
@@ -80,6 +102,7 @@ export const Settings: React.FC = () => {
         setPassword2faMethod((methods[0] as TwoFactorMethod) || "totp");
 
         setFeatureFlags(flags);
+        featureFlagsRef.current = flags;
         setNotifications(Boolean(flags.push_notifications ?? true));
         setEmailAlerts(Boolean(flags.email_alerts ?? true));
         setAutoBackup(Boolean(flags.auto_backup ?? false));
@@ -447,9 +470,14 @@ export const Settings: React.FC = () => {
                   </div>
                   <Select
                     value={language}
-                    onValueChange={(value: string) => {
+                    onValueChange={async (value: string) => {
                       if (value === "en" || value === "am") {
                         setLanguage(value);
+                        localStorage.setItem("language", value);
+                        await persistFeatureFlagsPatch(
+                          { language: value },
+                          "Language changed locally, but backend sync failed.",
+                        );
                       }
                     }}
                   >
@@ -471,7 +499,17 @@ export const Settings: React.FC = () => {
                       {t("settings.currencyDesc")}
                     </p>
                   </div>
-                  <Select value={currency} onValueChange={setCurrency}>
+                  <Select
+                    value={currency}
+                    onValueChange={async (value) => {
+                      setCurrency(value);
+                      setCurrencySetting(value);
+                      await persistFeatureFlagsPatch(
+                        { currency: value },
+                        "Currency changed locally, but backend sync failed.",
+                      );
+                    }}
+                  >
                     <SelectTrigger className="w-45">
                       <SelectValue />
                     </SelectTrigger>
@@ -544,7 +582,14 @@ export const Settings: React.FC = () => {
                   </div>
                   <Select
                     value={autoCallSeconds}
-                    onValueChange={setAutoCallSeconds}
+                    onValueChange={async (value) => {
+                      setAutoCallSeconds(value);
+                      localStorage.setItem("autoCallSeconds", value);
+                      await persistFeatureFlagsPatch(
+                        { auto_call_seconds: Number.parseInt(value, 10) || 5 },
+                        "Auto-call timer changed locally, but backend sync failed.",
+                      );
+                    }}
                   >
                     <SelectTrigger className="w-45">
                       <SelectValue />
@@ -625,9 +670,15 @@ export const Settings: React.FC = () => {
                   <Button
                     variant="outline"
                     className="min-w-32"
-                    onClick={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
+                    onClick={async () => {
+                      const nextTheme = theme === "dark" ? "light" : "dark";
+                      setTheme(nextTheme);
+                      localStorage.setItem("theme", nextTheme);
+                      await persistFeatureFlagsPatch(
+                        { theme: nextTheme },
+                        "Theme changed locally, but backend sync failed.",
+                      );
+                    }}
                   >
                     {theme === "dark" ? (
                       <>

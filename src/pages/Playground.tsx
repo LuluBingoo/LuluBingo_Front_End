@@ -327,6 +327,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useLocation } from "react-router-dom";
 import {
   Shuffle,
   Play,
@@ -350,6 +351,7 @@ import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
 import { formatCurrency } from "../services/settings";
+import { Game } from "../services/types";
 
 interface PlaygroundProps {
   gameConfig?: {
@@ -378,9 +380,40 @@ export const Playground: React.FC<PlaygroundProps> = ({
   onCartelaRemoved,
   onFullscreenChange,
 }) => {
+  const location = useLocation();
   const { t } = useLanguage();
   const { theme } = useTheme();
   const popup = usePopup();
+  const [resolvedGameConfig, setResolvedGameConfig] = useState(gameConfig);
+  const [restoredGame, setRestoredGame] = useState<Game | null>(null);
+  const [isRestoringGame, setIsRestoringGame] = useState(false);
+  const [isOpeningPlayground, setIsOpeningPlayground] = useState(false);
+  const resumeGameCode = React.useMemo(
+    () => new URLSearchParams(location.search).get("game")?.trim() || "",
+    [location.search],
+  );
+  const currentGameConfig = resolvedGameConfig ?? gameConfig;
+
+  const buildConfigFromGame = React.useCallback((game: Game) => {
+    const fallbackCartelaNumbers = Array.from(
+      { length: game.cartella_numbers?.length || 0 },
+      (_, index) => String(index + 1),
+    );
+
+    return {
+      game: game.game_code,
+      gameCode: game.game_code,
+      betBirr: game.bet_amount,
+      numPlayers: String(game.num_players),
+      winBirr: game.win_amount,
+      selectedPatterns: [],
+      cartelaNumbers: fallbackCartelaNumbers,
+      cartelaData: game.cartella_numbers,
+      drawSequence: game.draw_sequence,
+      cartellaStatuses: game.cartella_statuses || {},
+      backendStatus: game.status,
+    };
+  }, []);
 
   const configuredAutoCallSeconds = Number.parseInt(
     localStorage.getItem("autoCallSeconds") || "5",
@@ -450,20 +483,105 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
 
-  // Initialize game if config exists
   useEffect(() => {
-    if (gameConfig && !isGameActive) {
-      setIsGameActive(true);
-      setGameStatus((gameConfig.backendStatus as any) || "pending");
-      setActiveCartelas(gameConfig.cartelaNumbers || []);
-      setServerCartelaOrder(gameConfig.cartelaNumbers || []);
-      setCartellaStatuses(gameConfig.cartellaStatuses || {});
-      setDrawSequence(gameConfig.drawSequence || []);
-      setDrawCursor(0);
-      onGameStateChange?.(gameConfig.backendStatus === "active");
-      console.log("Game config loaded:", gameConfig);
+    if (gameConfig) {
+      setResolvedGameConfig(gameConfig);
     }
   }, [gameConfig]);
+
+  useEffect(() => {
+    if (!resumeGameCode) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const restoreGame = async () => {
+      setIsRestoringGame(true);
+      try {
+        const [game, state] = await Promise.all([
+          gamesApi.getGame(resumeGameCode),
+          gamesApi.getGameState(resumeGameCode),
+        ]);
+        if (!isMounted) return;
+
+        const config = buildConfigFromGame(game);
+        config.backendStatus = state.status;
+
+        setResolvedGameConfig(config);
+        setRestoredGame(game);
+        setGameStatus(state.status as any);
+        setIsGameActive(
+          state.status === "active" || state.status === "pending",
+        );
+        setActiveCartelas(config.cartelaNumbers || []);
+        setServerCartelaOrder(config.cartelaNumbers || []);
+        setCartellaStatuses(
+          state.cartella_statuses || game.cartella_statuses || {},
+        );
+        setDrawSequence(game.draw_sequence || []);
+        setDrawCursor(state.call_cursor || 0);
+        setCalledNumbers(state.called_numbers || []);
+
+        if (state.current_called_number) {
+          setCurrentCalledNumber(
+            state.current_called_formatted ||
+              mapNumberToLabel(state.current_called_number),
+          );
+        } else {
+          setCurrentCalledNumber("");
+        }
+
+        onGameStateChange?.(state.status === "active");
+      } catch (error) {
+        console.error("Failed to restore game", error);
+        popup.error(`Could not load game ${resumeGameCode}.`);
+      } finally {
+        if (isMounted) {
+          setIsRestoringGame(false);
+        }
+      }
+    };
+
+    void restoreGame();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resumeGameCode, buildConfigFromGame, onGameStateChange]);
+
+  useEffect(() => {
+    if (!currentGameConfig || resumeGameCode) {
+      return;
+    }
+
+    setIsOpeningPlayground(true);
+    const timer = window.setTimeout(() => {
+      setIsOpeningPlayground(false);
+    }, 900);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [currentGameConfig?.gameCode, resumeGameCode]);
+
+  // Initialize game if config exists
+  useEffect(() => {
+    if (!currentGameConfig) {
+      return;
+    }
+
+    const status = (currentGameConfig.backendStatus as any) || "pending";
+    setGameStatus(status);
+    setIsGameActive(status === "active" || status === "pending");
+    setActiveCartelas(currentGameConfig.cartelaNumbers || []);
+    setServerCartelaOrder(currentGameConfig.cartelaNumbers || []);
+    setCartellaStatuses(currentGameConfig.cartellaStatuses || {});
+    setDrawSequence(currentGameConfig.drawSequence || []);
+    setDrawCursor(0);
+    onGameStateChange?.(status === "active");
+    console.log("Game config loaded:", currentGameConfig);
+  }, [currentGameConfig, onGameStateChange]);
 
   useEffect(() => {
     const saved = Number.parseInt(
@@ -477,19 +595,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Sync activeCartelas with gameConfig changes
   useEffect(() => {
-    if (gameConfig?.cartelaNumbers) {
-      setActiveCartelas(gameConfig.cartelaNumbers);
+    if (currentGameConfig?.cartelaNumbers) {
+      setActiveCartelas(currentGameConfig.cartelaNumbers);
     }
-  }, [gameConfig?.cartelaNumbers]);
+  }, [currentGameConfig?.cartelaNumbers]);
 
   const cartelaDataMap = React.useMemo(() => {
-    const numbers = gameConfig?.cartelaData || [];
+    const numbers = currentGameConfig?.cartelaData || [];
     const entries = serverCartelaOrder.map((cartelaNumber, index) => {
       const data = numbers[index] || [];
       return [cartelaNumber, data] as const;
     });
     return Object.fromEntries(entries);
-  }, [gameConfig?.cartelaData, serverCartelaOrder]);
+  }, [currentGameConfig?.cartelaData, serverCartelaOrder]);
 
   const normalizeCartelaNumber = (value: string | number): number | null => {
     const digits = String(value).replace(/\D/g, "");
@@ -637,10 +755,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
   );
 
   const syncGameState = async () => {
-    if (!gameConfig?.gameCode || syncInFlightRef.current) return;
+    if (!currentGameConfig?.gameCode || syncInFlightRef.current) return;
     syncInFlightRef.current = true;
     try {
-      const state = await gamesApi.getGameState(gameConfig.gameCode);
+      const state = await gamesApi.getGameState(currentGameConfig.gameCode);
       setGameStatus(state.status as any);
       setCalledNumbers(state.called_numbers || []);
       if (state.current_called_number) {
@@ -675,13 +793,39 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   useEffect(() => {
-    if (!gameConfig?.gameCode) return;
+    if (!currentGameConfig?.gameCode) return;
     void syncGameState();
     const interval = window.setInterval(() => {
       void syncGameState();
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [gameConfig?.gameCode]);
+  }, [currentGameConfig?.gameCode]);
+
+  useEffect(() => {
+    if (
+      !currentGameConfig?.gameCode ||
+      (gameStatus !== "completed" && gameStatus !== "cancelled")
+    ) {
+      return;
+    }
+
+    let isMounted = true;
+    const loadFinishedGame = async () => {
+      try {
+        const game = await gamesApi.getGame(currentGameConfig.gameCode!);
+        if (isMounted) {
+          setRestoredGame(game);
+        }
+      } catch (error) {
+        console.error("Failed to fetch finished game details", error);
+      }
+    };
+
+    void loadFinishedGame();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentGameConfig?.gameCode, gameStatus]);
 
   // Auto-call functionality
   useEffect(() => {
@@ -722,7 +866,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Call one random number manually or via auto-call
   const callRandomNumber = async () => {
-    if (!gameConfig?.gameCode || isCallingNumber) return;
+    if (!currentGameConfig?.gameCode || isCallingNumber) return;
     if (gameStatus !== "active") {
       popup.info("Start the game first.");
       return;
@@ -730,7 +874,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     setIsCallingNumber(true);
     try {
-      const response = await gamesApi.nextGameCall(gameConfig.gameCode);
+      const response = await gamesApi.nextGameCall(currentGameConfig.gameCode);
       setCalledNumbers(response.called_numbers || []);
 
       const called =
@@ -786,8 +930,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     try {
-      if (gameConfig?.gameCode) {
-        const claim = await gamesApi.claimGame(gameConfig.gameCode, {
+      if (currentGameConfig?.gameCode) {
+        const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
           cartella_index: winnerIndex,
         });
 
@@ -818,6 +962,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setGameStatus("completed");
         setIsGameActive(false);
         setAutoCall(false);
+        setRestoredGame((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "completed",
+                winners: [...new Set([...(prev.winners || []), winnerIndex])],
+                winning_pattern: claim.pattern || prev.winning_pattern,
+                payout_amount: claim.payout_amount || prev.payout_amount,
+                shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
+                ended_at: prev.ended_at || new Date().toISOString(),
+              }
+            : prev,
+        );
         onGameStateChange?.(false);
         popup.success(
           `🎉 BINGO! Cartela ${cartelaNumber} WON!\nGame closed.${patternText}${payoutText}${cutText}`,
@@ -910,14 +1067,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
-    if (!gameConfig?.gameCode) {
+    if (!currentGameConfig?.gameCode) {
       popup.error("No backend game code found for validation.");
       return;
     }
 
     setIsCheckingCartela(true);
     try {
-      const claim = await gamesApi.claimGame(gameConfig.gameCode, {
+      const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: cartellaIndex,
       });
 
@@ -938,6 +1095,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setGameStatus("completed");
         setIsGameActive(false);
         setAutoCall(false);
+        setRestoredGame((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "completed",
+                winners: [...new Set([...(prev.winners || []), cartellaIndex])],
+                winning_pattern: claim.pattern || prev.winning_pattern,
+                payout_amount: claim.payout_amount || prev.payout_amount,
+                shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
+                ended_at: prev.ended_at || new Date().toISOString(),
+              }
+            : prev,
+        );
         onGameStateChange?.(false);
         popup.success(
           `🎉 BINGO${patternText}! Player with Cartela ${matchedCartela} WON!\nGame closed.${payoutText}${cutText}`,
@@ -962,20 +1132,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   // Stop the current game
-  const stopGame = async () => {
+  const closeGameWithoutWinner = async () => {
     if (isStoppingGame) return;
     const confirmed = await popup.confirm({
-      title: "Stop game",
-      description: "Are you sure you want to stop the current game?",
-      confirmText: "Stop",
-      cancelText: "Continue",
+      title: "Close without winner",
+      description: `You are about to close game ${currentGameConfig?.game || ""} without declaring any winner. The game will be cancelled and no payout will be made. Continue?`,
+      confirmText: "Close Without Winner",
+      cancelText: "Keep Playing",
     });
 
     if (confirmed) {
       setIsStoppingGame(true);
       try {
-        if (gameConfig?.gameCode) {
-          await gamesApi.completeGame(gameConfig.gameCode, {
+        if (currentGameConfig?.gameCode) {
+          await gamesApi.completeGame(currentGameConfig.gameCode, {
             status: "cancelled",
             winners: [],
           });
@@ -996,17 +1166,35 @@ export const Playground: React.FC<PlaygroundProps> = ({
       setCurrentCalledNumber("");
       setShowCartelaModal(false);
       setSelectedCartela("");
+      setRestoredGame((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "cancelled",
+              ended_at: prev.ended_at || new Date().toISOString(),
+            }
+          : prev,
+      );
       onGameStateChange?.(false);
     }
   };
 
   const startGame = async () => {
-    if (isStartingGame || !gameConfig?.gameCode) return;
+    if (isStartingGame || !currentGameConfig?.gameCode) return;
     setIsStartingGame(true);
     try {
-      await gamesApi.startGame(gameConfig.gameCode);
+      await gamesApi.startGame(currentGameConfig.gameCode);
       setGameStatus("active");
       setIsGameActive(true);
+      setRestoredGame((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "active",
+              started_at: prev.started_at || new Date().toISOString(),
+            }
+          : prev,
+      );
       setAutoCallTimer(
         Number.parseInt(localStorage.getItem("autoCallSeconds") || "5", 10) ||
           5,
@@ -1056,8 +1244,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const calculateWinMoney = () => {
-    if (gameConfig?.winBirr && gameConfig.winBirr !== "0") {
-      return parseInt(gameConfig.winBirr);
+    if (currentGameConfig?.winBirr && currentGameConfig.winBirr !== "0") {
+      return parseInt(currentGameConfig.winBirr);
     }
     return calledNumbers.length * 10;
   };
@@ -1160,6 +1348,65 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   return (
     <div className={`space-y-4 ${isFullscreen ? "p-0" : "p-6"}`}>
+      {(isRestoringGame || isOpeningPlayground) && (
+        <div className="fixed inset-0 z-2200 h-dvh w-dvw overflow-hidden bg-white dark:bg-slate-950">
+          <div className="absolute inset-0 backdrop-blur-md" />
+          <div className="relative flex h-full w-full items-center justify-center px-4">
+            <div className="w-[min(92vw,560px)] space-y-5 rounded-2xl border border-sky-200 bg-white/95 p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900/95">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-sky-700 dark:text-sky-300">
+                  Opening Playground...
+                </h3>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Loading game data and restoring called numbers.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Please wait...
+                </span>
+              </div>
+
+              <div className="relative h-16 overflow-hidden rounded-xl border border-sky-100 bg-linear-to-r from-sky-50 via-white to-indigo-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+                <motion.div
+                  className="absolute inset-y-0 left-0 flex items-center gap-2 px-2"
+                  animate={{ x: [0, -280] }}
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                >
+                  {[
+                    "B-07",
+                    "I-19",
+                    "N-42",
+                    "G-53",
+                    "O-71",
+                    "B-11",
+                    "I-27",
+                    "N-34",
+                    "G-60",
+                    "O-69",
+                    "B-07",
+                    "I-19",
+                  ].map((ball, index) => (
+                    <div
+                      key={`${ball}-${index}`}
+                      className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-sky-200 bg-white px-2 text-xs font-black text-sky-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-sky-200"
+                    >
+                      {ball}
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cartela Modal */}
       <CartelaModal
         isOpen={showCartelaModal}
@@ -1180,15 +1427,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
             <span className="mr-1 text-xs uppercase text-slate-500">
               {t("playground.game")}
             </span>
-            <span className="font-semibold">{gameConfig?.game || "F-am"}</span>
+            <span className="font-semibold">
+              {currentGameConfig?.game || "F-am"}
+            </span>
           </div>
           <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
             <span className="mr-1 text-xs uppercase text-slate-500">
               {t("playground.stake")}
             </span>
             <span className="font-semibold">
-              {gameConfig?.betBirr
-                ? formatCurrency(gameConfig.betBirr)
+              {currentGameConfig?.betBirr
+                ? formatCurrency(currentGameConfig.betBirr)
                 : "BINGO"}
             </span>
           </div>
@@ -1216,6 +1465,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
             <div className="rounded-md bg-emerald-100 px-3 py-2 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
               <span className="mr-1 text-xs uppercase">Current:</span>
               <span className="font-semibold">{currentCalledNumber}</span>
+            </div>
+          )}
+          {isRestoringGame && (
+            <div className="rounded-md bg-sky-100 px-3 py-2 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+              <span className="text-xs uppercase font-semibold">
+                Loading game…
+              </span>
             </div>
           )}
         </div>
@@ -1259,6 +1515,93 @@ export const Playground: React.FC<PlaygroundProps> = ({
           </div>
         </Card>
       )}
+
+      {!isFullscreen &&
+        (gameStatus === "completed" || gameStatus === "cancelled") && (
+          <Card className="space-y-3 border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/50 dark:bg-amber-900/10">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Game Log
+            </h4>
+            <div className="grid gap-2 text-sm text-slate-700 dark:text-slate-200 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <span className="text-slate-500">Game:</span>{" "}
+                <span className="font-semibold">
+                  {currentGameConfig?.game || "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Status:</span>{" "}
+                <span className="font-semibold capitalize">{gameStatus}</span>
+              </div>
+              <div>
+                <span className="text-slate-500">Players:</span>{" "}
+                <span className="font-semibold">
+                  {currentGameConfig?.numPlayers || "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Called Numbers:</span>{" "}
+                <span className="font-semibold">{calledNumbers.length}</span>
+              </div>
+              <div>
+                <span className="text-slate-500">Started:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.started_at
+                    ? new Date(restoredGame.started_at).toLocaleString()
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Ended:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.ended_at
+                    ? new Date(restoredGame.ended_at).toLocaleString()
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Winners:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.winners?.length
+                    ? restoredGame.winners
+                        .map((index) => `Cartela ${index}`)
+                        .join(", ")
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Pattern:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.winning_pattern || "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Total Pool:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.total_pool
+                    ? formatCurrency(restoredGame.total_pool)
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Payout:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.payout_amount
+                    ? formatCurrency(restoredGame.payout_amount)
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Shop Cut:</span>{" "}
+                <span className="font-semibold">
+                  {restoredGame?.shop_cut_amount
+                    ? formatCurrency(restoredGame.shop_cut_amount)
+                    : "-"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
 
       {/* Main content */}
       <div className="space-y-4">
@@ -1611,37 +1954,57 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   </motion.div>
                 )}
               </AnimatePresence>
-              <button
-                type="button"
-                onClick={() => {
-                  if (gameStatus === "active") {
-                    void callRandomNumber();
-                  } else if (gameStatus === "pending") {
-                    void startGame();
-                  }
-                }}
-                disabled={
-                  isCallingNumber ||
-                  isStartingGame ||
-                  isStoppingGame ||
-                  calledNumbers.length >= 75 ||
-                  gameStatus === "completed" ||
-                  gameStatus === "cancelled"
-                }
-                className="pointer-events-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-[0_0_25px_rgba(239,68,68,0.75)] transition hover:scale-105 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                title={gameStatus === "pending" ? "Start game" : "Call number"}
-                aria-label={
-                  gameStatus === "pending" ? "Start game" : "Call number"
-                }
-              >
-                {gameStatus === "pending" ? (
-                  <Play className="h-8 w-8" />
-                ) : (
-                  <span className="text-xs font-black tracking-wider">
-                    CALL
-                  </span>
+              <div className="pointer-events-auto flex items-center gap-2">
+                {(gameStatus === "active" || gameStatus === "pending") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void closeGameWithoutWinner();
+                    }}
+                    disabled={
+                      isStoppingGame || isCallingNumber || isStartingGame
+                    }
+                    className="inline-flex h-12 min-w-12 items-center justify-center rounded-full bg-slate-900 px-3 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    title="Close Without Winner"
+                    aria-label="Close Without Winner"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (gameStatus === "active") {
+                      void callRandomNumber();
+                    } else if (gameStatus === "pending") {
+                      void startGame();
+                    }
+                  }}
+                  disabled={
+                    isCallingNumber ||
+                    isStartingGame ||
+                    isStoppingGame ||
+                    calledNumbers.length >= 75 ||
+                    gameStatus === "completed" ||
+                    gameStatus === "cancelled"
+                  }
+                  className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-[0_0_25px_rgba(239,68,68,0.75)] transition hover:scale-105 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  title={
+                    gameStatus === "pending" ? "Start game" : "Call number"
+                  }
+                  aria-label={
+                    gameStatus === "pending" ? "Start game" : "Call number"
+                  }
+                >
+                  {gameStatus === "pending" ? (
+                    <Play className="h-8 w-8" />
+                  ) : (
+                    <span className="text-xs font-black tracking-wider">
+                      CALL
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -1683,14 +2046,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     {/* Stop game button */}
                     <Button
                       className="h-10 w-full"
-                      onClick={stopGame}
+                      onClick={closeGameWithoutWinner}
                       variant="destructive"
                       disabled={isStoppingGame || isCallingNumber}
                     >
                       <X className="mr-1 h-4 w-4" />
-                      {isStoppingGame
-                        ? "Stopping..."
-                        : t("playground.stopGame")}
+                      {isStoppingGame ? "Closing..." : "Close Without Winner"}
                     </Button>
                   </>
                 ) : gameStatus === "pending" ? (
@@ -1706,10 +2067,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     <Button
                       className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
                       onClick={startGame}
-                      disabled={isStartingGame}
+                      disabled={isStartingGame || isStoppingGame}
                     >
                       <Play className="mr-1 h-4 w-4" />
                       {isStartingGame ? "Starting..." : "Start Game"}
+                    </Button>
+                    <Button
+                      className="h-10 w-full"
+                      onClick={closeGameWithoutWinner}
+                      variant="destructive"
+                      disabled={isStoppingGame || isStartingGame}
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      {isStoppingGame ? "Closing..." : "Close Without Winner"}
                     </Button>
                   </>
                 ) : (
