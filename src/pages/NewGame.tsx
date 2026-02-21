@@ -808,7 +808,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-10 items-center justify-center rounded-md border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"}`}
+                        className={`relative flex h-10 items-center justify-center rounded-md border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:text-black"}`}
                         onClick={() => handleCartellaToggle(number)}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

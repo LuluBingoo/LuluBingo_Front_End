@@ -470,13 +470,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [winnerCelebration, setWinnerCelebration] = useState<{
     cartela: string;
     pattern?: string | null;
+    payoutAmount?: string | number | null;
+    shopCutAmount?: string | number | null;
   } | null>(null);
+  const [showWinnerLogButton, setShowWinnerLogButton] = useState(false);
   const [callStreak, setCallStreak] = useState(0);
   const [streakBoost, setStreakBoost] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [showFullscreenHud, setShowFullscreenHud] = useState(true);
   const [showRadialControls, setShowRadialControls] = useState(false);
   const boardContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const gameLogRef = React.useRef<HTMLDivElement | null>(null);
   const syncInFlightRef = React.useRef(false);
   const lastSyncErrorLogRef = React.useRef(0);
   const lastCallTimeRef = React.useRef(0);
@@ -688,6 +692,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const triggerWinnerCelebration = (
     cartelaNumber: string,
     pattern?: string | null,
+    payoutAmount?: string | number | null,
+    shopCutAmount?: string | number | null,
   ) => {
     const playWinnerCelebrationSound = () => {
       if (typeof window === "undefined") return;
@@ -725,9 +731,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }, 900);
     };
 
-    setWinnerCelebration({ cartela: cartelaNumber, pattern: pattern || null });
+    setWinnerCelebration({
+      cartela: cartelaNumber,
+      pattern: pattern || null,
+      payoutAmount: payoutAmount ?? null,
+      shopCutAmount: shopCutAmount ?? null,
+    });
     playWinnerCelebrationSound();
-    window.setTimeout(() => setWinnerCelebration(null), 4200);
   };
 
   const winnerConfetti = React.useMemo(
@@ -958,7 +968,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
           ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
           : "";
 
-        triggerWinnerCelebration(cartelaNumber, claim.pattern);
+        triggerWinnerCelebration(
+          cartelaNumber,
+          claim.pattern,
+          claim.payout_amount,
+          claim.shop_cut_amount,
+        );
         setGameStatus("completed");
         setIsGameActive(false);
         setAutoCall(false);
@@ -1091,7 +1106,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
           ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
           : "";
 
-        triggerWinnerCelebration(matchedCartela, claim.pattern);
+        triggerWinnerCelebration(
+          matchedCartela,
+          claim.pattern,
+          claim.payout_amount,
+          claim.shop_cut_amount,
+        );
         setGameStatus("completed");
         setIsGameActive(false);
         setAutoCall(false);
@@ -1254,6 +1274,23 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsFullscreen(!isFullscreen);
   };
 
+  const viewGameLog = () => {
+    setWinnerCelebration(null);
+    if (isFullscreen) {
+      setIsFullscreen(false);
+    }
+
+    window.setTimeout(
+      () => {
+        gameLogRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      },
+      isFullscreen ? 180 : 60,
+    );
+  };
+
   useEffect(() => {
     if (isFullscreen) {
       document.body.style.overflow = "hidden";
@@ -1264,6 +1301,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
       document.body.style.overflow = "auto";
     };
   }, [isFullscreen]);
+
+  useEffect(() => {
+    if (!winnerCelebration) {
+      setShowWinnerLogButton(false);
+      return;
+    }
+
+    setShowWinnerLogButton(false);
+    const timeoutId = window.setTimeout(() => {
+      setShowWinnerLogButton(true);
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [winnerCelebration]);
 
   useEffect(() => {
     onFullscreenChange?.(isFullscreen);
@@ -1518,89 +1569,91 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       {!isFullscreen &&
         (gameStatus === "completed" || gameStatus === "cancelled") && (
-          <Card className="space-y-3 border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/50 dark:bg-amber-900/10">
-            <h4 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Game Log
-            </h4>
-            <div className="grid gap-2 text-sm text-slate-700 dark:text-slate-200 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <span className="text-slate-500">Game:</span>{" "}
-                <span className="font-semibold">
-                  {currentGameConfig?.game || "-"}
-                </span>
+          <div ref={gameLogRef}>
+            <Card className="space-y-3 border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/50 dark:bg-amber-900/10">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                Game Log
+              </h4>
+              <div className="grid gap-2 text-sm text-slate-700 dark:text-slate-200 md:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <span className="text-slate-500">Game:</span>{" "}
+                  <span className="font-semibold">
+                    {currentGameConfig?.game || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Status:</span>{" "}
+                  <span className="font-semibold capitalize">{gameStatus}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Players:</span>{" "}
+                  <span className="font-semibold">
+                    {currentGameConfig?.numPlayers || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Called Numbers:</span>{" "}
+                  <span className="font-semibold">{calledNumbers.length}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Started:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.started_at
+                      ? new Date(restoredGame.started_at).toLocaleString()
+                      : "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Ended:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.ended_at
+                      ? new Date(restoredGame.ended_at).toLocaleString()
+                      : "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Winners:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.winners?.length
+                      ? restoredGame.winners
+                          .map((index) => `Cartela ${index}`)
+                          .join(", ")
+                      : "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Pattern:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.winning_pattern || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Total Pool:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.total_pool
+                      ? formatCurrency(restoredGame.total_pool)
+                      : "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Payout:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.payout_amount
+                      ? formatCurrency(restoredGame.payout_amount)
+                      : "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Shop Cut:</span>{" "}
+                  <span className="font-semibold">
+                    {restoredGame?.shop_cut_amount
+                      ? formatCurrency(restoredGame.shop_cut_amount)
+                      : "-"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-500">Status:</span>{" "}
-                <span className="font-semibold capitalize">{gameStatus}</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Players:</span>{" "}
-                <span className="font-semibold">
-                  {currentGameConfig?.numPlayers || "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Called Numbers:</span>{" "}
-                <span className="font-semibold">{calledNumbers.length}</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Started:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.started_at
-                    ? new Date(restoredGame.started_at).toLocaleString()
-                    : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Ended:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.ended_at
-                    ? new Date(restoredGame.ended_at).toLocaleString()
-                    : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Winners:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.winners?.length
-                    ? restoredGame.winners
-                        .map((index) => `Cartela ${index}`)
-                        .join(", ")
-                    : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Pattern:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.winning_pattern || "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Total Pool:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.total_pool
-                    ? formatCurrency(restoredGame.total_pool)
-                    : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Payout:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.payout_amount
-                    ? formatCurrency(restoredGame.payout_amount)
-                    : "-"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Shop Cut:</span>{" "}
-                <span className="font-semibold">
-                  {restoredGame?.shop_cut_amount
-                    ? formatCurrency(restoredGame.shop_cut_amount)
-                    : "-"}
-                </span>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         )}
 
       {/* Main content */}
@@ -1702,7 +1755,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     {numbers.map((num) => (
                       <motion.div
                         key={num}
-                        className={`flex cursor-pointer items-center justify-center rounded-xl border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-12 text-lg sm:h-14 sm:text-xl md:h-16 md:text-2xl" : "h-10 text-base sm:h-12 sm:text-lg md:h-14 md:text-xl") : "h-12 md:h-16 lg:h-20 text-lg md:text-xl lg:text-2xl"} ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600"}`}
+                        className={`flex cursor-pointer items-center justify-center rounded-xl border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-12 text-lg sm:h-14 sm:text-xl md:h-16 md:text-2xl" : "h-10 text-base sm:h-12 sm:text-lg md:h-14 md:text-xl") : "h-12 md:h-16 lg:h-20 text-lg md:text-xl lg:text-2xl"} ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:text-black"}`}
                         whileHover={{ scale: 1.1 }}
                         onClick={() => isGameActive && callSpecificNumber(num)}
                       >
@@ -1722,7 +1775,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="pointer-events-none fixed inset-0 z-[1400] flex items-center justify-center bg-black/55 px-4"
+              className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/55 px-4"
             >
               <motion.div
                 initial={{ scale: 0.6, y: 30, opacity: 0 }}
@@ -1731,6 +1784,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
                 transition={{ type: "spring", stiffness: 180, damping: 14 }}
                 className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
               >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 right-3 z-30 h-9 w-9 rounded-full bg-white/80 text-slate-700 hover:bg-white"
+                  onClick={() => setWinnerCelebration(null)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
                 <div className="pointer-events-none absolute inset-0">
                   {winnerConfetti.map((piece) => (
                     <motion.div
@@ -1774,9 +1835,109 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     Pattern: {winnerCelebration.pattern}
                   </div>
                 )}
-                <div className="mt-5 text-sm font-medium text-slate-700 sm:text-base">
-                  🎉 Congratulations to the winner!
+                <div className="mt-4 h-px w-full bg-amber-300/80" />
+                <div className="mt-4 rounded-2xl border border-amber-200/90 bg-white/70 p-4 text-left shadow-inner backdrop-blur-sm sm:p-5">
+                  <div className="mb-3 text-sm font-bold uppercase tracking-wide text-amber-700">
+                    Game Summary
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-800 sm:grid-cols-2 sm:gap-3 sm:text-base">
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Game Code
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {currentGameConfig?.gameCode ||
+                          currentGameConfig?.game ||
+                          "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Winner Cartela
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {winnerCelebration.cartela}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Total Players
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {Number.parseInt(
+                          currentGameConfig?.numPlayers || "0",
+                          10,
+                        ) || activeCartelas.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Bet / Player
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {formatCurrency(currentGameConfig?.betBirr || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Total Pool
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {formatCurrency(
+                          (Number.parseFloat(
+                            currentGameConfig?.betBirr || "0",
+                          ) || 0) *
+                            (Number.parseInt(
+                              currentGameConfig?.numPlayers || "0",
+                              10,
+                            ) || activeCartelas.length),
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-emerald-100/90 px-3 py-2">
+                      <span className="font-semibold text-emerald-700">
+                        Winner Payout
+                      </span>
+                      <span className="text-lg font-black text-emerald-700">
+                        {formatCurrency(
+                          winnerCelebration.payoutAmount ??
+                            currentGameConfig?.winBirr ??
+                            calculateWinMoney(),
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Shop Cut
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {formatCurrency(winnerCelebration.shopCutAmount ?? 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                      <span className="font-semibold text-slate-600">
+                        Numbers Called
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {calledNumbers.length}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                <div className="mt-4 text-sm font-medium text-slate-700 sm:text-base">
+                  🎉 Congratulations to the winner! Close this card using the X
+                  button.
+                </div>
+                {showWinnerLogButton && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      onClick={viewGameLog}
+                      className="bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      View Game Log
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}

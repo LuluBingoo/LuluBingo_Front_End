@@ -33,7 +33,6 @@ export const Settings: React.FC = () => {
   const popup = usePopup();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [featureFlags, setFeatureFlags] = useState<Record<string, any>>({});
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -45,6 +44,11 @@ export const Settings: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
   const featureFlagsRef = useRef<Record<string, any>>({});
+  const isHydratingRef = useRef(true);
+  const [saveStatus, setSaveStatus] = useState<
+    Record<string, "saving" | "saved" | null>
+  >({});
+  const saveStatusTimeoutsRef = useRef<Record<string, number>>({});
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,7 +70,15 @@ export const Settings: React.FC = () => {
   const persistFeatureFlagsPatch = async (
     patch: Record<string, any>,
     errorMessage: string,
+    settingKey?: string,
   ) => {
+    if (settingKey) {
+      setSaveStatus((prev) => ({ ...prev, [settingKey]: "saving" }));
+      if (saveStatusTimeoutsRef.current[settingKey]) {
+        window.clearTimeout(saveStatusTimeoutsRef.current[settingKey]);
+      }
+    }
+
     const nextFlags = {
       ...featureFlagsRef.current,
       ...patch,
@@ -78,10 +90,29 @@ export const Settings: React.FC = () => {
       await shopApi.updateProfile({
         feature_flags: nextFlags,
       });
+      if (settingKey) {
+        setSaveStatus((prev) => ({ ...prev, [settingKey]: "saved" }));
+        saveStatusTimeoutsRef.current[settingKey] = window.setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [settingKey]: null }));
+        }, 1400);
+      }
     } catch (error) {
       console.error("Failed to auto-save feature flags", error);
       popup.error(errorMessage);
+      if (settingKey) {
+        setSaveStatus((prev) => ({ ...prev, [settingKey]: null }));
+      }
     }
+  };
+
+  const renderSaveStatus = (key: string) => {
+    const status = saveStatus[key];
+    if (!status) return null;
+    return (
+      <span className="mt-1 inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        {status === "saving" ? "Saving..." : "Saved"}
+      </span>
+    );
   };
 
   useEffect(() => {
@@ -140,6 +171,7 @@ export const Settings: React.FC = () => {
         console.error("Failed to load settings", error);
         popup.error("Failed to load settings from backend.");
       } finally {
+        isHydratingRef.current = false;
         setIsLoading(false);
       }
     };
@@ -147,41 +179,57 @@ export const Settings: React.FC = () => {
     loadSettings();
   }, [popup, setLanguage]);
 
-  const handleSaveSettings = async () => {
-    setIsSaving(true);
-    try {
-      const updatedFlags = {
-        ...featureFlags,
-        push_notifications: notifications,
-        email_alerts: emailAlerts,
-        auto_backup: autoBackup,
-        currency,
-        language,
-        theme,
-        cut_percentage: Math.max(
-          0,
-          Math.min(100, Number.parseFloat(cutPercentage || "10") || 10),
-        ),
-        auto_call_seconds: Number.parseInt(autoCallSeconds, 10),
-      };
+  useEffect(() => {
+    if (isHydratingRef.current) return;
+    void persistFeatureFlagsPatch(
+      { push_notifications: notifications },
+      "Push notification setting changed locally, but backend sync failed.",
+      "notifications",
+    );
+  }, [notifications]);
 
-      await shopApi.updateProfile({
-        feature_flags: updatedFlags,
+  useEffect(() => {
+    if (isHydratingRef.current) return;
+    void persistFeatureFlagsPatch(
+      { email_alerts: emailAlerts },
+      "Email alert setting changed locally, but backend sync failed.",
+      "emailAlerts",
+    );
+  }, [emailAlerts]);
+
+  useEffect(() => {
+    if (isHydratingRef.current) return;
+    void persistFeatureFlagsPatch(
+      { auto_backup: autoBackup },
+      "Auto backup setting changed locally, but backend sync failed.",
+      "autoBackup",
+    );
+  }, [autoBackup]);
+
+  useEffect(() => {
+    if (isHydratingRef.current) return;
+    const timeoutId = window.setTimeout(() => {
+      const normalizedCut = Math.max(
+        0,
+        Math.min(100, Number.parseFloat(cutPercentage || "10") || 10),
+      );
+      void persistFeatureFlagsPatch(
+        { cut_percentage: normalizedCut },
+        "Cut percentage changed locally, but backend sync failed.",
+        "cutPercentage",
+      );
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [cutPercentage]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(saveStatusTimeoutsRef.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
       });
-
-      setFeatureFlags(updatedFlags);
-      localStorage.setItem("autoCallSeconds", autoCallSeconds);
-      setCurrencySetting(currency);
-      localStorage.setItem("language", language);
-      localStorage.setItem("theme", theme);
-      popup.success("Settings saved successfully.");
-    } catch (error) {
-      console.error("Failed to save settings", error);
-      popup.error("Failed to save settings.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    };
+  }, []);
 
   const handleSendPasswordOtp = async () => {
     if (isSendingPasswordOtp) return;
@@ -420,6 +468,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.pushNotificationsDesc")}
                     </p>
+                    {renderSaveStatus("notifications")}
                   </div>
                   <Switch
                     checked={notifications}
@@ -434,6 +483,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.emailAlertsDesc")}
                     </p>
+                    {renderSaveStatus("emailAlerts")}
                   </div>
                   <Switch
                     checked={emailAlerts}
@@ -467,6 +517,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.languageDesc")}
                     </p>
+                    {renderSaveStatus("language")}
                   </div>
                   <Select
                     value={language}
@@ -477,6 +528,7 @@ export const Settings: React.FC = () => {
                         await persistFeatureFlagsPatch(
                           { language: value },
                           "Language changed locally, but backend sync failed.",
+                          "language",
                         );
                       }
                     }}
@@ -498,6 +550,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.currencyDesc")}
                     </p>
+                    {renderSaveStatus("currency")}
                   </div>
                   <Select
                     value={currency}
@@ -507,6 +560,7 @@ export const Settings: React.FC = () => {
                       await persistFeatureFlagsPatch(
                         { currency: value },
                         "Currency changed locally, but backend sync failed.",
+                        "currency",
                       );
                     }}
                   >
@@ -547,6 +601,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.autoBackupDesc")}
                     </p>
+                    {renderSaveStatus("autoBackup")}
                   </div>
                   <Switch
                     checked={autoBackup}
@@ -579,6 +634,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       Choose seconds between automatic calls.
                     </p>
+                    {renderSaveStatus("autoCallSeconds")}
                   </div>
                   <Select
                     value={autoCallSeconds}
@@ -588,6 +644,7 @@ export const Settings: React.FC = () => {
                       await persistFeatureFlagsPatch(
                         { auto_call_seconds: Number.parseInt(value, 10) || 5 },
                         "Auto-call timer changed locally, but backend sync failed.",
+                        "autoCallSeconds",
                       );
                     }}
                   >
@@ -610,6 +667,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       Deducted from total winner pool for each game.
                     </p>
+                    {renderSaveStatus("cutPercentage")}
                   </div>
                   <Input
                     type="number"
@@ -625,19 +683,15 @@ export const Settings: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {t("settings.saveSettings")}
+                      Auto Save
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-300">
-                      {t("settings.syncSettings")}
+                      All settings are saved automatically as you change them.
                     </p>
                   </div>
-                  <Button
-                    className="min-w-24"
-                    onClick={handleSaveSettings}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? t("settings.saving") : t("common.save")}
-                  </Button>
+                  <span className="rounded-md bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    Enabled
+                  </span>
                 </div>
               </div>
             </div>
@@ -666,6 +720,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {t("settings.themeModeDesc")}
                     </p>
+                    {renderSaveStatus("theme")}
                   </div>
                   <Button
                     variant="outline"
@@ -677,6 +732,7 @@ export const Settings: React.FC = () => {
                       await persistFeatureFlagsPatch(
                         { theme: nextTheme },
                         "Theme changed locally, but backend sync failed.",
+                        "theme",
                       );
                     }}
                   >
