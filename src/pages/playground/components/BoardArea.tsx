@@ -43,6 +43,8 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
   isGameActive,
   callSpecificNumber,
 }) => {
+  const isDarkTheme = theme === "dark";
+
   const decorativeParticles = React.useMemo(
     () =>
       Array.from({ length: 22 }, (_, index) => ({
@@ -75,15 +77,20 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
           <div
             className="absolute inset-0 opacity-45 dark:opacity-35"
             style={{
-              backgroundImage:
-                "radial-gradient(circle at 12% 18%, rgba(255,255,255,0.6) 0.9px, transparent 1.3px), radial-gradient(circle at 78% 42%, rgba(255,255,255,0.4) 1px, transparent 1.5px)",
+              backgroundImage: isDarkTheme
+                ? "radial-gradient(circle at 12% 18%, rgba(226,232,240,0.68) 0.9px, transparent 1.3px), radial-gradient(circle at 78% 42%, rgba(191,219,254,0.45) 1px, transparent 1.5px)"
+                : "radial-gradient(circle at 12% 18%, rgba(51,65,85,0.28) 0.9px, transparent 1.3px), radial-gradient(circle at 78% 42%, rgba(190,24,93,0.22) 1px, transparent 1.5px)",
               backgroundSize: "22px 22px, 28px 28px",
             }}
           />
           {decorativeParticles.map((particle) => (
             <motion.span
               key={particle.id}
-              className="absolute bottom-0 rounded-full bg-white/55 shadow-[0_0_10px_rgba(255,255,255,0.45)] dark:bg-sky-200/45"
+              className={`absolute bottom-0 rounded-full ${
+                isDarkTheme
+                  ? "bg-sky-200/45 shadow-[0_0_10px_rgba(186,230,253,0.42)]"
+                  : "bg-slate-600/38 shadow-[0_0_10px_rgba(51,65,85,0.28)]"
+              }`}
               style={{
                 left: particle.left,
                 width: `${particle.size}px`,

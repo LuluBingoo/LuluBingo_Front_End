@@ -83,7 +83,7 @@ export const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({
       {particleConfig.map((particle, index) => (
         <motion.div
           key={`${particle.left}-${particle.top}`}
-          className="absolute rounded-full bg-slate-400/35 dark:bg-slate-300/25"
+          className="absolute rounded-full bg-slate-500/45 dark:bg-slate-300/25"
           style={{
             left: particle.left,
             top: particle.top,
@@ -93,7 +93,7 @@ export const BackgroundEffects: React.FC<BackgroundEffectsProps> = ({
           animate={{
             y: [0, -14, 8, 0],
             x: [0, index % 2 === 0 ? 8 : -8, 0],
-            opacity: [0.2, 0.7, 0.3, 0.2],
+            opacity: [0.28, 0.82, 0.42, 0.28],
             scale: [1, 1.25, 0.9, 1],
           }}
           transition={{
