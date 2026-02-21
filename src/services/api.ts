@@ -339,6 +339,9 @@ export const gamesApi = {
     search?: string;
     status?: string;
     tx_type?: string;
+    start_date?: string;
+    end_date?: string;
+    days?: number;
   }): Promise<GameAuditReportResponse> {
     if (API_CONFIG.USE_MOCK) {
       return {
@@ -358,6 +361,15 @@ export const gamesApi = {
     }
     if (filters?.tx_type?.trim()) {
       params.set("tx_type", filters.tx_type.trim());
+    }
+    if (filters?.start_date?.trim()) {
+      params.set("start_date", filters.start_date.trim());
+    }
+    if (filters?.end_date?.trim()) {
+      params.set("end_date", filters.end_date.trim());
+    }
+    if (typeof filters?.days === "number" && filters.days > 0) {
+      params.set("days", String(filters.days));
     }
 
     const query = params.toString();

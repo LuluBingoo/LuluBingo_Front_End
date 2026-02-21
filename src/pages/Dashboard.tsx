@@ -24,12 +24,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isGameActive = false,
 }) => {
   const { t } = useLanguage();
+  const today = new Date().toISOString().split("T")[0];
   const [activeTab, setActiveTab] = useState<
     "games" | "wins" | "banned" | "transactions"
   >("games");
-  const [dateFilter, setDateFilter] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  const [dateFilterMode, setDateFilterMode] = useState<
+    "all" | "day" | "range" | "last7" | "last30"
+  >("all");
+  const [dayFilter, setDayFilter] = useState(today);
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [txTypeFilter, setTxTypeFilter] = useState("");
@@ -43,6 +47,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    const reportDateFilters = (() => {
+      if (dateFilterMode === "day") {
+        return dayFilter ? { start_date: dayFilter, end_date: dayFilter } : {};
+      }
+      if (dateFilterMode === "range") {
+        return {
+          start_date: rangeStart || undefined,
+          end_date: rangeEnd || undefined,
+        };
+      }
+      if (dateFilterMode === "last7") {
+        return { days: 7 };
+      }
+      if (dateFilterMode === "last30") {
+        return { days: 30 };
+      }
+      return {};
+    })();
+
     const loadReports = async () => {
       setLoading(true);
       setLoadError("");
@@ -51,6 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           search,
           status: statusFilter,
           tx_type: txTypeFilter,
+          ...reportDateFilters,
         });
         setReportData(data);
       } catch (error) {
@@ -62,43 +86,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
 
     loadReports();
-  }, [search, statusFilter, txTypeFilter]);
-
-  const isSameDate = (isoString: string, dateValue: string) => {
-    if (!dateValue) return true;
-    return new Date(isoString).toISOString().slice(0, 10) === dateValue;
-  };
+  }, [
+    search,
+    statusFilter,
+    txTypeFilter,
+    dateFilterMode,
+    dayFilter,
+    rangeStart,
+    rangeEnd,
+  ]);
 
   const filteredGameHistory = useMemo(
-    () =>
-      reportData.game_history.filter((item) =>
-        isSameDate(item.date, dateFilter),
-      ),
-    [reportData.game_history, dateFilter],
+    () => reportData.game_history,
+    [reportData.game_history],
   );
-
   const filteredWinHistory = useMemo(
-    () =>
-      reportData.win_history.filter((item) =>
-        isSameDate(item.date, dateFilter),
-      ),
-    [reportData.win_history, dateFilter],
+    () => reportData.win_history,
+    [reportData.win_history],
   );
-
   const filteredBanned = useMemo(
-    () =>
-      reportData.banned_cartellas.filter((item) =>
-        isSameDate(item.date, dateFilter),
-      ),
-    [reportData.banned_cartellas, dateFilter],
+    () => reportData.banned_cartellas,
+    [reportData.banned_cartellas],
   );
-
   const filteredTransactions = useMemo(
-    () =>
-      reportData.transactions.filter((item) =>
-        isSameDate(item.created_at, dateFilter),
-      ),
-    [reportData.transactions, dateFilter],
+    () => reportData.transactions,
+    [reportData.transactions],
   );
 
   const gamesToday = filteredGameHistory.length;
@@ -189,16 +201,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <option value="adjustment">Adjustment</option>
           </select>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-100 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
           <Calendar className="h-4 w-4 text-red-700" />
-          <input
-            type="date"
-            className="bg-transparent text-sm outline-none"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            title="Select date"
-            aria-label="Select date"
-          />
+          <select
+            value={dateFilterMode}
+            onChange={(e) => setDateFilterMode(e.target.value as any)}
+            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+            title="Filter period"
+            aria-label="Filter period"
+          >
+            <option value="all">All time</option>
+            <option value="day">Specific day</option>
+            <option value="last7">Last 7 days</option>
+            <option value="last30">Last 30 days</option>
+            <option value="range">Date range</option>
+          </select>
+
+          {dateFilterMode === "day" && (
+            <input
+              type="date"
+              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              title="Select day"
+              aria-label="Select day"
+            />
+          )}
+
+          {dateFilterMode === "range" && (
+            <>
+              <input
+                type="date"
+                className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                title="Range start"
+                aria-label="Range start"
+              />
+              <span className="text-xs text-slate-500">to</span>
+              <input
+                type="date"
+                className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900"
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                title="Range end"
+                aria-label="Range end"
+              />
+            </>
+          )}
         </div>
       </motion.div>
 
