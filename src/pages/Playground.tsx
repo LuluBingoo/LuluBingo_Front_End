@@ -1,22 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
-import {
-  Shuffle,
-  Play,
-  Check,
-  X,
-  Eye,
-  Maximize,
-  Minimize,
-  Flame,
-  Monitor,
-  MoreHorizontal,
-  Loader2,
-  Trophy,
-} from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -25,26 +11,19 @@ import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
 import { formatCurrency } from "../services/settings";
 import { Game } from "../services/types";
-
-interface PlaygroundProps {
-  gameConfig?: {
-    game: string;
-    betBirr: string;
-    numPlayers: string;
-    winBirr: string;
-    selectedPatterns: number[];
-    backendStatus?: "pending" | "active" | "completed" | "cancelled";
-    gameCode?: string;
-    cartelaNumbers?: string[];
-    cartelaData?: number[][];
-    drawSequence?: number[];
-    cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
-  } | null;
-  onStartNewGame?: () => void;
-  onGameStateChange?: (isActive: boolean) => void;
-  onCartelaRemoved?: (cartelaNumber: string) => void;
-  onFullscreenChange?: (isFullscreen: boolean) => void;
-}
+import { GameLogCard } from "./playground/components/GameLogCard";
+import { OpeningPlaygroundOverlay } from "./playground/components/OpeningPlaygroundOverlay";
+import { WinnerCelebrationModal } from "./playground/components/WinnerCelebrationModal";
+import { BoardArea } from "./playground/components/BoardArea";
+import { FullscreenControls } from "./playground/components/FullscreenControls";
+import { DesktopControlPanels } from "./playground/components/DesktopControlPanels";
+import { StatusOverlays } from "./playground/components/StatusOverlays";
+import {
+  GameStatus,
+  PlaygroundProps,
+  WinnerCelebration,
+  WinnerConfettiPiece,
+} from "./playground/types";
 
 export const Playground: React.FC<PlaygroundProps> = ({
   gameConfig,
@@ -102,9 +81,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       : 5,
   );
   const [currentCalledNumber, setCurrentCalledNumber] = useState<string>("");
-  const [gameStatus, setGameStatus] = useState<
-    "pending" | "active" | "completed" | "cancelled"
-  >("pending");
+  const [gameStatus, setGameStatus] = useState<GameStatus>("pending");
   const [isCallingNumber, setIsCallingNumber] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [isStoppingGame, setIsStoppingGame] = useState(false);
@@ -142,12 +119,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [showBallPopup, setShowBallPopup] = useState(false);
   const [ballPopupLabel, setBallPopupLabel] = useState("");
   const [shuffleCycle, setShuffleCycle] = useState(0);
-  const [winnerCelebration, setWinnerCelebration] = useState<{
-    cartela: string;
-    pattern?: string | null;
-    payoutAmount?: string | number | null;
-    shopCutAmount?: string | number | null;
-  } | null>(null);
+  const [winnerCelebration, setWinnerCelebration] =
+    useState<WinnerCelebration | null>(null);
   const [showWinnerLogButton, setShowWinnerLogButton] = useState(false);
   const [callStreak, setCallStreak] = useState(0);
   const [streakBoost, setStreakBoost] = useState(false);
@@ -161,8 +134,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
-  const shuffleSpeedLabel =
-    shuffleSpeedMs >= 340 ? "Slow" : shuffleSpeedMs <= 170 ? "Fast" : "Normal";
 
   useEffect(() => {
     if (gameConfig) {
@@ -417,7 +388,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     playWinnerCelebrationSound();
   };
 
-  const winnerConfetti = React.useMemo(
+  const winnerConfetti = React.useMemo<WinnerConfettiPiece[]>(
     () =>
       Array.from({ length: 44 }, (_, index) => {
         const colorClasses = [
@@ -1116,64 +1087,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   return (
     <div className={`space-y-4 ${isFullscreen ? "p-0" : "p-6"}`}>
-      {(isRestoringGame || isOpeningPlayground) && (
-        <div className="fixed inset-0 z-2200 h-dvh w-dvw overflow-hidden bg-white dark:bg-slate-950">
-          <div className="absolute inset-0 backdrop-blur-md" />
-          <div className="relative flex h-full w-full items-center justify-center px-4">
-            <div className="w-[min(92vw,560px)] space-y-5 rounded-2xl border border-sky-200 bg-white/95 p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900/95">
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-sky-700 dark:text-sky-300">
-                  Opening Playground...
-                </h3>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Loading game data and restoring called numbers.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Please wait...
-                </span>
-              </div>
-
-              <div className="relative h-16 overflow-hidden rounded-xl border border-sky-100 bg-linear-to-r from-sky-50 via-white to-indigo-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-                <motion.div
-                  className="absolute inset-y-0 left-0 flex items-center gap-2 px-2"
-                  animate={{ x: [0, -280] }}
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                >
-                  {[
-                    "B-07",
-                    "I-19",
-                    "N-42",
-                    "G-53",
-                    "O-71",
-                    "B-11",
-                    "I-27",
-                    "N-34",
-                    "G-60",
-                    "O-69",
-                    "B-07",
-                    "I-19",
-                  ].map((ball, index) => (
-                    <div
-                      key={`${ball}-${index}`}
-                      className="inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-sky-200 bg-white px-2 text-xs font-black text-sky-700 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-sky-200"
-                    >
-                      {ball}
-                    </div>
-                  ))}
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <OpeningPlaygroundOverlay
+        isVisible={isRestoringGame || isOpeningPlayground}
+      />
 
       {/* Cartela Modal */}
       <CartelaModal
@@ -1284,913 +1200,110 @@ export const Playground: React.FC<PlaygroundProps> = ({
         </Card>
       )}
 
-      {!isFullscreen &&
-        (gameStatus === "completed" || gameStatus === "cancelled") && (
-          <div ref={gameLogRef}>
-            <Card className="space-y-3 border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/50 dark:bg-amber-900/10">
-              <h4 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                Game Log
-              </h4>
-              <div className="grid gap-2 text-sm text-slate-700 dark:text-slate-200 md:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <span className="text-slate-500">Game:</span>{" "}
-                  <span className="font-semibold">
-                    {currentGameConfig?.game || "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Status:</span>{" "}
-                  <span className="font-semibold capitalize">{gameStatus}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Players:</span>{" "}
-                  <span className="font-semibold">
-                    {currentGameConfig?.numPlayers || "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Called Numbers:</span>{" "}
-                  <span className="font-semibold">{calledNumbers.length}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Started:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.started_at
-                      ? new Date(restoredGame.started_at).toLocaleString()
-                      : "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Ended:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.ended_at
-                      ? new Date(restoredGame.ended_at).toLocaleString()
-                      : "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Winners:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.winners?.length
-                      ? restoredGame.winners
-                          .map((index) => `Cartela ${index}`)
-                          .join(", ")
-                      : "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Pattern:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.winning_pattern || "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Total Pool:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.total_pool
-                      ? formatCurrency(restoredGame.total_pool)
-                      : "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Payout:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.payout_amount
-                      ? formatCurrency(restoredGame.payout_amount)
-                      : "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Shop Cut:</span>{" "}
-                  <span className="font-semibold">
-                    {restoredGame?.shop_cut_amount
-                      ? formatCurrency(restoredGame.shop_cut_amount)
-                      : "-"}
-                  </span>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
+      <GameLogCard
+        isFullscreen={isFullscreen}
+        gameStatus={gameStatus}
+        currentGameConfig={currentGameConfig}
+        restoredGame={restoredGame}
+        calledNumbersCount={calledNumbers.length}
+        gameLogRef={gameLogRef}
+      />
 
       {/* Main content */}
       <div className="space-y-4">
-        <div
-          ref={boardContainerRef}
-          className={`transition-all duration-300 ${
-            isFullscreen
-              ? theme === "dark"
-                ? "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-slate-900 via-slate-950 to-black p-2 sm:p-3 overflow-hidden"
-                : "fixed inset-0 z-1100 flex flex-col bg-linear-to-br from-white via-slate-50 to-white p-2 sm:p-3 overflow-hidden"
-              : "w-full"
-          }`}
-        >
-          <Card
-            className={`space-y-3 p-4 w-full ${isFullscreen ? "h-full border-0 bg-transparent p-0 shadow-none" : ""}`}
-          >
-            <div
-              className={`flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2 transition-all duration-300 ${
-                isFullscreen
-                  ? showFullscreenHud
-                    ? "opacity-100 translate-y-0"
-                    : "pointer-events-none -translate-y-3 opacity-0"
-                  : "opacity-100"
-              }`}
-            >
-              <h3
-                className={`text-lg font-semibold ${isFullscreen ? (theme === "dark" ? "text-white" : "text-slate-900") : "text-slate-900 dark:text-slate-100"}`}
-              >
-                Bingo Board
-              </h3>
-              {isFullscreen && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setIsTheaterMode((prev) => !prev)}
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold transition ${isTheaterMode ? "bg-indigo-400 text-slate-950" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                    title="Toggle TV mode"
-                    aria-label="Toggle TV mode"
-                  >
-                    <Monitor className="h-4 w-4" /> TV
-                  </button>
-                  <span className="rounded-full bg-red-600 px-3 py-1 font-bold text-white">
-                    {calledNumbers.length}/75 CALLED
-                  </span>
-                  <motion.span
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 font-bold text-slate-900"
-                    animate={
-                      streakBoost ? { scale: [1, 1.12, 1] } : { scale: 1 }
-                    }
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Flame className="h-4 w-4" /> x{callStreak}
-                  </motion.span>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                onClick={toggleFullscreen}
-                className={`h-9 ${isFullscreen ? (theme === "dark" ? "border-slate-600 bg-slate-900/60 text-white hover:bg-slate-800" : "border-slate-300 bg-white text-slate-900 hover:bg-slate-100") : ""}`}
-              >
-                {isFullscreen ? (
-                  <>
-                    <Minimize className="mr-1 h-4 w-4" />{" "}
-                    {t("playground.exitFullscreen")}
-                  </>
-                ) : (
-                  <>
-                    <Maximize className="mr-1 h-4 w-4" />{" "}
-                    {t("playground.fullscreen")}
-                  </>
-                )}
-              </Button>
-            </div>
+        <BoardArea
+          boardContainerRef={boardContainerRef}
+          isFullscreen={isFullscreen}
+          theme={theme}
+          showFullscreenHud={showFullscreenHud}
+          isTheaterMode={isTheaterMode}
+          setIsTheaterMode={setIsTheaterMode}
+          calledNumbersLength={calledNumbers.length}
+          streakBoost={streakBoost}
+          callStreak={callStreak}
+          toggleFullscreen={toggleFullscreen}
+          t={t}
+          isShuffling={isShuffling}
+          bingoRows={bingoRows}
+          calledNumbers={calledNumbers}
+          shuffleCycle={shuffleCycle}
+          isGameActive={isGameActive}
+          callSpecificNumber={callSpecificNumber}
+        />
 
-            <motion.div
-              className={`space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
-              animate={
-                isShuffling
-                  ? { scale: [1, 0.99, 1.01, 1], opacity: [1, 0.9, 1] }
-                  : { scale: 1, opacity: 1 }
-              }
-              transition={{ duration: 0.55 }}
-            >
-              {Object.entries(bingoRows).map(([letter, numbers]) => (
-                <div
-                  key={letter}
-                  className={`grid items-center gap-2 md:gap-4 ${isFullscreen ? (isTheaterMode ? "grid-cols-[72px_1fr] sm:grid-cols-[92px_1fr]" : "grid-cols-[52px_1fr] sm:grid-cols-[72px_1fr]") : "grid-cols-[64px_1fr] md:grid-cols-[80px_1fr]"}`}
-                >
-                  <motion.div
-                    className={`flex items-center justify-center rounded-xl bg-red-700 font-black text-white shadow-md w-full ${isFullscreen ? (isTheaterMode ? "h-14 text-3xl sm:h-18 sm:text-4xl" : "h-11 text-2xl sm:h-14 sm:text-3xl") : "h-12 md:h-16 lg:h-20 text-3xl md:text-4xl lg:text-5xl"}`}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {letter}
-                  </motion.div>
-                  <div
-                    className={`grid gap-2 md:gap-3 grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15`}
-                  >
-                    {numbers.map((num) => (
-                      <motion.div
-                        key={num}
-                        layout
-                        className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbers.includes(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-slate-900" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-black"}`}
-                        animate={
-                          isShuffling
-                            ? {
-                                x: [
-                                  0,
-                                  ((num * 7 + shuffleCycle * 11) % 29) - 14,
-                                  ((num * 13 + shuffleCycle * 5) % 31) - 15,
-                                  -(((num * 13 + shuffleCycle * 5) % 31) - 15) /
-                                    2,
-                                  0,
-                                ],
-                                y: [
-                                  0,
-                                  ((num * 11 + shuffleCycle * 3) % 21) - 10,
-                                  ((num * 5 + shuffleCycle * 17) % 23) - 11,
-                                  -(((num * 5 + shuffleCycle * 17) % 23) - 11) /
-                                    2,
-                                  0,
-                                ],
-                                rotate: [
-                                  0,
-                                  ((num * 3 + shuffleCycle * 9) % 34) - 17,
-                                  -(((num * 3 + shuffleCycle * 9) % 34) - 17) /
-                                    2,
-                                  0,
-                                ],
-                                scale: [1, 1.1, 0.94, 1.04, 1],
-                              }
-                            : { x: 0, y: 0, rotate: 0, scale: 1 }
-                        }
-                        whileHover={{ scale: 1.1 }}
-                        transition={{
-                          layout: {
-                            type: "spring",
-                            stiffness: 320,
-                            damping: 24,
-                          },
-                          duration: isShuffling ? 0.22 : 0.18,
-                          ease: "easeInOut",
-                        }}
-                        onClick={() => isGameActive && callSpecificNumber(num)}
-                      >
-                        {num}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          </Card>
-        </div>
+        <WinnerCelebrationModal
+          winnerCelebration={winnerCelebration}
+          winnerConfetti={winnerConfetti}
+          currentGameConfig={currentGameConfig}
+          activeCartelasCount={activeCartelas.length}
+          calledNumbersCount={calledNumbers.length}
+          showWinnerLogButton={showWinnerLogButton}
+          calculateWinMoney={calculateWinMoney}
+          onClose={() => setWinnerCelebration(null)}
+          onViewGameLog={viewGameLog}
+        />
 
-        <AnimatePresence>
-          {winnerCelebration && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/55 px-4"
-            >
-              <motion.div
-                initial={{ scale: 0.6, y: 30, opacity: 0 }}
-                animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.85, y: 20, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-3 z-30 h-9 w-9 rounded-full bg-white/80 text-slate-700 hover:bg-white"
-                  onClick={() => setWinnerCelebration(null)}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-                <div className="pointer-events-none absolute inset-0">
-                  {winnerConfetti.map((piece) => (
-                    <motion.div
-                      key={piece.id}
-                      className={`absolute top-[-18px] left-1/2 rounded-sm ${piece.colorClass}`}
-                      style={{
-                        width: `${piece.size}px`,
-                        height: `${Math.max(5, piece.size - 1)}px`,
-                        marginLeft: `${piece.startX - 50}%`,
-                      }}
-                      initial={{ opacity: 0, y: -25, x: 0, rotate: 0 }}
-                      animate={{
-                        opacity: [0, 1, 1, 0.9, 0],
-                        y: [0, 45, 130, 250, 390],
-                        x: [0, piece.driftX * 0.35, piece.driftX],
-                        rotate: [0, piece.rotate],
-                      }}
-                      transition={{
-                        duration: piece.duration,
-                        delay: piece.delay,
-                        ease: "easeOut",
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24">
-                  <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
-                </div>
-                <motion.div
-                  animate={{ scale: [1, 1.06, 1] }}
-                  transition={{ duration: 1.1, repeat: 2 }}
-                  className="text-4xl font-black tracking-tight text-amber-700 sm:text-6xl"
-                >
-                  BINGO!
-                </motion.div>
-                <div className="mt-3 text-xl font-bold text-slate-900 sm:text-3xl">
-                  Cartela {winnerCelebration.cartela} WINS
-                </div>
-                {winnerCelebration.pattern && (
-                  <div className="mt-2 text-sm font-semibold uppercase tracking-wider text-amber-700 sm:text-base">
-                    Pattern: {winnerCelebration.pattern}
-                  </div>
-                )}
-                <div className="mt-4 h-px w-full bg-amber-300/80" />
-                <div className="mt-4 rounded-2xl border border-amber-200/90 bg-white/70 p-4 text-left shadow-inner backdrop-blur-sm sm:p-5">
-                  <div className="mb-3 text-sm font-bold uppercase tracking-wide text-amber-700">
-                    Game Summary
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-800 sm:grid-cols-2 sm:gap-3 sm:text-base">
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Game Code
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {currentGameConfig?.gameCode ||
-                          currentGameConfig?.game ||
-                          "-"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Winner Cartela
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {winnerCelebration.cartela}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Total Players
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {Number.parseInt(
-                          currentGameConfig?.numPlayers || "0",
-                          10,
-                        ) || activeCartelas.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Bet / Player
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {formatCurrency(currentGameConfig?.betBirr || 0)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Total Pool
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {formatCurrency(
-                          (Number.parseFloat(
-                            currentGameConfig?.betBirr || "0",
-                          ) || 0) *
-                            (Number.parseInt(
-                              currentGameConfig?.numPlayers || "0",
-                              10,
-                            ) || activeCartelas.length),
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-emerald-100/90 px-3 py-2">
-                      <span className="font-semibold text-emerald-700">
-                        Winner Payout
-                      </span>
-                      <span className="text-lg font-black text-emerald-700">
-                        {formatCurrency(
-                          winnerCelebration.payoutAmount ??
-                            currentGameConfig?.winBirr ??
-                            calculateWinMoney(),
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Shop Cut
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {formatCurrency(winnerCelebration.shopCutAmount ?? 0)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
-                      <span className="font-semibold text-slate-600">
-                        Numbers Called
-                      </span>
-                      <span className="font-bold text-slate-900">
-                        {calledNumbers.length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 text-sm font-medium text-slate-700 sm:text-base">
-                  🎉 Congratulations to the winner! Close this card using the X
-                  button.
-                </div>
-                {showWinnerLogButton && (
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      onClick={viewGameLog}
-                      className="bg-amber-600 text-white hover:bg-amber-700"
-                    >
-                      View Game Log
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
+        <StatusOverlays
+          isCheckingCartela={isCheckingCartela}
+          showBallPopup={showBallPopup}
+          ballPopupLabel={ballPopupLabel}
+          isFullscreen={isFullscreen}
+        />
 
-          {isCheckingCartela && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[1350] flex items-center justify-center bg-black/40 px-4"
-            >
-              <motion.div
-                initial={{ scale: 0.9, y: 10, opacity: 0 }}
-                animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.95, y: 8, opacity: 0 }}
-                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-xl dark:border-slate-700 dark:bg-slate-900"
-              >
-                <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  Checking cartela...
-                </span>
-              </motion.div>
-            </motion.div>
-          )}
+        <FullscreenControls
+          isFullscreen={isFullscreen}
+          showFullscreenHud={showFullscreenHud}
+          theme={theme}
+          calledNumbersLength={calledNumbers.length}
+          gameStatus={gameStatus}
+          isShuffling={isShuffling}
+          shuffleSpeedMs={shuffleSpeedMs}
+          setShuffleSpeedMs={setShuffleSpeedMs}
+          shuffleNumbers={shuffleNumbers}
+          autoCall={autoCall}
+          setAutoCall={setAutoCall}
+          showRadialControls={showRadialControls}
+          setShowRadialControls={setShowRadialControls}
+          closeGameWithoutWinner={closeGameWithoutWinner}
+          isStoppingGame={isStoppingGame}
+          isCallingNumber={isCallingNumber}
+          isStartingGame={isStartingGame}
+          callRandomNumber={callRandomNumber}
+          startGame={startGame}
+        />
 
-          {showBallPopup && ballPopupLabel && (
-            <motion.div
-              key={ballPopupLabel}
-              initial={{ opacity: 0, scale: 0.35, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.2, y: -40 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
-            >
-              <motion.div
-                className={`${isFullscreen ? "h-48 w-48 text-7xl" : "h-40 w-40 text-6xl"} flex items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]`}
-                animate={{ rotate: [0, -4, 4, 0] }}
-                transition={{ duration: 0.35 }}
-              >
-                {ballPopupLabel}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Controls below board */}
-        {isFullscreen && (
-          <>
-            <div className="pointer-events-none fixed right-5 bottom-5 z-1150 flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
-              <AnimatePresence>
-                {showFullscreenHud && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur ${theme === "dark" ? "border border-slate-500/50 bg-slate-900/70 text-slate-100" : "border border-slate-300 bg-white/95 text-slate-700"}`}
-                  >
-                    Heat{" "}
-                    {Math.min(
-                      100,
-                      Math.round((calledNumbers.length / 75) * 100),
-                    )}
-                    %
-                  </motion.div>
-                )}
-                {showFullscreenHud &&
-                  gameStatus === "pending" &&
-                  isShuffling && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      className={`pointer-events-auto rounded-xl px-3 py-2 text-xs backdrop-blur ${theme === "dark" ? "border border-slate-500/50 bg-slate-900/70 text-slate-100" : "border border-slate-300 bg-white/95 text-slate-700"}`}
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="font-semibold">Shuffle Speed</span>
-                        <span className="text-[11px]">{shuffleSpeedLabel}</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setShuffleSpeedMs(420)}
-                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Slow" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-                        >
-                          Slow
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShuffleSpeedMs(230)}
-                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Normal" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-                        >
-                          Normal
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShuffleSpeedMs(140)}
-                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Fast" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-                        >
-                          Fast
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {showFullscreenHud ? (
-                  <motion.div
-                    key="expanded-controls"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="pointer-events-auto flex items-center gap-2"
-                  >
-                    <button
-                      type="button"
-                      onClick={shuffleNumbers}
-                      disabled={gameStatus !== "pending"}
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${isShuffling ? "bg-amber-500 text-slate-900 hover:bg-amber-400" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                      title={isShuffling ? "Stop shuffling" : "Shuffle"}
-                      aria-label={isShuffling ? "Stop shuffling" : "Shuffle"}
-                    >
-                      <Shuffle
-                        className={`h-5 w-5 ${isShuffling ? "animate-spin" : ""}`}
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (gameStatus === "active") {
-                          setAutoCall((prev) => !prev);
-                        }
-                      }}
-                      disabled={
-                        gameStatus !== "active" || calledNumbers.length >= 75
-                      }
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
-                        autoCall
-                          ? "bg-emerald-600 hover:bg-emerald-500"
-                          : theme === "dark"
-                            ? "bg-slate-700 text-white hover:bg-slate-600"
-                            : "bg-slate-200 text-slate-900 hover:bg-slate-300"
-                      }`}
-                      title="Auto Call"
-                      aria-label="Auto Call"
-                    >
-                      <Play className="h-5 w-5" />
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="radial-controls"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="pointer-events-auto relative flex items-center justify-end"
-                  >
-                    <AnimatePresence>
-                      {showRadialControls && (
-                        <>
-                          <motion.button
-                            initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
-                            animate={{ opacity: 1, x: -58, y: -8, scale: 1 }}
-                            exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
-                            transition={{ duration: 0.2 }}
-                            type="button"
-                            onClick={shuffleNumbers}
-                            disabled={gameStatus !== "pending"}
-                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${isShuffling ? "bg-amber-500 text-slate-900 hover:bg-amber-400" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                            title={isShuffling ? "Stop shuffling" : "Shuffle"}
-                            aria-label={
-                              isShuffling ? "Stop shuffling" : "Shuffle"
-                            }
-                          >
-                            <Shuffle
-                              className={`h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
-                            />
-                          </motion.button>
-                          <motion.button
-                            initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
-                            animate={{ opacity: 1, x: -8, y: -58, scale: 1 }}
-                            exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
-                            transition={{ duration: 0.2 }}
-                            type="button"
-                            onClick={() => {
-                              if (gameStatus === "active") {
-                                setAutoCall((prev) => !prev);
-                              }
-                            }}
-                            disabled={
-                              gameStatus !== "active" ||
-                              calledNumbers.length >= 75
-                            }
-                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${
-                              autoCall
-                                ? "bg-emerald-600 hover:bg-emerald-500"
-                                : theme === "dark"
-                                  ? "bg-slate-700 text-white hover:bg-slate-600"
-                                  : "bg-slate-200 text-slate-900 hover:bg-slate-300"
-                            }`}
-                            title="Auto Call"
-                            aria-label="Auto Call"
-                          >
-                            <Play className="h-4 w-4" />
-                          </motion.button>
-                        </>
-                      )}
-                    </AnimatePresence>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowRadialControls((prev) => !prev)}
-                      className={`inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                      title="More controls"
-                      aria-label="More controls"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className="pointer-events-auto flex items-center gap-2">
-                {(gameStatus === "active" || gameStatus === "pending") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void closeGameWithoutWinner();
-                    }}
-                    disabled={
-                      isStoppingGame || isCallingNumber || isStartingGame
-                    }
-                    className="inline-flex h-12 min-w-12 items-center justify-center rounded-full bg-slate-900 px-3 text-white shadow-lg transition hover:scale-105 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    title="Close Without Winner"
-                    aria-label="Close Without Winner"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (gameStatus === "active") {
-                      void callRandomNumber();
-                    } else if (gameStatus === "pending") {
-                      void startGame();
-                    }
-                  }}
-                  disabled={
-                    isCallingNumber ||
-                    isStartingGame ||
-                    isStoppingGame ||
-                    calledNumbers.length >= 75 ||
-                    gameStatus === "completed" ||
-                    gameStatus === "cancelled"
-                  }
-                  className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-[0_0_25px_rgba(239,68,68,0.75)] transition hover:scale-105 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  title={
-                    gameStatus === "pending" ? "Start game" : "Call number"
-                  }
-                  aria-label={
-                    gameStatus === "pending" ? "Start game" : "Call number"
-                  }
-                >
-                  {gameStatus === "pending" ? (
-                    <Play className="h-8 w-8" />
-                  ) : (
-                    <span className="text-xs font-black tracking-wider">
-                      CALL
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {!isFullscreen && (
-          <div className="grid gap-4 xl:grid-cols-3">
-            <Card className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                Game Controls
-              </h3>
-
-              <div className="space-y-2">
-                {gameStatus === "active" ? (
-                  <>
-                    {/* Display current number button */}
-                    <Button
-                      className="h-10 w-full"
-                      onClick={displayCurrentNumber}
-                      variant="outline"
-                    >
-                      {currentCalledNumber || "Display Number"}
-                    </Button>
-
-                    {/* Call number button */}
-                    <Button
-                      className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
-                      onClick={callRandomNumber}
-                      disabled={
-                        calledNumbers.length >= 75 ||
-                        isCallingNumber ||
-                        isStoppingGame
-                      }
-                    >
-                      {isCallingNumber
-                        ? "Calling..."
-                        : t("playground.callNumber")}
-                    </Button>
-
-                    {/* Stop game button */}
-                    <Button
-                      className="h-10 w-full"
-                      onClick={closeGameWithoutWinner}
-                      variant="destructive"
-                      disabled={isStoppingGame || isCallingNumber}
-                    >
-                      <X className="mr-1 h-4 w-4" />
-                      {isStoppingGame ? "Closing..." : "Close Without Winner"}
-                    </Button>
-                  </>
-                ) : gameStatus === "pending" ? (
-                  <>
-                    <Button
-                      className="h-10 w-full"
-                      onClick={shuffleNumbers}
-                      variant="outline"
-                      disabled={isStartingGame}
-                    >
-                      <Shuffle
-                        className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
-                      />
-                      {isShuffling ? "Stop Shuffling" : "Shuffle"}
-                    </Button>
-                    {isShuffling && (
-                      <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-600 dark:text-slate-300">
-                            Shuffle Speed
-                          </span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-200">
-                            {shuffleSpeedLabel}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setShuffleSpeedMs(420)}
-                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Slow" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
-                          >
-                            Slow
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShuffleSpeedMs(230)}
-                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Normal" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
-                          >
-                            Normal
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShuffleSpeedMs(140)}
-                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Fast" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
-                          >
-                            Fast
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <Button
-                      className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-                      onClick={startGame}
-                      disabled={isStartingGame || isStoppingGame}
-                    >
-                      <Play className="mr-1 h-4 w-4" />
-                      {isStartingGame ? "Starting..." : "Start Game"}
-                    </Button>
-                    <Button
-                      className="h-10 w-full"
-                      onClick={closeGameWithoutWinner}
-                      variant="destructive"
-                      disabled={isStoppingGame || isStartingGame}
-                    >
-                      <X className="mr-1 h-4 w-4" />
-                      {isStoppingGame ? "Closing..." : "Close Without Winner"}
-                    </Button>
-                  </>
-                ) : (
-                  /* Start new game button (completed/cancelled) */
-                  <Button
-                    className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={onStartNewGame}
-                  >
-                    <Play className="mr-1 h-4 w-4" />
-                    {t("playground.startNewGame")}
-                  </Button>
-                )}
-
-                {/* Auto-call section (only when game is active) */}
-                {gameStatus === "active" && (
-                  <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                      <input
-                        type="checkbox"
-                        checked={autoCall}
-                        onChange={(e) => setAutoCall(e.target.checked)}
-                        className="h-4 w-4 rounded"
-                        disabled={calledNumbers.length >= 75}
-                      />
-                      {t("playground.autoCall")}
-                    </label>
-                    <span className="mt-2 block text-xs text-slate-500">
-                      {autoCallTimer} {t("playground.seconds")}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                {t("playground.cartelaTools")}
-              </h3>
-
-              <Button
-                className="h-10 w-full bg-indigo-600 text-white hover:bg-indigo-700"
-                onClick={openCartelaModal}
-                disabled={!isGameActive}
-              >
-                <Eye className="mr-1 h-4 w-4" />{" "}
-                {t("playground.viewAllCartelas")}
-              </Button>
-
-              <div className="relative py-1 text-center text-xs uppercase tracking-wide text-slate-400">
-                <span className="bg-white px-2 dark:bg-slate-900">
-                  {t("playground.orEnterSpecific")}
-                </span>
-                <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-
-              <Input
-                placeholder={t("playground.cartelaPlaceholderDetailed")}
-                value={cartelaInput}
-                onChange={(e) => setCartelaInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") viewCartela();
-                }}
-                disabled={!isGameActive}
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={checkCartela}
-                  disabled={!isGameActive || isCheckingCartela}
-                >
-                  {isCheckingCartela ? (
-                    <>
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                      Checking...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-1 h-4 w-4" /> {t("playground.check")}
-                    </>
-                  )}
-                </Button>
-                <Button
-                  className="h-10 w-full"
-                  onClick={viewCartela}
-                  variant="outline"
-                  disabled={!isGameActive}
-                >
-                  <Eye className="mr-1 h-4 w-4" /> {t("playground.view")}
-                </Button>
-              </div>
-
-              <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                {activeCartelas.length
-                  ? `${activeCartelas.length} ${t("playground.cartelasInGame")}`
-                  : t("playground.noCartelasInGame")}
-              </div>
-            </Card>
-
-            <Card className="rounded-xl border border-emerald-200 bg-linear-to-br from-emerald-50 to-white p-4 dark:border-emerald-700/50 dark:from-emerald-900/20 dark:to-slate-900">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                {t("playground.winMoney")}
-              </h3>
-              <div className="mt-3 flex items-end gap-1">
-                <span className="text-4xl font-black leading-none text-emerald-700 dark:text-emerald-300">
-                  {formatCurrency(calculateWinMoney())}
-                </span>
-              </div>
-            </Card>
-          </div>
-        )}
+        <DesktopControlPanels
+          isFullscreen={isFullscreen}
+          gameStatus={gameStatus}
+          currentCalledNumber={currentCalledNumber}
+          displayCurrentNumber={displayCurrentNumber}
+          callRandomNumber={callRandomNumber}
+          calledNumbersLength={calledNumbers.length}
+          isCallingNumber={isCallingNumber}
+          isStoppingGame={isStoppingGame}
+          closeGameWithoutWinner={closeGameWithoutWinner}
+          shuffleNumbers={shuffleNumbers}
+          isShuffling={isShuffling}
+          isStartingGame={isStartingGame}
+          startGame={startGame}
+          onStartNewGame={onStartNewGame}
+          autoCall={autoCall}
+          setAutoCall={setAutoCall}
+          autoCallTimer={autoCallTimer}
+          t={t}
+          shuffleSpeedMs={shuffleSpeedMs}
+          setShuffleSpeedMs={setShuffleSpeedMs}
+          theme={theme}
+          openCartelaModal={openCartelaModal}
+          isGameActive={isGameActive}
+          cartelaInput={cartelaInput}
+          setCartelaInput={setCartelaInput}
+          viewCartela={viewCartela}
+          checkCartela={checkCartela}
+          isCheckingCartela={isCheckingCartela}
+          activeCartelasLength={activeCartelas.length}
+          calculateWinMoney={calculateWinMoney}
+        />
       </div>
     </div>
   );
