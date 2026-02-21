@@ -125,6 +125,7 @@ import { NewGame } from "./pages/NewGame";
 import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
+import { PublicCartella } from "./pages/PublicCartella";
 import { authApi } from "./services/api";
 
 /* ===============================
@@ -314,18 +315,26 @@ function App() {
       <LanguageProvider>
         <PopupProvider>
           <Router>
-            {!isLoggedIn ? (
-              <Login onLogin={() => setIsLoggedIn(true)} />
-            ) : (
-              <AppLayout
-                gameConfig={gameConfig}
-                setGameConfig={setGameConfig}
-                isGameActive={isGameActive}
-                setIsGameActive={setIsGameActive}
-                onLogout={handleLogout}
-                username={username}
+            <Routes>
+              <Route path="/public/cartella" element={<PublicCartella />} />
+              <Route
+                path="/*"
+                element={
+                  !isLoggedIn ? (
+                    <Login onLogin={() => setIsLoggedIn(true)} />
+                  ) : (
+                    <AppLayout
+                      gameConfig={gameConfig}
+                      setGameConfig={setGameConfig}
+                      isGameActive={isGameActive}
+                      setIsGameActive={setIsGameActive}
+                      onLogout={handleLogout}
+                      username={username}
+                    />
+                  )
+                }
               />
-            )}
+            </Routes>
           </Router>
         </PopupProvider>
       </LanguageProvider>

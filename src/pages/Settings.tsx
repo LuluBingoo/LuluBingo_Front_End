@@ -4,6 +4,7 @@ import { Bell, Lock, Globe, Palette, Moon, Sun } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -91,7 +92,30 @@ export const Settings: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">{t("settings.loading")}</div>;
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-8 w-40" />
+        <div className="grid gap-4">
+          {Array.from({ length: 4 }).map((_, cardIdx) => (
+            <Card key={cardIdx} className="space-y-4 p-5">
+              <Skeleton className="h-6 w-48" />
+              {Array.from({ length: 3 }).map((__, rowIdx) => (
+                <div
+                  key={`${cardIdx}-${rowIdx}`}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-44" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              ))}
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

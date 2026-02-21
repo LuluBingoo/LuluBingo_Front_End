@@ -208,6 +208,16 @@ export interface GameNextCallResponse {
   is_complete: boolean;
 }
 
+export interface PublicCartellaResponse {
+  game_id: string;
+  cartella_number: number;
+  cartella_numbers: number[];
+  cartella_draw_sequence: number[];
+  status: GameStatus;
+  called_numbers: number[];
+  created_at: string;
+}
+
 // Transaction types
 export interface Transaction {
   id: number;

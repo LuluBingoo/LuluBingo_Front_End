@@ -30,6 +30,7 @@ import {
   ShopBingoReserveRequest,
   ShopBingoSession,
   ShopBingoSessionCreateRequest,
+  PublicCartellaResponse,
   Transaction,
   TransactionRequest,
 } from "./types";
@@ -392,11 +393,11 @@ export const gamesApi = {
   async getPublicCartella(
     gameId: string,
     cartellaNumber: number,
-  ): Promise<any> {
+  ): Promise<PublicCartellaResponse> {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Public cartella route is not available in mock mode");
     }
-    return await apiClient.get<any>(
+    return await apiClient.get<PublicCartellaResponse>(
       API_ENDPOINTS.GAMES.PUBLIC_CARTELLA(gameId, cartellaNumber),
     );
   },

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { DollarSign, TrendingUp, Gamepad2, Calendar } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { useLanguage } from "../contexts/LanguageContext";
 import { gamesApi } from "../services/api";
 import { GameAuditReportResponse } from "../services/types";
@@ -156,6 +157,52 @@ export const Dashboard: React.FC<DashboardProps> = ({
       bgClass: "bg-amber-500/15",
     },
   ];
+
+  const isInitialLoading =
+    loading &&
+    !loadError &&
+    reportData.game_history.length === 0 &&
+    reportData.win_history.length === 0 &&
+    reportData.banned_cartellas.length === 0 &&
+    reportData.transactions.length === 0;
+
+  if (isInitialLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-9 w-64 rounded-lg" />
+            <Skeleton className="h-9 w-34 rounded-lg" />
+            <Skeleton className="h-9 w-42 rounded-lg" />
+          </div>
+          <Skeleton className="h-12 w-72 rounded-lg" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <Card key={idx} className="space-y-3 p-4">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-8 w-30" />
+            </Card>
+          ))}
+        </div>
+
+        <Card className="p-4">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-30 rounded-lg" />
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-36 rounded-lg" />
+            <Skeleton className="h-9 w-30 rounded-lg" />
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-10 w-full rounded-md" />
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -316,8 +363,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <Card className="p-0">
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="p-4 text-sm text-slate-500">
-                Loading reports...
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <Skeleton key={idx} className="h-9 w-full rounded-md" />
+                ))}
               </div>
             ) : loadError ? (
               <div className="p-4 text-sm text-red-600">{loadError}</div>

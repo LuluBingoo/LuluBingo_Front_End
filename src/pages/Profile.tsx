@@ -5,6 +5,7 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -251,7 +252,32 @@ export const Profile: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-8 text-center">{t("profile.loading")}</div>;
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-8 w-56" />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
+          <Card className="space-y-4 p-5">
+            <div className="flex flex-col items-center gap-3">
+              <Skeleton className="h-20 w-20 rounded-full" />
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <Skeleton className="h-6 w-44" />
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+            <Skeleton className="h-10 w-40" />
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {
