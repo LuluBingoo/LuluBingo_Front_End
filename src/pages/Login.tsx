@@ -82,7 +82,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   : "totp",
               ];
 
-        setOtpMethods(normalizedMethods);
+        setOtpMethods(
+          normalizedMethods.filter(
+            (method): method is "totp" | "email_code" =>
+              method === "totp" || method === "email_code"
+          )
+        );
         setOtpMethod(
           errorData?.two_factor_method === "email_code" ? "email_code" : "totp",
         );

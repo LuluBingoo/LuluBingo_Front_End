@@ -808,7 +808,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-10 items-center justify-center rounded-md border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:text-black"}`}
+                        className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_8px_18px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_6px_8px_rgba(255,255,255,0.75),0_5px_12px_rgba(15,23,42,0.16)] hover:border-red-300 hover:shadow-[inset_0_8px_10px_rgba(255,255,255,0.85),0_8px_16px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-black"}`}
                         onClick={() => handleCartellaToggle(number)}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

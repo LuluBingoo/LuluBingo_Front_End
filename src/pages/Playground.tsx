@@ -1,330 +1,3 @@
-// import React, { useState, useEffect } from 'react';
-// import { motion } from 'motion/react';
-// import { Shuffle, Play, Check, X } from 'lucide-react';
-// import { Button } from '../components/ui/button';
-// import { Input } from '../components/ui/input';
-// import { Card } from '../components/ui/card';
-// import { useLanguage } from '../contexts/LanguageContext';
-// import './Playground.css';
-
-// interface PlaygroundProps {
-//   gameConfig?: {
-//     game: string;
-//     betBirr: string;
-//     numPlayers: string;
-//     winBirr: string;
-//     selectedPatterns: number[];
-//   } | null;
-//   onStartNewGame?: () => void;
-// }
-
-// export const Playground: React.FC<PlaygroundProps> = ({ gameConfig, onStartNewGame }) => {
-//   const { t } = useLanguage();
-
-//   // State for called numbers & auto call
-//   const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
-//   const [autoCall, setAutoCall] = useState(false);
-//   const [autoCallTimer, setAutoCallTimer] = useState(11);
-//   const [currentCalledNumber, setCurrentCalledNumber] = useState<string>('');
-
-//   // State for cartela input
-//   const [cartelaInput, setCartelaInput] = useState('');
-
-//   // State for Bingo board (numbers shuffled per column)
-//   const [bingoRows, setBingoRows] = useState({
-//     B: Array.from({ length: 15 }, (_, i) => i + 1),
-//     I: Array.from({ length: 15 }, (_, i) => i + 16),
-//     N: Array.from({ length: 15 }, (_, i) => i + 31),
-//     G: Array.from({ length: 15 }, (_, i) => i + 46),
-//     O: Array.from({ length: 15 }, (_, i) => i + 61),
-//   });
-
-//   const [isGameActive, setIsGameActive] = useState(false);
-
-//   // Initialize game if config exists
-//   useEffect(() => {
-//     if (gameConfig && !isGameActive) {
-//       setIsGameActive(true);
-//       console.log('Game config loaded:', gameConfig);
-//     }
-//   }, [gameConfig]);
-
-//   // Auto-call functionality
-//   useEffect(() => {
-//     let interval: NodeJS.Timeout;
-//     if (autoCall && isGameActive && calledNumbers.length < 75) {
-//       interval = setInterval(() => {
-//         setAutoCallTimer(prev => {
-//           if (prev <= 1) {
-//             callRandomNumber();
-//             return 11;
-//           }
-//           return prev - 1;
-//         });
-//       }, 1000);
-//     }
-//     return () => clearInterval(interval);
-//   }, [autoCall, isGameActive, calledNumbers]);
-
-//   // Get letter for a number (1-15: B, 16-30: I, etc.)
-//   const getNumberLetter = (num: number): string => {
-//     if (num >= 1 && num <= 15) return 'B';
-//     if (num >= 16 && num <= 30) return 'I';
-//     if (num >= 31 && num <= 45) return 'N';
-//     if (num >= 46 && num <= 60) return 'G';
-//     if (num >= 61 && num <= 75) return 'O';
-//     return '';
-//   };
-
-//   // Call one random number manually or via auto-call
-//   const callRandomNumber = () => {
-//     const allNumbers = Array.from({ length: 75 }, (_, i) => i + 1);
-//     const uncalledNumbers = allNumbers.filter(num => !calledNumbers.includes(num));
-//     if (uncalledNumbers.length > 0) {
-//       const randomIndex = Math.floor(Math.random() * uncalledNumbers.length);
-//       const newNumber = uncalledNumbers[randomIndex];
-//       const letter = getNumberLetter(newNumber);
-//       setCalledNumbers(prev => [...prev, newNumber]);
-//       setCurrentCalledNumber(`${letter} ${newNumber}`);
-//     }
-//   };
-
-//   // Manually call a specific number (this would need additional UI to select number)
-//   const callSpecificNumber = (number: number) => {
-//     if (!calledNumbers.includes(number)) {
-//       const letter = getNumberLetter(number);
-//       setCalledNumbers(prev => [...prev, number]);
-//       setCurrentCalledNumber(`${letter} ${number}`);
-//     }
-//   };
-
-//   // Display the current called number
-//   const displayCurrentNumber = () => {
-//     if (currentCalledNumber) {
-//       alert(`Current called number: ${currentCalledNumber}`);
-//     } else {
-//       alert('No number has been called yet.');
-//     }
-//   };
-
-//   // Stop the current game
-//   const stopGame = () => {
-//     if (window.confirm('Are you sure you want to stop the current game?')) {
-//       setIsGameActive(false);
-//       setAutoCall(false);
-//       setAutoCallTimer(11);
-//       setCurrentCalledNumber('');
-//       // Note: We keep calledNumbers for display, but game is inactive
-//     }
-//   };
-
-//   // Start a new game
-//   const startNewGame = () => {
-//     if (window.confirm('Start a new game? This will reset everything.')) {
-//       setCalledNumbers([]);
-//       setAutoCall(false);
-//       setAutoCallTimer(11);
-//       setIsGameActive(true);
-//       setCurrentCalledNumber('');
-
-//       // Reshuffle Bingo board
-//       reshuffleBoard();
-
-//       if (onStartNewGame) onStartNewGame();
-//     }
-//   };
-
-//   // Shuffle/reshuffle numbers inside each Bingo column
-//   const reshuffleBoard = () => {
-//     setBingoRows(prev => {
-//       const shuffleArray = (arr: number[]) => arr
-//         .map(value => ({ value, sort: Math.random() }))
-//         .sort((a, b) => a.sort - b.sort)
-//         .map(({ value }) => value);
-
-//       return {
-//         B: shuffleArray(prev.B),
-//         I: shuffleArray(prev.I),
-//         N: shuffleArray(prev.N),
-//         G: shuffleArray(prev.G),
-//         O: shuffleArray(prev.O),
-//       };
-//     });
-//   };
-
-//   const shuffleNumbers = () => {
-//     if (window.confirm('Shuffle numbers inside columns?')) {
-//       reshuffleBoard();
-//     }
-//   };
-
-//   const checkCartela = () => {
-//     if (!cartelaInput.trim()) {
-//       alert('Please enter a cartela number');
-//       return;
-//     }
-//     alert(`Checking cartela: ${cartelaInput}\nThis would validate against called numbers.`);
-//   };
-
-//   const calculateWinMoney = () => {
-//     if (gameConfig?.winBirr && gameConfig.winBirr !== '0') {
-//       return parseInt(gameConfig.winBirr);
-//     }
-//     return calledNumbers.length * 10;
-//   };
-
-//   return (
-//     <div className="playground">
-//       {/* Header */}
-//       <div className="playground-header">
-//         <div className="game-info-bar">
-//           <div className="info-item">
-//             <span className="info-label">{t('playground.game')}</span>
-//             <span className="info-value">{gameConfig?.game || 'F-am'}</span>
-//           </div>
-//           <div className="info-item">
-//             <span className="info-label">{t('playground.stake')}</span>
-//             <span className="info-value">{gameConfig?.betBirr ? `${gameConfig.betBirr} BIRR` : 'BINGO'}</span>
-//           </div>
-//           <div className="info-item">
-//             <span className="info-label">{t('playground.winPrice')}</span>
-//             <span className="info-value">{calculateWinMoney()}</span>
-//           </div>
-//           <div className="info-item highlight">
-//             <span className="calls-count">{calledNumbers.length} {t('playground.called')}</span>
-//           </div>
-//           {currentCalledNumber && (
-//             <div className="info-item current-number-display">
-//               <span className="current-number-label">Current:</span>
-//               <span className="current-number-value">{currentCalledNumber}</span>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-
-//       {/* Main content */}
-//       <div className="playground-content">
-//         {/* Bingo board */}
-//         <Card className="bingo-board-card">
-//           <div className="bingo-board">
-//             {Object.entries(bingoRows).map(([letter, numbers]) => (
-//               <div key={letter} className="bingo-row">
-//                 <motion.div className="row-header" whileHover={{ scale: 1.05 }}>{letter}</motion.div>
-//                 <div className="numbers-row">
-//                   {numbers.map(num => (
-//                     <motion.div
-//                       key={num}
-//                       className={`bingo-number ${calledNumbers.includes(num) ? 'called' : ''}`}
-//                       whileHover={{ scale: 1.1 }}
-//                       style={{
-//                         backgroundColor: calledNumbers.includes(num) ? '#0ea5e9' : '',
-//                         color: calledNumbers.includes(num) ? '#fff' : ''
-//                       }}
-//                       onClick={() => isGameActive && callSpecificNumber(num)}
-//                     >
-//                       {num}
-//                     </motion.div>
-//                   ))}
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </Card>
-
-//         {/* Sidebar */}
-//         <div className="playground-sidebar">
-//           <div className="control-panel">
-//             {/* Conditional rendering based on game state */}
-//             {isGameActive ? (
-//               <>
-//                 {/* Display current number button */}
-//                 <Button
-//                   className="control-btn display-number-btn"
-//                   onClick={displayCurrentNumber}
-//                   variant="outline"
-//                 >
-//                   {currentCalledNumber || 'Display Number'}
-//                 </Button>
-
-//                 {/* Call number button */}
-//                 <Button
-//                   className="control-btn call-btn"
-//                   onClick={callRandomNumber}
-//                   disabled={calledNumbers.length >= 75}
-//                 >
-//                   {t('playground.callNumber')}
-//                 </Button>
-
-//                 {/* Stop game button */}
-//                 <Button
-//                   className="control-btn stop-btn"
-//                   onClick={stopGame}
-//                   variant="destructive"
-//                 >
-//                   <X className="btn-icon" />
-//                   {t('playground.stopGame')}
-//                 </Button>
-//               </>
-//             ) : (
-//               /* Start new game button (only when no active game) */
-//               <Button className="control-btn start-btn" onClick={startNewGame}>
-//                 <Play className="btn-icon" />
-//                 {t('playground.startNewGame')}
-//               </Button>
-//             )}
-
-//             {/* Shuffle button (always visible) */}
-//             <Button className="control-btn shuffle-btn" onClick={shuffleNumbers} variant="outline">
-//               <Shuffle className="btn-icon" />
-//               {t('playground.shuffle')}
-//             </Button>
-
-//             {/* Auto-call section (only when game is active) */}
-//             {isGameActive && (
-//               <div className="auto-call-section">
-//                 <label className="auto-call-label">
-//                   <input
-//                     type="checkbox"
-//                     checked={autoCall}
-//                     onChange={(e) => setAutoCall(e.target.checked)}
-//                     className="auto-call-checkbox"
-//                     disabled={calledNumbers.length >= 75}
-//                   />
-//                   {t('playground.autoCall')}
-//                 </label>
-//                 <span className="auto-call-timer">{autoCallTimer} {t('playground.seconds')}</span>
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Cartela check */}
-//           <Card className="cartela-check-card">
-//             <h3>{t('playground.enterCartela')}</h3>
-//             <Input
-//               placeholder={t('playground.cartelaPlaceholder')}
-//               value={cartelaInput}
-//               onChange={(e) => setCartelaInput(e.target.value)}
-//             />
-//             <Button className="check-btn" onClick={checkCartela}>
-//               <Check className="btn-icon" />
-//               {t('playground.check')}
-//             </Button>
-//           </Card>
-
-//           {/* Win money */}
-//           <Card className="win-money-card">
-//             <h3>{t('playground.winMoney')}</h3>
-//             <div className="win-amount">
-//               <span className="currency">{t('playground.birr')}</span>
-//               <span className="amount">{calculateWinMoney()}</span>
-//             </div>
-//           </Card>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation } from "react-router-dom";
@@ -464,9 +137,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isTogglingFullscreen, setIsTogglingFullscreen] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [shuffleSpeedMs, setShuffleSpeedMs] = useState(230);
   const [isCheckingCartela, setIsCheckingCartela] = useState(false);
   const [showBallPopup, setShowBallPopup] = useState(false);
   const [ballPopupLabel, setBallPopupLabel] = useState("");
+  const [shuffleCycle, setShuffleCycle] = useState(0);
   const [winnerCelebration, setWinnerCelebration] = useState<{
     cartela: string;
     pattern?: string | null;
@@ -486,6 +161,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
+  const shuffleSpeedLabel =
+    shuffleSpeedMs >= 340 ? "Slow" : shuffleSpeedMs <= 170 ? "Fast" : "Normal";
 
   useEffect(() => {
     if (gameConfig) {
@@ -1254,13 +931,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
-    setIsShuffling(true);
+    setIsShuffling((prev) => {
+      const next = !prev;
 
-    reshuffleBoard();
-    setCalledNumbers([]);
-    setCurrentCalledNumber("");
-    popup.info(t("playground.shuffleAnimated"));
-    window.setTimeout(() => setIsShuffling(false), 650);
+      if (next) {
+        setShuffleCycle(0);
+        reshuffleBoard();
+        setCalledNumbers([]);
+        setCurrentCalledNumber("");
+        popup.info("Shuffling started. Click Stop to pause.");
+      } else {
+        popup.info("Shuffling stopped.");
+      }
+
+      return next;
+    });
   };
 
   const calculateWinMoney = () => {
@@ -1315,6 +1000,38 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     return () => window.clearTimeout(timeoutId);
   }, [winnerCelebration]);
+
+  useEffect(() => {
+    if (gameStatus !== "pending") {
+      setIsShuffling(false);
+      return;
+    }
+
+    if (!isShuffling) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setShuffleCycle((prev) => prev + 1);
+      setBingoRows((prev) => {
+        const shuffleArray = (arr: number[]) =>
+          arr
+            .map((value) => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value);
+
+        return {
+          B: shuffleArray(prev.B),
+          I: shuffleArray(prev.I),
+          N: shuffleArray(prev.N),
+          G: shuffleArray(prev.G),
+          O: shuffleArray(prev.O),
+        };
+      });
+    }, shuffleSpeedMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [isShuffling, gameStatus, shuffleSpeedMs]);
 
   useEffect(() => {
     onFullscreenChange?.(isFullscreen);
@@ -1755,8 +1472,48 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     {numbers.map((num) => (
                       <motion.div
                         key={num}
-                        className={`flex cursor-pointer items-center justify-center rounded-xl border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-12 text-lg sm:h-14 sm:text-xl md:h-16 md:text-2xl" : "h-10 text-base sm:h-12 sm:text-lg md:h-14 md:text-xl") : "h-12 md:h-16 lg:h-20 text-lg md:text-xl lg:text-2xl"} ${calledNumbers.includes(num) ? "border-sky-500 bg-sky-500 text-white shadow-sky-500/30 font-black scale-[1.02]" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:text-black"}`}
+                        layout
+                        className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbers.includes(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-slate-900" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-black"}`}
+                        animate={
+                          isShuffling
+                            ? {
+                                x: [
+                                  0,
+                                  ((num * 7 + shuffleCycle * 11) % 29) - 14,
+                                  ((num * 13 + shuffleCycle * 5) % 31) - 15,
+                                  -(((num * 13 + shuffleCycle * 5) % 31) - 15) /
+                                    2,
+                                  0,
+                                ],
+                                y: [
+                                  0,
+                                  ((num * 11 + shuffleCycle * 3) % 21) - 10,
+                                  ((num * 5 + shuffleCycle * 17) % 23) - 11,
+                                  -(((num * 5 + shuffleCycle * 17) % 23) - 11) /
+                                    2,
+                                  0,
+                                ],
+                                rotate: [
+                                  0,
+                                  ((num * 3 + shuffleCycle * 9) % 34) - 17,
+                                  -(((num * 3 + shuffleCycle * 9) % 34) - 17) /
+                                    2,
+                                  0,
+                                ],
+                                scale: [1, 1.1, 0.94, 1.04, 1],
+                              }
+                            : { x: 0, y: 0, rotate: 0, scale: 1 }
+                        }
                         whileHover={{ scale: 1.1 }}
+                        transition={{
+                          layout: {
+                            type: "spring",
+                            stiffness: 320,
+                            damping: 24,
+                          },
+                          duration: isShuffling ? 0.22 : 0.18,
+                          ease: "easeInOut",
+                        }}
                         onClick={() => isGameActive && callSpecificNumber(num)}
                       >
                         {num}
@@ -2003,6 +1760,44 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     %
                   </motion.div>
                 )}
+                {showFullscreenHud &&
+                  gameStatus === "pending" &&
+                  isShuffling && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      className={`pointer-events-auto rounded-xl px-3 py-2 text-xs backdrop-blur ${theme === "dark" ? "border border-slate-500/50 bg-slate-900/70 text-slate-100" : "border border-slate-300 bg-white/95 text-slate-700"}`}
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="font-semibold">Shuffle Speed</span>
+                        <span className="text-[11px]">{shuffleSpeedLabel}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setShuffleSpeedMs(420)}
+                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Slow" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                        >
+                          Slow
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShuffleSpeedMs(230)}
+                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Normal" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                        >
+                          Normal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShuffleSpeedMs(140)}
+                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${shuffleSpeedLabel === "Fast" ? "bg-amber-500 text-slate-900" : theme === "dark" ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                        >
+                          Fast
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
               </AnimatePresence>
 
               <AnimatePresence>
@@ -2017,12 +1812,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     <button
                       type="button"
                       onClick={shuffleNumbers}
-                      disabled={gameStatus !== "pending" || isShuffling}
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                      title="Shuffle"
-                      aria-label="Shuffle"
+                      disabled={gameStatus !== "pending"}
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${isShuffling ? "bg-amber-500 text-slate-900 hover:bg-amber-400" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
+                      title={isShuffling ? "Stop shuffling" : "Shuffle"}
+                      aria-label={isShuffling ? "Stop shuffling" : "Shuffle"}
                     >
-                      <Shuffle className="h-5 w-5" />
+                      <Shuffle
+                        className={`h-5 w-5 ${isShuffling ? "animate-spin" : ""}`}
+                      />
                     </button>
                     <button
                       type="button"
@@ -2065,12 +1862,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
                             transition={{ duration: 0.2 }}
                             type="button"
                             onClick={shuffleNumbers}
-                            disabled={gameStatus !== "pending" || isShuffling}
-                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
-                            title="Shuffle"
-                            aria-label="Shuffle"
+                            disabled={gameStatus !== "pending"}
+                            className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${isShuffling ? "bg-amber-500 text-slate-900 hover:bg-amber-400" : theme === "dark" ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-900 hover:bg-slate-300"}`}
+                            title={isShuffling ? "Stop shuffling" : "Shuffle"}
+                            aria-label={
+                              isShuffling ? "Stop shuffling" : "Shuffle"
+                            }
                           >
-                            <Shuffle className="h-4 w-4" />
+                            <Shuffle
+                              className={`h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
+                            />
                           </motion.button>
                           <motion.button
                             initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
@@ -2223,8 +2024,46 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       variant="outline"
                       disabled={isStartingGame}
                     >
-                      <Shuffle className="mr-1 h-4 w-4" /> Shuffle More
+                      <Shuffle
+                        className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
+                      />
+                      {isShuffling ? "Stop Shuffling" : "Shuffle"}
                     </Button>
+                    {isShuffling && (
+                      <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-600 dark:text-slate-300">
+                            Shuffle Speed
+                          </span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                            {shuffleSpeedLabel}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setShuffleSpeedMs(420)}
+                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Slow" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
+                          >
+                            Slow
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShuffleSpeedMs(230)}
+                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Normal" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
+                          >
+                            Normal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShuffleSpeedMs(140)}
+                            className={`rounded-md px-2 py-1 text-xs font-semibold transition ${shuffleSpeedLabel === "Fast" ? "bg-amber-500 text-slate-900" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
+                          >
+                            Fast
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <Button
                       className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
                       onClick={startGame}
