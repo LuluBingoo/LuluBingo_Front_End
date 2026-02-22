@@ -1,5 +1,6 @@
 import React from "react";
 import { Check, Eye, Loader2, Play, Shuffle, X } from "lucide-react";
+import { motion } from "motion/react";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
@@ -74,6 +75,13 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
 }) => {
   if (isFullscreen) return null;
 
+  const controlMode =
+    gameStatus === "active"
+      ? "active"
+      : gameStatus === "pending"
+        ? "pending"
+        : "completed";
+
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       <Card className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
@@ -82,76 +90,86 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
         </h3>
 
         <div className="space-y-2">
-          {gameStatus === "active" ? (
-            <>
-              <Button
-                className="h-10 w-full"
-                onClick={displayCurrentNumber}
-                variant="outline"
-              >
-                {currentCalledNumber || "Display Number"}
-              </Button>
+          <motion.div
+            key={controlMode}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="space-y-2"
+          >
+            {gameStatus === "active" ? (
+              <>
+                <Button
+                  className="h-10 w-full"
+                  onClick={displayCurrentNumber}
+                  variant="outline"
+                >
+                  {currentCalledNumber || "Display Number"}
+                </Button>
 
-              <Button
-                className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
-                onClick={callRandomNumber}
-                disabled={
-                  calledNumbersLength >= 75 || isCallingNumber || isStoppingGame
-                }
-              >
-                {isCallingNumber ? "Calling..." : t("playground.callNumber")}
-              </Button>
+                <Button
+                  className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
+                  onClick={callRandomNumber}
+                  disabled={
+                    calledNumbersLength >= 75 ||
+                    isCallingNumber ||
+                    isStoppingGame
+                  }
+                >
+                  {isCallingNumber ? "Calling..." : t("playground.callNumber")}
+                </Button>
 
-              <Button
-                className="h-10 w-full"
-                onClick={closeGameWithoutWinner}
-                variant="destructive"
-                disabled={isStoppingGame || isCallingNumber}
-              >
-                <X className="mr-1 h-4 w-4" />
-                {isStoppingGame ? "Closing..." : "Close Without Winner"}
-              </Button>
-            </>
-          ) : gameStatus === "pending" ? (
-            <>
-              <Button
-                className="h-10 w-full"
-                onClick={shuffleNumbers}
-                variant="outline"
-                disabled={isStartingGame}
-              >
-                <Shuffle
-                  className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
-                />
-                {isShuffling ? "Stop Shuffling" : "Shuffle"}
-              </Button>
-              {isShuffling && (
-                <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-                  <ShuffleSpeedPresets
-                    value={shuffleSpeedMs}
-                    onChange={setShuffleSpeedMs}
-                    theme={theme}
+                <Button
+                  className="h-10 w-full"
+                  onClick={closeGameWithoutWinner}
+                  variant="destructive"
+                  disabled={isStoppingGame || isCallingNumber}
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  {isStoppingGame ? "Closing..." : "Close Without Winner"}
+                </Button>
+              </>
+            ) : gameStatus === "pending" ? (
+              <>
+                <Button
+                  className="h-10 w-full"
+                  onClick={shuffleNumbers}
+                  variant="outline"
+                  disabled={isStartingGame}
+                >
+                  <Shuffle
+                    className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
                   />
-                </div>
-              )}
+                  {isShuffling ? "Stop Shuffling" : "Shuffle"}
+                </Button>
+                {isShuffling && (
+                  <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                    <ShuffleSpeedPresets
+                      value={shuffleSpeedMs}
+                      onChange={setShuffleSpeedMs}
+                      theme={theme}
+                    />
+                  </div>
+                )}
+                <Button
+                  className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                  onClick={startGame}
+                  disabled={isStartingGame || isStoppingGame}
+                >
+                  <Play className="mr-1 h-4 w-4" />
+                  {isStartingGame ? "Starting..." : "Start Game"}
+                </Button>
+              </>
+            ) : (
               <Button
                 className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={startGame}
-                disabled={isStartingGame || isStoppingGame}
+                onClick={onStartNewGame}
               >
                 <Play className="mr-1 h-4 w-4" />
-                {isStartingGame ? "Starting..." : "Start Game"}
+                {t("playground.startNewGame")}
               </Button>
-            </>
-          ) : (
-            <Button
-              className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={onStartNewGame}
-            >
-              <Play className="mr-1 h-4 w-4" />
-              {t("playground.startNewGame")}
-            </Button>
-          )}
+            )}
+          </motion.div>
 
           {gameStatus === "active" && (
             <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">

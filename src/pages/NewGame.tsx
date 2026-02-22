@@ -238,6 +238,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [session, setSession] = useState<ShopBingoSession | null>(null);
   const [showBetDialog, setShowBetDialog] = useState(true);
   const [betInput, setBetInput] = useState("20");
+  const [playersInput, setPlayersInput] = useState("4");
+  const [fixedPlayers, setFixedPlayers] = useState(4);
   const [betLocked, setBetLocked] = useState(false);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [selectedCartellas, setSelectedCartellas] = useState<number[]>([]);
@@ -246,12 +248,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const currencyLabel = getCurrencyLabel();
+  const targetPlayers = session?.fixed_players || fixedPlayers;
 
   const nextPlayerNumber = useMemo(() => {
     const reservedCount =
       (session?.players_data.length ?? 0) + stagedPlayers.length;
-    return Math.min(reservedCount + 1, 4);
-  }, [session, stagedPlayers]);
+    return Math.min(reservedCount + 1, targetPlayers);
+  }, [session, stagedPlayers, targetPlayers]);
 
   const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
 
@@ -295,6 +298,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     try {
       const created = await gamesApi.createShopSession({
         min_bet_per_cartella: betPerCartella,
+        fixed_players: fixedPlayers,
       });
       setSession(created);
       return created;
@@ -342,8 +346,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       popup.warning("Set and lock bet amount first.");
       return;
     }
-    if (totalPaidPlayers >= 4) {
-      popup.info("All 4 players are already locked.");
+    if (totalPaidPlayers >= targetPlayers) {
+      popup.info(`All ${targetPlayers} players are already locked.`);
       return;
     }
     if (selectedCartellas.length === 0) {
@@ -395,8 +399,21 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       popup.warning(`Minimum bet per cartella is 20 ${currencyLabel}.`);
       return;
     }
+
+    const parsedPlayers = Number.parseInt(playersInput, 10);
+    if (!Number.isFinite(parsedPlayers) || parsedPlayers < 2) {
+      popup.warning("Minimum number of players is 2.");
+      return;
+    }
+
+    if (parsedPlayers > 7) {
+      popup.warning("Maximum number of players is 7.");
+      return;
+    }
+
     const locked = parsed.toFixed(2);
     setBetPerCartella(locked);
+    setFixedPlayers(parsedPlayers);
     setBetLocked(true);
     setShowBetDialog(false);
   };
@@ -410,15 +427,14 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       return;
     }
 
-    if (serverLockedCount + stagedLockedCount < 4) {
-      popup.warning(t("newGame.lockAllFourPlayers"));
+    if (serverLockedCount + stagedLockedCount < targetPlayers) {
+      popup.warning(`Lock all ${targetPlayers} players first.`);
       return;
     }
 
     const confirmed = await popup.confirm({
       title: "Check Payment",
-      description:
-        "Confirm payments for all 4 players and create the game now?",
+      description: `Confirm payments for all ${targetPlayers} players and create the game now?`,
       confirmText: t("newGame.createGame"),
       cancelText: t("common.cancel"),
     });
@@ -480,7 +496,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       popup.success(`${t("newGame.gameCreated")}: ${createdGame.game_code}`);
     } catch (error) {
       console.error("Failed during payment check", error);
-      popup.error(t("newGame.paymentCheckFailed"));
+      const err = error as any;
+      const detail =
+        err?.data?.detail ||
+        err?.response?.data?.detail ||
+        err?.message ||
+        t("newGame.paymentCheckFailed");
+      popup.error(String(detail));
     } finally {
       setSubmittingPayment(false);
     }
@@ -489,7 +511,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   return (
     <div className="space-y-6 p-6">
       {submittingPayment && (
-        <div className="fixed inset-0 z-1400 flex items-center justify-center bg-white/80 backdrop-blur-md dark:bg-slate-950/80">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center bg-white/80 backdrop-blur-md dark:bg-slate-950/80">
           <div className="w-[min(92vw,680px)] space-y-5 rounded-2xl border border-red-200 bg-white/95 p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900/95">
             <div className="text-center">
               <h3 className="text-xl font-bold text-red-700 dark:text-red-400">
@@ -500,7 +522,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
               </p>
             </div>
 
-            <div className="relative h-20 overflow-hidden rounded-xl border border-red-100 bg-gradient-to-r from-red-50 via-white to-sky-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+            <div className="relative h-20 overflow-hidden rounded-xl border border-red-100 bg-linear-to-r from-red-50 via-white to-sky-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
               <motion.div
                 className="absolute inset-y-0 left-0 flex items-center gap-3 px-2"
                 animate={{ x: [0, -360] }}
@@ -542,7 +564,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             <div className="space-y-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500"
+                  className="h-full rounded-full bg-linear-to-r from-red-500 via-amber-400 to-emerald-500"
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{
                     duration: 1.3,
@@ -586,8 +608,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             onChange={(e) => setBetInput(e.target.value)}
           />
 
+          <Input
+            type="number"
+            min={2}
+            max={7}
+            value={playersInput}
+            onChange={(e) => setPlayersInput(e.target.value)}
+            placeholder={t("newGame.numPlayers")}
+          />
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            <Button variant="outline" onClick={() => navigate("/playground")}>
               {t("newGame.cancelToDashboard")}
             </Button>
             <Button onClick={handleLockBet}>
@@ -623,7 +654,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           onClick={handleLockCurrentPlayer}
           disabled={
             submittingLock ||
-            totalLockedPlayers >= 4 ||
+            totalLockedPlayers >= targetPlayers ||
             !betLocked ||
             submittingPayment
           }
@@ -636,7 +667,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         <Button
           className="bg-emerald-600 text-white hover:bg-emerald-700"
           onClick={handleCheckPaymentAndCreate}
-          disabled={submittingPayment || totalLockedPlayers < 4}
+          disabled={submittingPayment || totalLockedPlayers < targetPlayers}
         >
           {submittingPayment
             ? t("newGame.checkingPayment")
@@ -687,10 +718,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     <label className="text-sm font-medium">
                       {t("newGame.fixedPlayers")}
                     </label>
-                    <Input
-                      value={String(session?.fixed_players || 4)}
-                      disabled
-                    />
+                    <Input value={String(targetPlayers)} disabled />
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium">
@@ -737,13 +765,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       {t("newGame.playersLocked")}
                     </label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                      {totalLockedPlayers}/4 {t("newGame.playersReserved")},{" "}
-                      {totalPaidPlayers}/4 {t("newGame.paid")}
+                      {totalLockedPlayers}/{targetPlayers}{" "}
+                      {t("newGame.playersReserved")}, {totalPaidPlayers}/
+                      {targetPlayers} {t("newGame.paid")}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {[1, 2, 3, 4].map((playerNum) => {
+                    {Array.from(
+                      { length: targetPlayers },
+                      (_, index) => index + 1,
+                    ).map((playerNum) => {
                       const reserved =
                         (session?.players_data.length || 0) >= playerNum;
                       const paid = totalPaidPlayers >= playerNum;

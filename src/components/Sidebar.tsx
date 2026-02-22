@@ -65,11 +65,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <motion.div
-        className={`fixed top-0 left-0 z-50 flex h-screen flex-col overflow-hidden border-r border-red-100 bg-white/95 p-4 backdrop-blur-md transition-[width] duration-300 dark:border-slate-700 dark:bg-slate-900/90 max-md:w-50 max-sm:w-17.5 ${isCollapsed ? "w-22" : "w-62.5"}`}
+        className={`fixed top-0 left-0 z-50 flex h-screen flex-col overflow-hidden bg-white/95 p-4 backdrop-blur-md transition-[width] duration-300 dark:bg-slate-900/90 max-md:w-50 max-sm:w-17.5 ${isCollapsed ? "w-22" : "w-62.5"}`}
         initial={{ x: -250 }}
         animate={{ x: 0 }}
         transition={{ type: "spring", stiffness: 100 }}
       >
+        <div className="pointer-events-none absolute top-0 right-0 z-10 h-full w-4 text-red-200/90 dark:text-slate-700/90">
+          <svg
+            viewBox="0 0 20 100"
+            preserveAspectRatio="none"
+            className="h-full w-full"
+            aria-hidden="true"
+          >
+            <path
+              d="M2 0 Q16 5 2 10 T2 20 T2 30 T2 40 T2 50 T2 60 T2 70 T2 80 T2 90 T2 100"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
         <div className="pointer-events-none absolute inset-0 z-0">
           <div className="absolute -top-4 -left-3 h-24 w-20 rotate-8 bg-red-200/30 dark:bg-red-300/12 [clip-path:polygon(50%_0%,100%_32%,84%_100%,16%_100%,0%_32%)]" />
           <div className="absolute top-26 right-2 h-16 w-14 -rotate-8 bg-amber-200/30 dark:bg-amber-300/10 [clip-path:polygon(50%_0%,100%_34%,82%_100%,18%_100%,0%_34%)]" />

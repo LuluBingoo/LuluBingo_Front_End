@@ -178,6 +178,7 @@ export interface ShopBingoSession {
 
 export interface ShopBingoSessionCreateRequest {
   min_bet_per_cartella?: string;
+  fixed_players?: number;
 }
 
 export interface ShopBingoReserveRequest {

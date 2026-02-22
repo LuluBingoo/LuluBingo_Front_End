@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -34,6 +34,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   onFullscreenChange,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const { theme } = useTheme();
   const popup = usePopup();
@@ -42,10 +43,45 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [restoredGame, setRestoredGame] = useState<Game | null>(null);
   const [isRestoringGame, setIsRestoringGame] = useState(false);
   const [isOpeningPlayground, setIsOpeningPlayground] = useState(false);
-  const resumeGameCode = React.useMemo(
-    () => new URLSearchParams(location.search).get("game")?.trim() || "",
-    [location.search],
-  );
+  const resumeGameCode = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return (
+      params.get("game") ||
+      params.get("game_id") ||
+      params.get("gameCode") ||
+      params.get("code") ||
+      params.get("id") ||
+      ""
+    ).trim();
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!resumeGameCode) {
+      return;
+    }
+
+    const currentParams = new URLSearchParams(location.search);
+    const canonicalParams = new URLSearchParams(currentParams);
+
+    canonicalParams.delete("game_id");
+    canonicalParams.delete("gameCode");
+    canonicalParams.delete("code");
+    canonicalParams.delete("id");
+    canonicalParams.set("game", resumeGameCode);
+
+    if (currentParams.toString() === canonicalParams.toString()) {
+      return;
+    }
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: `?${canonicalParams.toString()}`,
+      },
+      { replace: true },
+    );
+  }, [resumeGameCode, location.pathname, location.search, navigate]);
+
   const currentGameConfig = resolvedGameConfig ?? gameConfig;
 
   const buildConfigFromGame = React.useCallback((game: Game) => {
@@ -69,18 +105,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
     };
   }, []);
 
-  const configuredAutoCallSeconds = Number.parseInt(
-    localStorage.getItem("autoCallSeconds") || "5",
-    10,
-  );
+  const getConfiguredAutoCallSeconds = React.useCallback(() => {
+    const parsed = Number.parseInt(
+      localStorage.getItem("autoCallSeconds") || "5",
+      10,
+    );
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+  }, []);
 
   // State for called numbers & auto call
   const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
   const [autoCall, setAutoCall] = useState(false);
-  const [autoCallTimer, setAutoCallTimer] = useState(
-    Number.isFinite(configuredAutoCallSeconds) && configuredAutoCallSeconds > 0
-      ? configuredAutoCallSeconds
-      : 5,
+  const [autoCallTimer, setAutoCallTimer] = useState(() =>
+    getConfiguredAutoCallSeconds(),
   );
   const [currentCalledNumber, setCurrentCalledNumber] = useState<string>("");
   const [gameStatus, setGameStatus] = useState<GameStatus>("pending");
@@ -133,9 +170,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const gameLogRef = React.useRef<HTMLDivElement | null>(null);
   const syncInFlightRef = React.useRef(false);
   const lastSyncErrorLogRef = React.useRef(0);
+  const gameStatusRef = React.useRef<GameStatus>("pending");
+  const startTransitionUntilRef = React.useRef(0);
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
+
+  useEffect(() => {
+    gameStatusRef.current = gameStatus;
+  }, [gameStatus]);
 
   useEffect(() => {
     if (gameConfig) {
@@ -238,14 +281,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [currentGameConfig, onGameStateChange]);
 
   useEffect(() => {
-    const saved = Number.parseInt(
-      localStorage.getItem("autoCallSeconds") || "5",
-      10,
-    );
-    if (Number.isFinite(saved) && saved > 0) {
-      setAutoCallTimer(saved);
-    }
-  }, []);
+    setAutoCallTimer(getConfiguredAutoCallSeconds());
+  }, [getConfiguredAutoCallSeconds]);
 
   // Sync activeCartelas with gameConfig changes
   useEffect(() => {
@@ -419,7 +456,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
     syncInFlightRef.current = true;
     try {
       const state = await gamesApi.getGameState(currentGameConfig.gameCode);
-      setGameStatus(state.status as any);
+      const nextStatus = state.status as GameStatus;
+      const shouldIgnorePendingRegression =
+        nextStatus === "pending" &&
+        gameStatusRef.current === "active" &&
+        Date.now() < startTransitionUntilRef.current;
+
+      if (!shouldIgnorePendingRegression) {
+        setGameStatus(nextStatus);
+      }
       setCalledNumbers(state.called_numbers || []);
       if (state.current_called_number) {
         if (state.current_called_number !== lastAnimatedCalledRef.current) {
@@ -489,30 +534,42 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Auto-call functionality
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (
       autoCall &&
       isGameActive &&
       gameStatus === "active" &&
       calledNumbers.length < 75
     ) {
-      interval = setInterval(() => {
+      interval = window.setInterval(() => {
         setAutoCallTimer((prev) => {
+          const configuredSeconds = getConfiguredAutoCallSeconds();
+
+          if (isCallingNumber) {
+            return prev;
+          }
+
           if (prev <= 1) {
-            callRandomNumber();
-            return (
-              Number.parseInt(
-                localStorage.getItem("autoCallSeconds") || "5",
-                10,
-              ) || 5
-            );
+            void callRandomNumber();
+            return configuredSeconds;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [autoCall, isGameActive, calledNumbers]);
+    return () => {
+      if (interval) {
+        window.clearInterval(interval);
+      }
+    };
+  }, [
+    autoCall,
+    isGameActive,
+    gameStatus,
+    calledNumbers.length,
+    isCallingNumber,
+    getConfiguredAutoCallSeconds,
+  ]);
 
   // Get letter for a number (1-15: B, 16-30: I, etc.)
   const getNumberLetter = (num: number): string => {
@@ -551,6 +608,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (response.is_complete) {
         setAutoCall(false);
         popup.info("All 75 numbers have been called.");
+      }
+
+      if (autoCall) {
+        setAutoCallTimer(getConfiguredAutoCallSeconds());
       }
     } catch (error) {
       console.error("Failed to call next number", error);
@@ -854,6 +915,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsStartingGame(true);
     try {
       await gamesApi.startGame(currentGameConfig.gameCode);
+      startTransitionUntilRef.current = Date.now() + 5000;
       setGameStatus("active");
       setIsGameActive(true);
       setRestoredGame((prev) =>
