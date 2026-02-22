@@ -111,6 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       setIsLoggingOut(true);
       await onLogout?.();
+      popup.success("Logged out successfully.");
     } catch (error) {
       console.error("Logout failed", error);
       popup.error("Failed to logout. Please try again.");

@@ -16,6 +16,21 @@ export class ApiError extends Error {
 class ApiClient {
   private token: string | null = null;
 
+  private redirectToLogin(
+    reason: "unauthorized" | "suspicious" = "unauthorized",
+  ) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const currentPath = window.location.pathname;
+    if (currentPath === "/login") {
+      return;
+    }
+
+    window.location.assign(`/login?reason=${reason}`);
+  }
+
   private redirectToServiceUnavailable() {
     if (typeof window === "undefined") {
       return;
@@ -85,6 +100,13 @@ class ApiClient {
       if (response.status === 503) {
         markBackendOffline("Service unavailable");
         this.redirectToServiceUnavailable();
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        this.setToken(null);
+        this.redirectToLogin(
+          response.status === 403 ? "suspicious" : "unauthorized",
+        );
       }
 
       if (!response.ok) {

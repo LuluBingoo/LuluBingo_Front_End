@@ -400,6 +400,16 @@ function App() {
             <BackendStatusBadge />
             <Routes>
               <Route path="/" element={<Navigate to="/playground" replace />} />
+              <Route
+                path="/login"
+                element={
+                  isLoggedIn ? (
+                    <Navigate to="/playground" replace />
+                  ) : (
+                    <Login onLogin={() => setIsLoggedIn(true)} />
+                  )
+                }
+              />
               <Route path="/public/cartella" element={<PublicCartella />} />
               <Route path="/error/400" element={<Error400Page />} />
               <Route path="/error/401" element={<Error401Page />} />
@@ -412,9 +422,7 @@ function App() {
               <Route
                 path="/*"
                 element={
-                  !isLoggedIn ? (
-                    <Login onLogin={() => setIsLoggedIn(true)} />
-                  ) : (
+                  isLoggedIn ? (
                     <AppLayout
                       gameConfig={gameConfig}
                       setGameConfig={setGameConfig}
@@ -423,6 +431,8 @@ function App() {
                       onLogout={handleLogout}
                       username={username}
                     />
+                  ) : (
+                    <Navigate to="/login" replace />
                   )
                 }
               />

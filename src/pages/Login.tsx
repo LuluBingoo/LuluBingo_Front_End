@@ -67,6 +67,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
     try {
       await authApi.login({ username: email, password });
+      popup.success("Logged in successfully.");
       onLogin();
     } catch (err: any) {
       const errorData = err?.data || err?.response?.data || {};
@@ -139,6 +140,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
     try {
       await authApi.login({ username: email, password, otp: otpCode });
+      popup.success("Logged in successfully.");
       onLogin();
     } catch (err: any) {
       const errorData = err?.data || err?.response?.data || {};
