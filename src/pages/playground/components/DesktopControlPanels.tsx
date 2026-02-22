@@ -121,7 +121,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                 </Button>
 
                 <Button
-                  className="h-10 w-full"
+                  className="h-10 w-full text-black dark:text-white"
                   onClick={closeGameWithoutWinner}
                   variant="destructive"
                   disabled={

@@ -39,7 +39,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/55 px-4"
+          className="fixed inset-0 z-1400 flex items-center justify-center bg-black/55 px-4"
         >
           <motion.div
             initial={{ scale: 0.6, y: 30, opacity: 0 }}
@@ -57,10 +57,33 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               <X className="h-5 w-5" />
             </Button>
             <div className="pointer-events-none absolute inset-0">
+              {winnerConfetti.slice(0, 20).map((piece) => (
+                <motion.div
+                  key={`burst-${piece.id}`}
+                  className={`absolute top-1/2 left-1/2 rounded-sm ${piece.colorClass}`}
+                  style={{
+                    width: `${piece.size + 1}px`,
+                    height: `${Math.max(5, piece.size)}px`,
+                  }}
+                  initial={{ opacity: 0, y: 0, x: 0, rotate: 0, scale: 0.6 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    y: [0, -20 - Math.abs(piece.driftX) * 0.08],
+                    x: [0, piece.driftX * 0.32],
+                    rotate: [0, piece.rotate * 0.45],
+                    scale: [0.6, 1, 0.9],
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    delay: piece.delay * 0.25,
+                    ease: "easeOut",
+                  }}
+                />
+              ))}
               {winnerConfetti.map((piece) => (
                 <motion.div
                   key={piece.id}
-                  className={`absolute top-[-18px] left-1/2 rounded-sm ${piece.colorClass}`}
+                  className={`absolute -top-4.5 left-1/2 rounded-sm ${piece.colorClass}`}
                   style={{
                     width: `${piece.size}px`,
                     height: `${Math.max(5, piece.size - 1)}px`,

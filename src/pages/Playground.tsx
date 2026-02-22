@@ -682,7 +682,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     if (getCartellaStatusByNumber(cartelaNumber) === "banned") {
-      popup.error("Banned.");
+      popup.error("This cartela is banned and cannot claim bingo.");
       return;
     }
 
@@ -698,7 +698,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         if (!claim.is_bingo) {
           if (claim.is_banned) {
-            popup.error(claim.detail || "Banned.");
+            popup.error(
+              claim.detail || "This cartela is banned and cannot claim bingo.",
+            );
             return;
           }
           popup.warning(
@@ -828,7 +830,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     if (getCartellaStatusByNumber(matchedCartela) === "banned") {
-      popup.error("Banned.");
+      popup.error("This cartela is banned and cannot claim bingo.");
       return;
     }
 
@@ -888,7 +890,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       if (claim.is_banned) {
-        popup.error(claim.detail || "Banned.");
+        popup.error(
+          claim.detail || "This cartela is banned and cannot claim bingo.",
+        );
         return;
       }
 
@@ -1222,6 +1226,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         calledNumbers={calledNumbers}
         cartelaNumbers={activeCartelas}
         cartelaDataMap={cartelaDataMap}
+        cartellaStatuses={cartellaStatuses}
         onDeclareWinner={handleDeclareWinner}
         onRemovePlayer={handleRemovePlayer}
         gameActive={isGameActive}

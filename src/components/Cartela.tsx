@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -13,12 +13,13 @@ interface CartelaModalProps {
   calledNumbers: number[];
   cartelaNumbers: string[];
   cartelaDataMap?: Record<string, number[]>;
+  cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   onDeclareWinner?: (cartelaNumber: string) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
 }
 
-// Generate random cartela numbers (5x5 grid with FREE center)
+// Generate random cartela numbers (5x5 grid, no FREE center)
 const generateCartelaNumbers = (seed: string): number[] => {
   const numbers: number[] = [];
 
@@ -65,6 +66,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   calledNumbers,
   cartelaNumbers,
   cartelaDataMap,
+  cartellaStatuses,
   onDeclareWinner,
   onRemovePlayer,
   gameActive = true,
@@ -74,6 +76,37 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [selectedCartela, setSelectedCartela] = useState(cartelaNumber || "");
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const getCartellaStatusByNumber = useCallback(
+    (number: string): "active" | "banned" | "winner" => {
+      const normalized = Number.parseInt(String(number).replace(/\D/g, ""), 10);
+      if (!Number.isFinite(normalized)) {
+        return "active";
+      }
+
+      for (const [index, value] of Object.entries(cartellaStatuses || {})) {
+        const cartelaLabel = cartelaNumbers[Number(index)];
+        const cartelaNum = Number.parseInt(
+          String(cartelaLabel ?? "").replace(/\D/g, ""),
+          10,
+        );
+        if (Number.isFinite(cartelaNum) && cartelaNum === normalized) {
+          return value;
+        }
+      }
+
+      return "active";
+    },
+    [cartellaStatuses, cartelaNumbers],
+  );
+
+  const selectableCartelaNumbers = useMemo(
+    () =>
+      cartelaNumbers.filter(
+        (number) => getCartellaStatusByNumber(number) !== "banned",
+      ),
+    [cartelaNumbers, getCartellaStatusByNumber],
+  );
 
   // Generate or retrieve cartela data when cartela changes
   useEffect(() => {
@@ -95,6 +128,17 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     }
   }, [cartelaNumber]);
 
+  useEffect(() => {
+    if (!selectedCartela) {
+      return;
+    }
+
+    if (getCartellaStatusByNumber(selectedCartela) === "banned") {
+      setSelectedCartela("");
+      popup.info("This cartela is beautifully banned and cannot be selected.");
+    }
+  }, [selectedCartela, getCartellaStatusByNumber, popup]);
+
   const handleSelectCartela = (number: string) => {
     setSelectedCartela(number);
     setShowDropdown(false);
@@ -104,7 +148,39 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     return cartelaData.filter((num) => calledNumbers.includes(num)).length;
   };
 
+  const isMarked = useCallback(
+    (value: number) => calledNumbers.includes(value),
+    [calledNumbers],
+  );
+
+  const hasWinningPattern = useMemo(() => {
+    if (cartelaData.length !== 25) {
+      return false;
+    }
+
+    const grid = Array.from({ length: 5 }, (_, row) =>
+      Array.from({ length: 5 }, (_, col) => cartelaData[col * 5 + row]),
+    );
+
+    const hasRow = grid.some((row) => row.every(isMarked));
+    const hasMainDiagonal = [0, 1, 2, 3, 4].every((idx) =>
+      isMarked(grid[idx][idx]),
+    );
+    const hasAntiDiagonal = [0, 1, 2, 3, 4].every((idx) =>
+      isMarked(grid[idx][4 - idx]),
+    );
+
+    return hasRow || hasMainDiagonal || hasAntiDiagonal;
+  }, [cartelaData, isMarked]);
+
   const handleDeclareWinner = async () => {
+    if (!hasWinningPattern) {
+      popup.warning(
+        `Cartela ${selectedCartela} does not have a complete row or diagonal yet.`,
+      );
+      return;
+    }
+
     const confirmed = await popup.confirm({
       title: `Declare Winner`,
       description: `Declare cartela ${selectedCartela} as winner?`,
@@ -155,33 +231,20 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       for (let col = 0; col < 5; col++) {
         const index = col * 5 + row;
 
-        // Center is FREE
-        if (row === 2 && col === 2) {
-          rowCells.push(
-            <div
-              key={`${row}-${col}`}
-              className="relative flex h-14 items-center justify-center rounded-md border border-slate-300 bg-amber-100 dark:border-slate-700 dark:bg-amber-900/40"
-            >
-              <span className="text-sm font-bold">FREE</span>
-            </div>,
-          );
-        } else {
-          const adjustedIndex = index > 12 ? index - 1 : index;
-          const num = cartelaData[adjustedIndex];
-          const isCalled = calledNumbers.includes(num);
+        const num = cartelaData[index];
+        const isCalled = calledNumbers.includes(num);
 
-          rowCells.push(
-            <div
-              key={`${row}-${col}`}
-              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
-            >
-              <span>{num}</span>
-              {isCalled && (
-                <div className="absolute right-1 top-1 text-xs">✓</div>
-              )}
-            </div>,
-          );
-        }
+        rowCells.push(
+          <div
+            key={`${row}-${col}`}
+            className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
+          >
+            <span>{num}</span>
+            {isCalled && (
+              <div className="absolute right-1 top-1 text-xs">✓</div>
+            )}
+          </div>,
+        );
       }
       board.push(
         <div key={`row-${row}`} className="grid grid-cols-5 gap-2">
@@ -194,7 +257,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   };
 
   const calledCount = getCalledCount();
-  const isBingo = calledCount === 24;
+  const isBingo = hasWinningPattern;
 
   // Auto-declare winner when BINGO is detected
   useEffect(() => {
@@ -277,8 +340,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                       >
-                        {cartelaNumbers.length > 0 ? (
-                          cartelaNumbers.map((number) => (
+                        {selectableCartelaNumbers.length > 0 ? (
+                          selectableCartelaNumbers.map((number) => (
                             <button
                               key={number}
                               className={`w-full rounded px-2 py-2 text-left text-sm ${selectedCartela === number ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
@@ -289,7 +352,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                           ))
                         ) : (
                           <div className="px-2 py-2 text-sm text-slate-500">
-                            No cartelas available
+                            No active cartelas available
                           </div>
                         )}
                       </motion.div>
@@ -324,14 +387,14 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                         <span className="mr-1 text-xs uppercase text-slate-500">
                           Called
                         </span>
-                        <span className="font-semibold">{calledCount}/24</span>
+                        <span className="font-semibold">{calledCount}/25</span>
                       </div>
                       <div className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
                         <span className="mr-1 text-xs uppercase text-slate-500">
                           Remaining
                         </span>
                         <span className="font-semibold">
-                          {24 - calledCount}
+                          {25 - calledCount}
                         </span>
                       </div>
                       {isBingo && (

@@ -35,7 +35,6 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
   const { theme } = useTheme();
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
-  const activeToastRef = useRef<string | number | undefined>(undefined);
   useEffect(() => {
     return () => {
       if (resolverRef.current) {
@@ -57,33 +56,29 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
       message: string,
       title?: string,
     ) => {
-      if (activeToastRef.current !== undefined) {
-        toast.dismiss(activeToastRef.current);
-      }
-
       const options: ExternalToast = {
         description: title,
-        onDismiss: () => {
-          activeToastRef.current = undefined;
-        },
-        onAutoClose: () => {
-          activeToastRef.current = undefined;
+        style: {
+          maxHeight: "40dvh",
+          overflowY: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
         },
       };
 
       if (mode === "success") {
-        activeToastRef.current = toast.success(message, options);
+        toast.success(message, options);
         return;
       }
       if (mode === "error") {
-        activeToastRef.current = toast.error(message, options);
+        toast.error(message, options);
         return;
       }
       if (mode === "warning") {
-        activeToastRef.current = toast.warning(message, options);
+        toast.warning(message, options);
         return;
       }
-      activeToastRef.current = toast.info(message, options);
+      toast.info(message, options);
     };
 
     return {
@@ -117,20 +112,25 @@ export const PopupProvider: React.FC<{ children: React.ReactNode }> = ({
         theme={theme}
         richColors
         position="top-right"
-        visibleToasts={1}
+        visibleToasts={4}
         closeButton
+        expand
         className="z-1400!"
         toastOptions={{
           style: {
             zIndex: 1300,
             opacity: "1",
+            maxHeight: "40dvh",
+            overflowY: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
           },
         }}
       />
 
       {confirmState ? (
         <div className="fixed inset-0 z-2200 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-[min(94vw,460px)] rounded-xl border border-slate-300 bg-white p-4.5 opacity-100 shadow-[0_16px_44px_rgba(2,6,23,0.28)] dark:border-slate-700 dark:bg-slate-900">
+          <div className="max-h-[85dvh] w-[min(94vw,460px)] overflow-y-auto rounded-xl border border-slate-300 bg-white p-4.5 opacity-100 shadow-[0_16px_44px_rgba(2,6,23,0.28)] dark:border-slate-700 dark:bg-slate-900">
             <div className="text-[18px] font-bold text-slate-900 dark:text-slate-100">
               {confirmState.title}
             </div>
