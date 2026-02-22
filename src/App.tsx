@@ -184,6 +184,7 @@ function AppLayout({
   const settingsSyncedRef = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     if (settingsSyncedRef.current) {
@@ -301,7 +302,7 @@ function AppLayout({
           />
         )}
         <main
-          className={`${isPlaygroundFullscreen ? "mt-0 min-h-screen" : "mt-20 min-h-[calc(100vh-80px)]"} overflow-y-auto overflow-x-hidden`}
+          className={`flex-1 ${isPlaygroundFullscreen ? "mt-0 min-h-screen" : "mt-20 min-h-[calc(100vh-80px)]"} overflow-y-auto overflow-x-hidden`}
         >
           <Routes>
             <Route
@@ -339,6 +340,11 @@ function AppLayout({
             <Route path="*" element={<Error404Page />} />
           </Routes>
         </main>
+        {!isPlaygroundFullscreen && (
+          <footer className="px-4 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+            © {currentYear} Lulu Bingo. All rights reserved.
+          </footer>
+        )}
       </div>
     </div>
   );
@@ -393,6 +399,7 @@ function App() {
           <Router>
             <BackendStatusBadge />
             <Routes>
+              <Route path="/" element={<Navigate to="/playground" replace />} />
               <Route path="/public/cartella" element={<PublicCartella />} />
               <Route path="/error/400" element={<Error400Page />} />
               <Route path="/error/401" element={<Error401Page />} />

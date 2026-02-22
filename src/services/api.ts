@@ -75,17 +75,17 @@ export const authApi = {
     return response;
   },
 
-  async forgotPassword(username: string, email: string): Promise<void> {
+  async forgotPassword(identifier: string): Promise<void> {
+    const trimmed = identifier.trim();
+    const isEmail = trimmed.includes("@");
+    const payload = isEmail
+      ? { contact_email: trimmed }
+      : { username: trimmed };
+
     if (API_CONFIG.USE_MOCK) {
-      return await mockAuthApi.forgotPassword({
-        username,
-        contact_email: email,
-      });
+      return await mockAuthApi.forgotPassword(payload as any);
     }
-    await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
-      username,
-      contact_email: email,
-    });
+    await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, payload);
   },
 
   async resetPassword(

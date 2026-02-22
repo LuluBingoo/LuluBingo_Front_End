@@ -58,6 +58,31 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
     [],
   );
 
+  const decorativePolygons = React.useMemo(
+    () =>
+      Array.from({ length: 10 }, (_, index) => ({
+        id: index,
+        left: `${(index * 13.4) % 100}%`,
+        top: `${14 + ((index * 9.7) % 72)}%`,
+        size: 16 + (index % 4) * 8,
+        rotation: ((index % 7) - 3) * 13,
+        opacity: 0.12 + (index % 3) * 0.06,
+      })),
+    [],
+  );
+
+  const staticBalls = React.useMemo(
+    () =>
+      Array.from({ length: 11 }, (_, index) => ({
+        id: index,
+        left: `${(index * 15.6 + 7) % 100}%`,
+        top: `${22 + ((index * 10.3) % 64)}%`,
+        size: 7 + (index % 4) * 3,
+        opacity: 0.2 + (index % 3) * 0.12,
+      })),
+    [],
+  );
+
   return (
     <div
       ref={boardContainerRef}
@@ -83,6 +108,36 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
               backgroundSize: "22px 22px, 28px 28px",
             }}
           />
+
+          {decorativePolygons.map((shape) => (
+            <span
+              key={`poly-${shape.id}`}
+              className={`absolute [clip-path:polygon(50%_0%,100%_35%,82%_100%,18%_100%,0%_35%)] ${isDarkTheme ? "bg-sky-200/45" : "bg-rose-400/30"}`}
+              style={{
+                left: shape.left,
+                top: shape.top,
+                width: `${shape.size}px`,
+                height: `${shape.size}px`,
+                transform: `rotate(${shape.rotation}deg)`,
+                opacity: shape.opacity,
+              }}
+            />
+          ))}
+
+          {staticBalls.map((ball) => (
+            <span
+              key={`static-ball-${ball.id}`}
+              className={`absolute rounded-full ${isDarkTheme ? "bg-indigo-200/55" : "bg-slate-500/45"}`}
+              style={{
+                left: ball.left,
+                top: ball.top,
+                width: `${ball.size}px`,
+                height: `${ball.size}px`,
+                opacity: ball.opacity,
+              }}
+            />
+          ))}
+
           {decorativeParticles.map((particle) => (
             <motion.span
               key={particle.id}
@@ -193,7 +248,7 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
                   <motion.div
                     key={num}
                     layout
-                    className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbers.includes(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-slate-900" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-black"}`}
+                    className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbers.includes(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-white" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-white"}`}
                     animate={
                       isShuffling
                         ? {

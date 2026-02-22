@@ -23,6 +23,7 @@ import {
   TwoFactorSetup,
 } from "../services/types";
 import { QRCodeSVG } from "qrcode.react";
+import { pickRandomBingoIllustration } from "../assets/illustrations";
 
 export const Profile: React.FC = () => {
   const { t } = useLanguage();
@@ -30,6 +31,7 @@ export const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ShopProfile | null>(null);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [pageIllustration] = useState(() => pickRandomBingoIllustration());
 
   // 2FA State
   const [twoFactorSetup, setTwoFactorSetup] = useState<TwoFactorSetup | null>(
@@ -351,6 +353,20 @@ export const Profile: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           {t("profile.title")}
         </h1>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+      >
+        <Card className="overflow-hidden p-2">
+          <img
+            src={pageIllustration}
+            alt="Bingo illustration"
+            className="h-44 w-full rounded-lg object-cover"
+          />
+        </Card>
       </motion.div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">

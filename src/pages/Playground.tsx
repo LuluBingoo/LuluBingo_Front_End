@@ -18,6 +18,7 @@ import { BoardArea } from "./playground/components/BoardArea";
 import { FullscreenControls } from "./playground/components/FullscreenControls";
 import { DesktopControlPanels } from "./playground/components/DesktopControlPanels";
 import { StatusOverlays } from "./playground/components/StatusOverlays";
+import { pickRandomBingoIllustration } from "../assets/illustrations";
 import {
   GameStatus,
   PlaygroundProps,
@@ -36,6 +37,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const { t } = useLanguage();
   const { theme } = useTheme();
   const popup = usePopup();
+  const [pageIllustration] = useState(() => pickRandomBingoIllustration());
   const [resolvedGameConfig, setResolvedGameConfig] = useState(gameConfig);
   const [restoredGame, setRestoredGame] = useState<Game | null>(null);
   const [isRestoringGame, setIsRestoringGame] = useState(false);
@@ -1160,6 +1162,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
           )}
         </div>
       </div>
+
+      {!isFullscreen && (
+        <Card className="overflow-hidden p-2">
+          <img
+            src={pageIllustration}
+            alt="Bingo illustration"
+            className="h-36 w-full rounded-lg object-cover"
+          />
+        </Card>
+      )}
 
       {/* Error toast */}
       {!isFullscreen && cartelaError && (

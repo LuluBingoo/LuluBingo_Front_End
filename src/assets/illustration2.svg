@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="75%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#E63946" />
+      <stop offset="60%" stop-color="#B21F2D" />
+      <stop offset="100%" stop-color="#660708" />
+    </radialGradient>
+    
+    <radialGradient id="ball-grad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="80%" stop-color="#E0E0E0" />
+      <stop offset="100%" stop-color="#BDBDBD" />
+    </radialGradient>
+
+    <radialGradient id="gold-ball-grad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFF3B0" />
+      <stop offset="70%" stop-color="#FFD166" />
+      <stop offset="100%" stop-color="#E0A96D" />
+    </radialGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="8" stdDeviation="5" flood-color="#3A0CA3" flood-opacity="0.4"/>
+    </filter>
+    
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <g id="bingo-grid">
+      <line x1="10" y1="46" x2="150" y2="46" stroke="#E63946" stroke-width="2"/>
+      <line x1="10" y1="74" x2="150" y2="74" stroke="#E63946" stroke-width="2"/>
+      <line x1="10" y1="102" x2="150" y2="102" stroke="#E63946" stroke-width="2"/>
+      <line x1="10" y1="130" x2="150" y2="130" stroke="#E63946" stroke-width="2"/>
+      <line x1="38" y1="18" x2="38" y2="158" stroke="#E63946" stroke-width="2"/>
+      <line x1="66" y1="18" x2="66" y2="158" stroke="#E63946" stroke-width="2"/>
+      <line x1="94" y1="18" x2="94" y2="158" stroke="#E63946" stroke-width="2"/>
+      <line x1="122" y1="18" x2="122" y2="158" stroke="#E63946" stroke-width="2"/>
+      <polygon points="80,78 84,86 92,87 86,93 88,101 80,97 72,101 74,93 68,87 76,86" fill="#FFD166"/>
+    </g>
+
+    <g id="bingo-card">
+      <rect width="160" height="220" rx="12" fill="#FFFFFF" filter="url(#shadow)"/>
+      <rect x="10" y="10" width="140" height="40" rx="6" fill="#E63946"/>
+      <circle cx="24" cy="30" r="8" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="52" cy="30" r="8" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="80" cy="30" r="8" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="108" cy="30" r="8" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="136" cy="30" r="8" fill="#FFFFFF" opacity="0.9"/>
+      <rect x="10" y="58" width="140" height="140" fill="none" stroke="#E63946" stroke-width="4" rx="4"/>
+      <use href="#bingo-grid" x="0" y="40"/>
+    </g>
+
+    <g id="bingo-ball">
+      <circle cx="0" cy="0" r="45" fill="url(#ball-grad)" filter="url(#shadow)"/>
+      <circle cx="0" cy="0" r="22" fill="#FFFFFF" stroke="#D3D3D3" stroke-width="2"/>
+      <circle cx="0" cy="0" r="16" fill="#E63946" opacity="0.8"/>
+    </g>
+    
+    <g id="gold-ball">
+      <circle cx="0" cy="0" r="45" fill="url(#gold-ball-grad)" filter="url(#shadow)"/>
+      <circle cx="0" cy="0" r="22" fill="#FFFFFF" stroke="#E0A96D" stroke-width="2"/>
+      <circle cx="0" cy="0" r="16" fill="#118AB2" opacity="0.8"/>
+    </g>
+
+    <g id="confetti-1"><rect width="10" height="25" fill="#FFD166" transform="rotate(30)"/></g>
+    <g id="confetti-2"><rect width="8" height="20" fill="#06D6A0" transform="rotate(-45)"/></g>
+    <g id="confetti-3"><circle cx="0" cy="0" r="7" fill="#118AB2"/></g>
+    <g id="confetti-4"><polygon points="0,-10 10,10 -10,10" fill="#F72585" transform="rotate(15)"/></g>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg-grad)"/>
+
+  <g fill="#FFFFFF" opacity="0.05">
+    <polygon points="600,400 0,0 150,0" />
+    <polygon points="600,400 350,0 500,0" />
+    <polygon points="600,400 700,0 850,0" />
+    <polygon points="600,400 1050,0 1200,0" />
+    <polygon points="600,400 1200,200 1200,350" />
+    <polygon points="600,400 1200,550 1200,700" />
+    <polygon points="600,400 1050,800 900,800" />
+    <polygon points="600,400 700,800 550,800" />
+    <polygon points="600,400 350,800 200,800" />
+    <polygon points="600,400 0,800 0,650" />
+    <polygon points="600,400 0,450 0,300" />
+  </g>
+
+  <use href="#bingo-ball" x="150" y="150" transform="scale(0.7)" opacity="0.5"/>
+  <use href="#gold-ball" x="1000" y="200" transform="scale(0.8) rotate(30)" opacity="0.6"/>
+  <use href="#bingo-ball" x="800" y="100" transform="scale(0.5)" opacity="0.4"/>
+  <use href="#bingo-ball" x="250" y="600" transform="scale(0.9) rotate(-20)" opacity="0.4"/>
+  
+  <g stroke="#FFD166" stroke-width="4" fill="none" opacity="0.3">
+    <circle cx="1050" cy="650" r="40" stroke-dasharray="10 10"/>
+    <circle cx="100" cy="350" r="60" stroke-dasharray="15 15"/>
+    <circle cx="600" cy="200" r="80" stroke-dasharray="20 20"/>
+  </g>
+
+  <g id="character-left">
+    <path d="M120,550 C80,450 150,350 200,300" fill="none" stroke="#8338EC" stroke-width="45" stroke-linecap="round"/>
+    
+    <path d="M100,800 C100,550 400,550 420,800 Z" fill="#8338EC" filter="url(#shadow)"/>
+    <path d="M220,550 Q260,650 260,800 L200,800 Q200,650 180,550 Z" fill="#6A040F" opacity="0.2"/> <path d="M200,540 C150,560 120,620 100,700" fill="none" stroke="#FFBE0B" stroke-width="8"/> <path d="M320,540 C370,560 400,620 420,700" fill="none" stroke="#FFBE0B" stroke-width="8"/>
+
+    <circle cx="260" cy="420" r="95" fill="#FFCDB2"/>
+    <circle cx="260" cy="420" r="95" fill="#E5989B" opacity="0.2"/> <circle cx="200" cy="440" r="25" fill="#FFCDB2"/> <circle cx="320" cy="440" r="25" fill="#FFCDB2"/> <circle cx="200" cy="450" r="10" fill="#FFD166"/> <circle cx="320" cy="450" r="10" fill="#FFD166"/> <path d="M180,380 C150,380 140,320 180,300 C190,260 250,240 280,270 C310,240 360,270 360,320 C380,340 370,390 340,380" fill="#FFFFFF" filter="url(#shadow)"/>
+    <circle cx="260" cy="220" r="50" fill="#FFFFFF"/>
+    
+    <path d="M200,420 C200,380 250,380 250,420 C250,460 200,460 200,420 Z" fill="#FFFFFF" stroke="#FFBE0B" stroke-width="12"/>
+    <path d="M270,420 C270,380 320,380 320,420 C320,460 270,460 270,420 Z" fill="#FFFFFF" stroke="#FFBE0B" stroke-width="12"/>
+    <line x1="250" y1="410" x2="270" y2="410" stroke="#FFBE0B" stroke-width="10"/>
+    <path d="M165,410 L195,410" stroke="#FFBE0B" stroke-width="10"/>
+    <path d="M325,410 L355,410" stroke="#FFBE0B" stroke-width="10"/>
+    
+    <path d="M210,410 Q225,395 240,410" fill="none" stroke="#000000" stroke-width="6" stroke-linecap="round"/>
+    <path d="M280,410 Q295,395 310,410" fill="none" stroke="#000000" stroke-width="6" stroke-linecap="round"/>
+    
+    <path d="M230,460 Q260,510 290,460 Z" fill="#6A040F"/>
+    <path d="M240,465 Q260,480 280,465 Z" fill="#FFFFFF"/> <path d="M250,490 Q260,470 270,490 Z" fill="#FF5D8F"/> <path d="M300,580 C360,650 480,500 400,350" fill="none" stroke="#8338EC" stroke-width="50" stroke-linecap="round" filter="url(#shadow)"/>
+    
+    <circle cx="395" cy="330" r="35" fill="#FFCDB2"/>
+    
+    <rect x="375" y="210" width="40" height="100" rx="10" fill="#06D6A0" transform="rotate(15, 395, 260)"/>
+    <path d="M390,195 Q395,180 400,195 Z" fill="#F72585" transform="rotate(15, 395, 260)"/> <rect x="370" y="250" width="50" height="30" fill="#118AB2" transform="rotate(15, 395, 260)"/> <rect x="365" y="300" width="60" height="20" rx="10" fill="#FFCDB2" transform="rotate(-15, 395, 310)"/>
+    <rect x="360" y="325" width="60" height="20" rx="10" fill="#FFCDB2" transform="rotate(-10, 395, 335)"/>
+  </g>
+
+  <g id="character-right">
+    <path d="M720,800 C740,600 1020,550 1150,800 Z" fill="#06D6A0" filter="url(#shadow)"/>
+    <path d="M850,590 L850,800" stroke="#049A73" stroke-width="15" stroke-dasharray="40 20"/> <circle cx="880" cy="400" r="90" fill="#D4A373"/>
+    
+    <path d="M800,360 Q820,280 880,260 Q940,280 960,360 Q980,320 940,240 Q880,220 820,240 Q780,320 800,360 Z" fill="#3A1C0E"/>
+    <polygon points="820,300 840,250 860,290 880,230 900,290 920,250 940,300" fill="#3A1C0E"/>
+    
+    <circle cx="785" cy="420" r="22" fill="#D4A373"/>
+    <circle cx="975" cy="420" r="22" fill="#D4A373"/>
+    
+    <path d="M810,360 Q830,340 860,355" fill="none" stroke="#3A1C0E" stroke-width="10" stroke-linecap="round"/>
+    <path d="M900,355 Q930,340 950,360" fill="none" stroke="#3A1C0E" stroke-width="10" stroke-linecap="round"/>
+    
+    <circle cx="835" cy="385" r="14" fill="#FFFFFF"/>
+    <circle cx="835" cy="385" r="7" fill="#000000"/>
+    <circle cx="925" cy="385" r="14" fill="#FFFFFF"/>
+    <circle cx="925" cy="385" r="7" fill="#000000"/>
+    
+    <path d="M880,410 Q890,430 870,440" fill="none" stroke="#B07D4F" stroke-width="6" stroke-linecap="round"/>
+    
+    <path d="M830,460 Q880,530 930,460 Z" fill="#6A040F"/>
+    <path d="M840,460 Q880,480 920,460 Z" fill="#FFFFFF"/>
+    <path d="M860,500 Q880,480 900,500 Z" fill="#FF5D8F"/>
+    
+    <path d="M1020,620 C1080,500 1150,550 1100,400" fill="none" stroke="#06D6A0" stroke-width="55" stroke-linecap="round" filter="url(#shadow)"/>
+    <circle cx="1080" cy="380" r="40" fill="#D4A373"/>
+    
+    <rect x="700" y="550" width="100" height="25" rx="12" fill="#D4A373" transform="rotate(-20, 750, 560)"/>
+    
+    <g transform="translate(560, 380) rotate(12) scale(1.2)">
+      <use href="#bingo-card" x="0" y="0"/>
+      <circle cx="38" cy="118" r="15" fill="#F72585" opacity="0.85"/>
+      <circle cx="94" cy="146" r="15" fill="#06D6A0" opacity="0.85"/>
+      <circle cx="66" cy="146" r="15" fill="#F72585" opacity="0.85"/>
+      <circle cx="122" cy="118" r="15" fill="#118AB2" opacity="0.85"/>
+      <circle cx="122" cy="174" r="15" fill="#06D6A0" opacity="0.85"/>
+      <circle cx="38" cy="174" r="15" fill="#118AB2" opacity="0.85"/>
+      <circle cx="94" cy="90" r="15" fill="#F72585" opacity="0.85"/>
+    </g>
+    
+    <path d="M680,560 C660,540 690,520 720,530" fill="none" stroke="#D4A373" stroke-width="20" stroke-linecap="round"/>
+    <path d="M690,580 C670,560 700,540 730,550" fill="none" stroke="#D4A373" stroke-width="20" stroke-linecap="round"/>
+  </g>
+
+  <g id="character-center">
+    <g transform="translate(580, 680) scale(1.8)">
+      <use href="#gold-ball" x="0" y="0"/>
+    </g>
+
+    <circle cx="580" cy="530" r="75" fill="#F4A261" filter="url(#shadow)"/>
+    
+    <path d="M510,500 C510,430 650,430 650,500 Z" fill="#1D3557"/>
+    <circle cx="480" cy="500" r="35" fill="#1D3557"/>
+    <circle cx="680" cy="500" r="35" fill="#1D3557"/>
+    <circle cx="480" cy="480" r="15" fill="#E63946"/> <circle cx="680" cy="480" r="15" fill="#E63946"/> <circle cx="550" cy="510" r="18" fill="#FFFFFF"/>
+    <circle cx="550" cy="510" r="9" fill="#1D3557"/>
+    <circle cx="554" cy="506" r="3" fill="#FFFFFF"/>
+    
+    <circle cx="610" cy="510" r="18" fill="#FFFFFF"/>
+    <circle cx="610" cy="510" r="9" fill="#1D3557"/>
+    <circle cx="614" cy="506" r="3" fill="#FFFFFF"/>
+    
+    <ellipse cx="530" cy="535" rx="12" ry="8" fill="#E76F51" opacity="0.6"/>
+    <ellipse cx="630" cy="535" rx="12" ry="8" fill="#E76F51" opacity="0.6"/>
+    
+    <path d="M560,550 Q580,570 600,550" fill="none" stroke="#6A040F" stroke-width="5" stroke-linecap="round"/>
+
+    <circle cx="480" cy="620" r="25" fill="#F4A261"/>
+    <circle cx="680" cy="620" r="25" fill="#F4A261"/>
+  </g>
+
+  <use href="#bingo-ball" x="350" y="700" transform="scale(1.2)" />
+  <use href="#bingo-ball" x="900" y="680" transform="scale(0.9) rotate(45)" />
+  <use href="#gold-ball" x="150" y="450" transform="scale(0.8) rotate(-15)" />
+
+  <g transform="translate(180, 620) rotate(-25) scale(0.9)">
+    <use href="#bingo-card" x="0" y="0"/>
+    <circle cx="94" cy="118" r="15" fill="#118AB2" opacity="0.85"/>
+    <circle cx="66" cy="118" r="15" fill="#F72585" opacity="0.85"/>
+    <circle cx="122" cy="146" r="15" fill="#06D6A0" opacity="0.85"/>
+  </g>
+
+  <g>
+    <use href="#confetti-1" x="100" y="100"/>
+    <use href="#confetti-1" x="450" y="50" transform="scale(1.5)"/>
+    <use href="#confetti-1" x="800" y="300"/>
+    <use href="#confetti-1" x="1100" y="150"/>
+    <use href="#confetti-1" x="300" y="600" transform="scale(0.8)"/>
+    <use href="#confetti-1" x="950" y="550" transform="scale(1.2)"/>
+
+    <use href="#confetti-2" x="250" y="150"/>
+    <use href="#confetti-2" x="650" y="100" transform="scale(1.3)"/>
+    <use href="#confetti-2" x="1000" y="50"/>
+    <use href="#confetti-2" x="50" y="400"/>
+    <use href="#confetti-2" x="850" y="700" transform="scale(1.5)"/>
+
+    <use href="#confetti-3" x="400" y="200"/>
+    <use href="#confetti-3" x="750" y="150" transform="scale(2)"/>
+    <use href="#confetti-3" x="1150" y="300"/>
+    <use href="#confetti-3" x="150" y="550"/>
+    <use href="#confetti-3" x="600" y="350"/>
+
+    <use href="#confetti-4" x="550" y="250"/>
+    <use href="#confetti-4" x="900" y="200" transform="scale(1.4)"/>
+    <use href="#confetti-4" x="200" y="250"/>
+    <use href="#confetti-4" x="1050" y="450"/>
+    <use href="#confetti-4" x="450" y="700"/>
+    <use href="#confetti-4" x="700" y="600" transform="scale(1.5)"/>
+  </g>
+
+  <g fill="#FFD166" filter="url(#glow)">
+    <polygon points="120,80 125,100 145,105 125,110 120,130 115,110 95,105 115,100" />
+    <polygon points="520,150 523,165 538,168 523,171 520,186 517,171 502,168 517,165" transform="scale(1.5)"/>
+    <polygon points="1050,120 1055,140 1075,145 1055,150 1050,170 1045,150 1025,145 1045,140" />
+    <polygon points="800,450 803,460 813,463 803,466 800,476 797,466 787,463 797,460" />
+    <polygon points="380,450 383,460 393,463 383,466 380,476 377,466 367,463 377,460" />
+  </g>
+
+</svg>

@@ -27,6 +27,7 @@ import { authApi, shopApi } from "../services/api";
 import { Input } from "../components/ui/input";
 import { setCurrencySetting } from "../services/settings";
 import { TwoFactorMethod } from "../services/types";
+import { pickRandomBingoIllustration } from "../assets/illustrations";
 
 export const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -45,6 +46,7 @@ export const Settings: React.FC = () => {
   const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
   const featureFlagsRef = useRef<Record<string, any>>({});
   const isHydratingRef = useRef(true);
+  const autosaveInitializedRef = useRef<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<
     Record<string, "saving" | "saved" | null>
   >({});
@@ -59,6 +61,7 @@ export const Settings: React.FC = () => {
   >([]);
   const [password2faMethod, setPassword2faMethod] =
     useState<TwoFactorMethod>("totp");
+  const [pageIllustration] = useState(() => pickRandomBingoIllustration());
 
   const resetPasswordForm = () => {
     setCurrentPassword("");
@@ -113,6 +116,14 @@ export const Settings: React.FC = () => {
         {status === "saving" ? "Saving..." : "Saved"}
       </span>
     );
+  };
+
+  const shouldSkipInitialAutosave = (key: string) => {
+    if (!autosaveInitializedRef.current[key]) {
+      autosaveInitializedRef.current[key] = true;
+      return true;
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -171,7 +182,14 @@ export const Settings: React.FC = () => {
         console.error("Failed to load settings", error);
         popup.error("Failed to load settings from backend.");
       } finally {
-        isHydratingRef.current = false;
+        setSaveStatus({});
+        Object.values(saveStatusTimeoutsRef.current).forEach((timeoutId) => {
+          window.clearTimeout(timeoutId);
+        });
+        saveStatusTimeoutsRef.current = {};
+        window.setTimeout(() => {
+          isHydratingRef.current = false;
+        }, 0);
         setIsLoading(false);
       }
     };
@@ -181,6 +199,7 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     if (isHydratingRef.current) return;
+    if (shouldSkipInitialAutosave("notifications")) return;
     void persistFeatureFlagsPatch(
       { push_notifications: notifications },
       "Push notification setting changed locally, but backend sync failed.",
@@ -190,6 +209,7 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     if (isHydratingRef.current) return;
+    if (shouldSkipInitialAutosave("emailAlerts")) return;
     void persistFeatureFlagsPatch(
       { email_alerts: emailAlerts },
       "Email alert setting changed locally, but backend sync failed.",
@@ -199,6 +219,7 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     if (isHydratingRef.current) return;
+    if (shouldSkipInitialAutosave("autoBackup")) return;
     void persistFeatureFlagsPatch(
       { auto_backup: autoBackup },
       "Auto backup setting changed locally, but backend sync failed.",
@@ -208,6 +229,7 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     if (isHydratingRef.current) return;
+    if (shouldSkipInitialAutosave("cutPercentage")) return;
     const timeoutId = window.setTimeout(() => {
       const normalizedCut = Math.max(
         0,
@@ -443,6 +465,20 @@ export const Settings: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           {t("settings.title")}
         </h1>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+      >
+        <Card className="overflow-hidden p-2">
+          <img
+            src={pageIllustration}
+            alt="Bingo illustration"
+            className="h-40 w-full rounded-lg object-cover"
+          />
+        </Card>
       </motion.div>
 
       <div className="grid gap-4">

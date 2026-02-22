@@ -35,6 +35,18 @@ export const Header: React.FC<HeaderProps> = ({
   const [isSiteFullscreen, setIsSiteFullscreen] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
+  const headerParticles = React.useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, index) => ({
+        id: index,
+        left: `${(index * 19.5) % 100}%`,
+        size: 2 + (index % 4),
+        delay: (index % 6) * 0.4,
+        duration: 4.8 + (index % 5) * 0.85,
+        drift: ((index % 7) - 3) * 8,
+      })),
+    [],
+  );
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -122,21 +134,51 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <motion.header
-      className={`fixed top-0 right-0 z-40 grid h-20 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-red-100 bg-white/95 px-3 sm:px-4 md:px-6 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90 max-md:left-50 max-sm:left-17.5 ${sidebarCollapsed ? "left-22" : "left-62.5"}`}
+      className={`fixed top-0 right-0 z-40 grid h-20 grid-cols-[1fr_auto_1fr] items-center gap-2 overflow-hidden border-b border-red-100 bg-white/95 px-3 sm:px-4 md:px-6 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90 max-md:left-50 max-sm:left-17.5 ${sidebarCollapsed ? "left-22" : "left-62.5"}`}
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100 }}
     >
-      <div className="min-w-0" />
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute -top-8 -left-4 h-20 w-24 rotate-6 bg-red-200/30 dark:bg-red-400/12 [clip-path:polygon(50%_0%,100%_30%,82%_100%,18%_100%,0%_30%)]" />
+        <div className="absolute top-2 right-16 h-14 w-16 -rotate-12 bg-amber-200/30 dark:bg-amber-300/10 [clip-path:polygon(50%_0%,100%_38%,80%_100%,20%_100%,0%_38%)]" />
+        <div className="absolute -bottom-4 right-2 h-16 w-18 rotate-12 bg-rose-200/30 dark:bg-rose-300/10 [clip-path:polygon(50%_0%,100%_34%,84%_100%,16%_100%,0%_34%)]" />
+        <div className="absolute inset-0 opacity-40 dark:opacity-25 bg-[radial-gradient(circle_at_16%_40%,rgba(239,68,68,0.18)_1px,transparent_1.5px),radial-gradient(circle_at_76%_50%,rgba(244,63,94,0.2)_1px,transparent_1.5px)] bg-size-[22px_22px,30px_30px]" />
+        {headerParticles.map((particle) => (
+          <motion.span
+            key={particle.id}
+            className="absolute bottom-0 rounded-full bg-red-400/35 shadow-[0_0_8px_rgba(248,113,113,0.3)] dark:bg-rose-200/30"
+            style={{
+              left: particle.left,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+            }}
+            animate={{
+              y: [0, -16, -46, -82],
+              x: [0, particle.drift * 0.4, particle.drift],
+              opacity: [0, 0.8, 0.5, 0],
+              scale: [0.75, 1.1, 1, 0.7],
+            }}
+            transition={{
+              duration: particle.duration,
+              delay: particle.delay,
+              repeat: Infinity,
+              ease: "easeOut",
+            }}
+          />
+        ))}
+      </div>
 
-      <div className="pointer-events-none flex items-center justify-center gap-2">
+      <div className="relative z-10 min-w-0" />
+
+      <div className="pointer-events-none relative z-10 flex items-center justify-center gap-2">
         <Trophy className="h-5 w-5 text-red-700 dark:text-red-400" />
         <div className="text-base font-bold tracking-wide text-red-700 sm:text-lg dark:text-red-400">
           LULU Bingo
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+      <div className="relative z-10 flex min-w-0 items-center justify-end gap-2 sm:gap-3">
         <button
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-red-300 dark:hover:bg-slate-800"
           onClick={() => navigate("/newgame")}
