@@ -20,6 +20,7 @@ interface FullscreenControlsProps {
   setShowRadialControls: React.Dispatch<React.SetStateAction<boolean>>;
   isStoppingGame: boolean;
   isCallingNumber: boolean;
+  isCheckingCartela: boolean;
   isStartingGame: boolean;
   callRandomNumber: () => Promise<void>;
   startGame: () => Promise<void>;
@@ -41,6 +42,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   setShowRadialControls,
   isStoppingGame,
   isCallingNumber,
+  isCheckingCartela,
   isStartingGame,
   callRandomNumber,
   startGame,
@@ -200,6 +202,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
           }}
           disabled={
             isCallingNumber ||
+            isCheckingCartela ||
             isStartingGame ||
             isStoppingGame ||
             calledNumbersLength >= 75 ||

@@ -511,7 +511,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   return (
     <div className="space-y-6 p-6">
       {submittingPayment && (
-        <div className="fixed inset-0 z-2000 flex items-center justify-center bg-white/80 backdrop-blur-md dark:bg-slate-950/80">
+        <div className="fixed inset-0 z-9999 flex h-dvh w-screen items-center justify-center bg-white/80 backdrop-blur-md dark:bg-slate-950/80">
           <div className="w-[min(92vw,680px)] space-y-5 rounded-2xl border border-red-200 bg-white/95 p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900/95">
             <div className="text-center">
               <h3 className="text-xl font-bold text-red-700 dark:text-red-400">

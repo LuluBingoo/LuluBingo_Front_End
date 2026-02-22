@@ -113,7 +113,8 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   disabled={
                     calledNumbersLength >= 75 ||
                     isCallingNumber ||
-                    isStoppingGame
+                    isStoppingGame ||
+                    isCheckingCartela
                   }
                 >
                   {isCallingNumber ? "Calling..." : t("playground.callNumber")}
@@ -123,7 +124,9 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   className="h-10 w-full"
                   onClick={closeGameWithoutWinner}
                   variant="destructive"
-                  disabled={isStoppingGame || isCallingNumber}
+                  disabled={
+                    isStoppingGame || isCallingNumber || isCheckingCartela
+                  }
                 >
                   <X className="mr-1 h-4 w-4" />
                   {isStoppingGame ? "Closing..." : "Close Without Winner"}
@@ -179,7 +182,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   checked={autoCall}
                   onChange={(e) => setAutoCall(e.target.checked)}
                   className="h-4 w-4 rounded"
-                  disabled={calledNumbersLength >= 75}
+                  disabled={calledNumbersLength >= 75 || isCheckingCartela}
                 />
                 {t("playground.autoCall")}
               </label>

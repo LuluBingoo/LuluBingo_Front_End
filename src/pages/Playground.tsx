@@ -9,6 +9,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
 import { gamesApi } from "../services/api";
+import { ApiError } from "../services/api/client";
 import { formatCurrency } from "../services/settings";
 import { Game } from "../services/types";
 import { GameLogCard } from "./playground/components/GameLogCard";
@@ -171,6 +172,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const syncInFlightRef = React.useRef(false);
   const lastSyncErrorLogRef = React.useRef(0);
   const gameStatusRef = React.useRef<GameStatus>("pending");
+  const initializedGameCodeRef = React.useRef<string | null>(null);
   const startTransitionUntilRef = React.useRef(0);
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
@@ -262,11 +264,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
     };
   }, [currentGameConfig?.gameCode, resumeGameCode]);
 
-  // Initialize game if config exists
+  // Initialize game once per game code to avoid state reset loops
   useEffect(() => {
     if (!currentGameConfig) {
       return;
     }
+
+    const gameCode = currentGameConfig.gameCode || currentGameConfig.game || "";
+    if (!gameCode) {
+      return;
+    }
+
+    if (initializedGameCodeRef.current === gameCode) {
+      return;
+    }
+
+    initializedGameCodeRef.current = gameCode;
 
     const status = (currentGameConfig.backendStatus as any) || "pending";
     setGameStatus(status);
@@ -277,8 +290,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setDrawSequence(currentGameConfig.drawSequence || []);
     setDrawCursor(0);
     onGameStateChange?.(status === "active");
-    console.log("Game config loaded:", currentGameConfig);
-  }, [currentGameConfig, onGameStateChange]);
+  }, [currentGameConfig?.gameCode, currentGameConfig?.game]);
 
   useEffect(() => {
     setAutoCallTimer(getConfiguredAutoCallSeconds());
@@ -356,6 +368,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const mapNumberToLabel = (number: number) => {
     const letter = getNumberLetter(number);
     return `${letter}${number}`;
+  };
+
+  const getApiErrorDetail = (error: unknown, fallback: string) => {
+    if (error instanceof ApiError) {
+      const detail =
+        (error.data as any)?.detail || (error.data as any)?.message;
+      if (typeof detail === "string" && detail.trim()) {
+        return detail;
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return fallback;
   };
 
   const triggerCalledBall = (label: string, calledNumber?: number | null) => {
@@ -539,6 +567,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       autoCall &&
       isGameActive &&
       gameStatus === "active" &&
+      !isCheckingCartela &&
       calledNumbers.length < 75
     ) {
       interval = window.setInterval(() => {
@@ -566,6 +595,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     autoCall,
     isGameActive,
     gameStatus,
+    isCheckingCartela,
     calledNumbers.length,
     isCallingNumber,
     getConfiguredAutoCallSeconds,
@@ -584,6 +614,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
   // Call one random number manually or via auto-call
   const callRandomNumber = async () => {
     if (!currentGameConfig?.gameCode || isCallingNumber) return;
+    if (isCheckingCartela) {
+      return;
+    }
     if (gameStatus !== "active") {
       popup.info("Start the game first.");
       return;
@@ -615,7 +648,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
     } catch (error) {
       console.error("Failed to call next number", error);
-      popup.error("Failed to get next number from backend.");
+      popup.error(
+        getApiErrorDetail(error, "Failed to get next number from backend."),
+      );
+      await syncGameState();
     } finally {
       setIsCallingNumber(false);
     }
@@ -662,7 +698,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         if (!claim.is_bingo) {
           if (claim.is_banned) {
-            popup.error("Banned.");
+            popup.error(claim.detail || "Banned.");
             return;
           }
           popup.warning(
@@ -709,7 +745,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
     } catch (error) {
       console.error("Failed to complete game", error);
-      popup.error("Failed to complete game on the server.");
+      popup.error(
+        getApiErrorDetail(error, "Failed to complete game on the server."),
+      );
+      await syncGameState();
     }
   };
 
@@ -798,6 +837,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    setAutoCall(false);
+    setAutoCallTimer(getConfiguredAutoCallSeconds());
     setIsCheckingCartela(true);
     try {
       const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
@@ -847,7 +888,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       if (claim.is_banned) {
-        popup.error("Banned.");
+        popup.error(claim.detail || "Banned.");
         return;
       }
 
@@ -856,7 +897,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       );
     } catch (error) {
       console.error("Failed to validate cartela", error);
-      popup.error("Failed to validate cartela on the server.");
+      popup.error(
+        getApiErrorDetail(error, "Failed to validate cartela on the server."),
+      );
+      await syncGameState();
     } finally {
       setIsCheckingCartela(false);
     }
@@ -873,18 +917,31 @@ export const Playground: React.FC<PlaygroundProps> = ({
     });
 
     if (confirmed) {
+      if (!currentGameConfig?.gameCode) {
+        popup.error("No backend game code found for cancellation.");
+        return;
+      }
+
+      let cancelledOnServer = false;
       setIsStoppingGame(true);
       try {
-        if (currentGameConfig?.gameCode) {
-          await gamesApi.completeGame(currentGameConfig.gameCode, {
-            status: "cancelled",
-            winners: [],
-          });
-        }
+        await gamesApi.completeGame(currentGameConfig.gameCode, {
+          status: "cancelled",
+          winners: [],
+        });
+        cancelledOnServer = true;
       } catch (error) {
         console.error("Failed to cancel game", error);
+        popup.error(
+          getApiErrorDetail(error, "Failed to cancel game on the server."),
+        );
       } finally {
         setIsStoppingGame(false);
+      }
+
+      if (!cancelledOnServer) {
+        await syncGameState();
+        return;
       }
 
       setIsGameActive(false);
@@ -907,6 +964,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           : prev,
       );
       onGameStateChange?.(false);
+      popup.success("Game closed without winner.");
     }
   };
 
@@ -935,7 +993,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
       await syncGameState();
     } catch (error) {
       console.error("Failed to start game", error);
-      popup.error("Failed to start game.");
+      popup.error(getApiErrorDetail(error, "Failed to start game."));
+      await syncGameState();
     } finally {
       setIsStartingGame(false);
     }
@@ -1340,6 +1399,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           setShowRadialControls={setShowRadialControls}
           isStoppingGame={isStoppingGame}
           isCallingNumber={isCallingNumber}
+          isCheckingCartela={isCheckingCartela}
           isStartingGame={isStartingGame}
           callRandomNumber={callRandomNumber}
           startGame={startGame}
