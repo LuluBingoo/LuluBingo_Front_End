@@ -562,7 +562,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Auto-call functionality
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
+    let interval: number | undefined;
     if (
       autoCall &&
       isGameActive &&
