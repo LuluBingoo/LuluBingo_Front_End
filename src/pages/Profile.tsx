@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { User, Mail, Phone, Calendar, Shield, QrCode } from "lucide-react";
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Shield,
+  QrCode,
+  Lock,
+  Building2,
+  CreditCard,
+} from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -25,12 +35,34 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { pickRandomBingoIllustration } from "../assets/illustrations";
 
-export const Profile: React.FC = () => {
+interface ProfileProps {
+  forceProfileCompletion?: boolean;
+  forcePasswordChange?: boolean;
+  onAccessStateRefresh?: () => Promise<void> | void;
+}
+
+export const Profile: React.FC<ProfileProps> = ({
+  forceProfileCompletion = false,
+  forcePasswordChange = false,
+  onAccessStateRefresh,
+}) => {
   const { t } = useLanguage();
   const popup = usePopup();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ShopProfile | null>(null);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordOtp, setPasswordOtp] = useState("");
+  const [password2faEnabled, setPassword2faEnabled] = useState(false);
+  const [password2faMethods, setPassword2faMethods] = useState<
+    TwoFactorMethod[]
+  >([]);
+  const [password2faMethod, setPassword2faMethod] =
+    useState<TwoFactorMethod>("totp");
   const [pageIllustration] = useState(() => pickRandomBingoIllustration());
 
   // 2FA State
@@ -89,6 +121,14 @@ export const Profile: React.FC = () => {
     try {
       const data = await shopApi.getProfile();
       setProfile(data);
+      const methods = Array.isArray(data.two_factor_methods)
+        ? data.two_factor_methods
+        : data.two_factor_enabled
+          ? [data.two_factor_method || "totp"]
+          : [];
+      setPassword2faEnabled(Boolean(data.two_factor_enabled));
+      setPassword2faMethods(methods);
+      setPassword2faMethod(methods[0] || data.two_factor_method || "totp");
       if (data.two_factor_totp_enabled) {
         setSelectedTwoFactorMethod("totp");
       } else if (data.two_factor_email_enabled) {
@@ -114,7 +154,7 @@ export const Profile: React.FC = () => {
     if (!profile || isProfileSaving) return;
     setIsProfileSaving(true);
     try {
-      await shopApi.updateProfile({
+      const updatedProfile = await shopApi.updateProfile({
         name: profile.name,
         contact_email: profile.contact_email,
         contact_phone: profile.contact_phone,
@@ -122,6 +162,8 @@ export const Profile: React.FC = () => {
         bank_account_name: profile.bank_account_name,
         bank_account_number: profile.bank_account_number,
       });
+      setProfile(updatedProfile);
+      await onAccessStateRefresh?.();
       popup.success("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to update profile", error);
@@ -140,6 +182,87 @@ export const Profile: React.FC = () => {
       setIsProfileSaving(false);
     }
   };
+
+  const handleSendPasswordOtp = async () => {
+    if (isSendingPasswordOtp) return;
+    if (password2faMethod !== "email_code") {
+      popup.info("Use your authenticator app code for this method.");
+      return;
+    }
+
+    setIsSendingPasswordOtp(true);
+    try {
+      await authApi.send2FAEmailCode("change_password");
+      popup.success("Verification code sent to your email.");
+    } catch (error) {
+      console.error("Failed to send password change OTP", error);
+      popup.error("Failed to send verification code.");
+    } finally {
+      setIsSendingPasswordOtp(false);
+    }
+  };
+
+  const handleForcedPasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isChangingPassword) return;
+
+    if (!currentPassword.trim() || !newPassword.trim()) {
+      popup.warning("Please enter current and new password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      popup.warning("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      popup.warning("New password and confirmation do not match.");
+      return;
+    }
+
+    if (password2faEnabled && passwordOtp.trim().length === 0) {
+      popup.warning("Enter OTP code to confirm password change.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await authApi.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        method: password2faEnabled ? password2faMethod : undefined,
+        otp: password2faEnabled ? passwordOtp : undefined,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordOtp("");
+      await onAccessStateRefresh?.();
+      popup.success("Password changed successfully.");
+    } catch (error: any) {
+      console.error("Failed to change password", error);
+      const errorData = error?.data || error?.response?.data || {};
+      const detail =
+        errorData?.otp ||
+        errorData?.new_password ||
+        errorData?.current_password ||
+        errorData?.detail ||
+        "Failed to change password.";
+      popup.error(Array.isArray(detail) ? detail[0] : String(detail));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const missingProfileFields = [
+    !profile?.name?.trim() ? "shop name" : null,
+    !profile?.contact_email?.trim() ? "email" : null,
+    !profile?.contact_phone?.trim() ? "phone" : null,
+    !profile?.bank_name?.trim() ? "bank name" : null,
+    !profile?.bank_account_name?.trim() ? "bank account name" : null,
+    !profile?.bank_account_number?.trim() ? "bank account number" : null,
+  ].filter(Boolean) as string[];
 
   const startTwoFactorSetup = async () => {
     if (isTwoFactorSetupLoading) return;
@@ -345,6 +468,28 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
+      {(forceProfileCompletion || forcePasswordChange) && (
+        <Card className="border-red-200 bg-red-50/80 p-5 dark:border-red-900/50 dark:bg-red-950/20">
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold text-red-700 dark:text-red-300">
+              Action required before using the app
+            </h2>
+            {forceProfileCompletion && (
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                Complete your profile to continue. Missing fields:{" "}
+                {missingProfileFields.join(", ") || "required information"}.
+              </p>
+            )}
+            {forcePasswordChange && (
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                You must change your current password before accessing the rest
+                of the system.
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
+
       <motion.div
         className="mb-2"
         initial={{ opacity: 0, y: 20 }}
@@ -650,6 +795,102 @@ export const Profile: React.FC = () => {
           </Dialog>
 
           <Card className="p-5">
+            {forcePasswordChange && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                <div className="mb-4 flex items-center gap-2 text-red-700 dark:text-red-300">
+                  <Lock className="h-4 w-4" />
+                  <h3 className="text-base font-bold">Change your password</h3>
+                </div>
+                <form
+                  className="space-y-3"
+                  onSubmit={handleForcedPasswordChange}
+                >
+                  <Input
+                    type="password"
+                    placeholder="Current password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={isChangingPassword}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="New password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={isChangingPassword}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isChangingPassword}
+                  />
+
+                  {password2faEnabled && (
+                    <>
+                      {password2faMethods.length > 1 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant={
+                              password2faMethod === "totp"
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() => setPassword2faMethod("totp")}
+                          >
+                            Authenticator
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={
+                              password2faMethod === "email_code"
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() => setPassword2faMethod("email_code")}
+                          >
+                            Email Code
+                          </Button>
+                        </div>
+                      )}
+
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        placeholder={
+                          password2faMethod === "email_code"
+                            ? "Enter email OTP code"
+                            : "Enter authenticator OTP code"
+                        }
+                        value={passwordOtp}
+                        onChange={(e) => setPasswordOtp(e.target.value)}
+                        disabled={isChangingPassword}
+                      />
+
+                      {password2faMethod === "email_code" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSendPasswordOtp}
+                          disabled={isSendingPasswordOtp || isChangingPassword}
+                        >
+                          {isSendingPasswordOtp
+                            ? "Sending..."
+                            : "Send OTP to Email"}
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  <Button type="submit" disabled={isChangingPassword}>
+                    {isChangingPassword ? "Changing..." : "Change Password"}
+                  </Button>
+                </form>
+              </div>
+            )}
+
             <h3 className="mb-4 text-lg font-semibold">
               {t("profile.personalInfo")}
             </h3>
@@ -677,7 +918,6 @@ export const Profile: React.FC = () => {
                     handleChange("contact_email", e.target.value)
                   }
                   required
-                  disabled
                 />
               </div>
 
@@ -693,7 +933,46 @@ export const Profile: React.FC = () => {
                     handleChange("contact_phone", e.target.value)
                   }
                   required
-                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <Building2 className="h-4 w-4" />
+                  Bank Name
+                </label>
+                <Input
+                  value={profile.bank_name}
+                  onChange={(e) => handleChange("bank_name", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <User className="h-4 w-4" />
+                  Bank Account Name
+                </label>
+                <Input
+                  value={profile.bank_account_name}
+                  onChange={(e) =>
+                    handleChange("bank_account_name", e.target.value)
+                  }
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <CreditCard className="h-4 w-4" />
+                  Bank Account Number
+                </label>
+                <Input
+                  value={profile.bank_account_number}
+                  onChange={(e) =>
+                    handleChange("bank_account_number", e.target.value)
+                  }
+                  required
                 />
               </div>
 

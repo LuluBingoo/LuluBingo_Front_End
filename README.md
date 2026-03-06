@@ -18,3 +18,10 @@ Available variables:
 - `VITE_API_USE_MOCK` - `true` or `false`
 - `VITE_API_TIMEOUT` - request timeout in milliseconds
 - `VITE_API_RETRY_ATTEMPTS` - retry count for failed requests
+
+## Public Cartella Checker
+
+- Public checker UI route: `/public/cartella`
+- The checker now sends `game_id` plus an array of cartella numbers to `POST /api/games/game/cartellas/check`
+- Enter cartella numbers as comma-separated or space-separated values, for example `1, 5, 12`
+- The response shows matching boards in `cartellas` and unknown requested numbers in `missing_cartella_numbers`

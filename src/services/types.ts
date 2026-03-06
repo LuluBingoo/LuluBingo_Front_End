@@ -71,6 +71,7 @@ export interface LoginRequest {
 export interface AuthTokenResponse {
   token: string;
   requires_password_change: boolean;
+  missing_profile_fields?: string[];
   user: ShopUser;
 }
 
@@ -226,9 +227,13 @@ export interface GameNextCallResponse {
 
 export interface PublicCartellaResponse {
   game_id: string;
-  cartella_number: number;
-  cartella_numbers: number[];
-  cartella_draw_sequence: number[];
+  requested_cartella_numbers: number[];
+  missing_cartella_numbers: number[];
+  cartellas: Array<{
+    cartella_number: number;
+    cartella_numbers: number[];
+    cartella_draw_sequence: number[];
+  }>;
   status: GameStatus;
   called_numbers: number[];
   created_at: string;

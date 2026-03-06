@@ -81,8 +81,7 @@ export const API_ENDPOINTS = {
     COMPLETE: (code: string) => `/games/games/${code}/complete`,
     CARTELLA_DRAW: (code: string, cartellaNumber: number) =>
       `/games/games/${code}/cartellas/${cartellaNumber}/draw`,
-    PUBLIC_CARTELLA: (gameId: string, cartellaNumber: number) =>
-      `/games/game/${gameId}/cartella/${cartellaNumber}`,
+    PUBLIC_CARTELLA: "/games/game/cartellas/check",
   },
   // Shop Profile
   SHOP: {

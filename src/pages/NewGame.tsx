@@ -215,7 +215,12 @@ import { useNavigate } from "react-router-dom";
 import { formatCurrency, getCurrencyLabel } from "../services/settings";
 
 interface NewGameProps {
-  onGameCreated: (config: GameConfig, patterns: number[]) => void;
+  onGameCreated: (
+    config: Omit<GameConfig, "selectedPatterns" | "backendStatus"> & {
+      backendStatus?: string;
+    },
+    patterns: number[],
+  ) => void;
 }
 
 interface GameConfig {

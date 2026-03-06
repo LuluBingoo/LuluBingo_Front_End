@@ -109,6 +109,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -151,6 +152,21 @@ type GameConfig = PlaygroundGameConfig & {
   cartellaDrawSequences?: number[][];
 };
 
+const normalizeBackendStatus = (
+  status?: string,
+): GameConfig["backendStatus"] => {
+  if (
+    status === "pending" ||
+    status === "active" ||
+    status === "completed" ||
+    status === "cancelled"
+  ) {
+    return status;
+  }
+
+  return undefined;
+};
+
 /* ===============================
    PROTECTED APP CONTENT
 ================================ */
@@ -170,12 +186,61 @@ function AppLayout({
   username: string;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setTheme } = useTheme();
   const { setLanguage } = useLanguage();
   const settingsSyncedRef = useRef(false);
+  const [isAccessStateLoading, setIsAccessStateLoading] = useState(true);
+  const [accessState, setAccessState] = useState({
+    profileCompleted: true,
+    mustChangePassword: false,
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
   const currentYear = new Date().getFullYear();
+
+  const refreshAccessState = async () => {
+    setIsAccessStateLoading(true);
+    try {
+      const [me, profile] = await Promise.all([
+        authApi.getMe(),
+        shopApi.getProfile(),
+      ]);
+      setAccessState({
+        profileCompleted: Boolean(profile.profile_completed),
+        mustChangePassword: Boolean(me.user.must_change_password),
+      });
+    } catch (error) {
+      console.error("Failed to load access state", error);
+    } finally {
+      setIsAccessStateLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshAccessState();
+  }, []);
+
+  useEffect(() => {
+    if (isAccessStateLoading) {
+      return;
+    }
+
+    const requiresProfile = !accessState.profileCompleted;
+    const requiresPasswordChange = accessState.mustChangePassword;
+    if (
+      (requiresProfile || requiresPasswordChange) &&
+      location.pathname !== "/profile"
+    ) {
+      navigate("/profile", { replace: true });
+    }
+  }, [
+    accessState.mustChangePassword,
+    accessState.profileCompleted,
+    isAccessStateLoading,
+    location.pathname,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (settingsSyncedRef.current) {
@@ -235,11 +300,14 @@ function AppLayout({
 
   // Handle game creation
   const handleGameCreated = (
-    config: Omit<GameConfig, "selectedPatterns">,
+    config: Omit<GameConfig, "selectedPatterns" | "backendStatus"> & {
+      backendStatus?: string;
+    },
     patterns: number[],
   ) => {
     const fullConfig: GameConfig = {
       ...config,
+      backendStatus: normalizeBackendStatus(config.backendStatus),
       selectedPatterns: patterns,
     };
 
@@ -324,7 +392,16 @@ function AppLayout({
               element={<NewGame onGameCreated={handleGameCreated} />}
             />
 
-            <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/profile"
+              element={
+                <Profile
+                  forceProfileCompletion={!accessState.profileCompleted}
+                  forcePasswordChange={accessState.mustChangePassword}
+                  onAccessStateRefresh={refreshAccessState}
+                />
+              }
+            />
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
 

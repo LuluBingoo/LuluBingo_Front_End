@@ -394,13 +394,17 @@ export const gamesApi = {
 
   async getPublicCartella(
     gameId: string,
-    cartellaNumber: number,
+    cartellaNumbers: number[],
   ): Promise<PublicCartellaResponse> {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Public cartella route is not available in mock mode");
     }
-    return await apiClient.get<PublicCartellaResponse>(
-      API_ENDPOINTS.GAMES.PUBLIC_CARTELLA(gameId, cartellaNumber),
+    return await apiClient.post<PublicCartellaResponse>(
+      API_ENDPOINTS.GAMES.PUBLIC_CARTELLA,
+      {
+        game_id: gameId,
+        cartella_numbers: cartellaNumbers,
+      },
     );
   },
 };

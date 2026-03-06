@@ -17,6 +17,7 @@ import { usePopup } from "../contexts/PopupContext";
 import { authApi } from "../services/api";
 import { BackgroundEffects } from "../components/BackgroundEffects";
 import illustration1 from "../assets/illustration1.svg";
+import { useNavigate } from "react-router-dom";
 
 interface LoginProps {
   onLogin: () => void;
@@ -32,6 +33,7 @@ type LoginStep =
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const { t } = useLanguage();
   const popup = usePopup();
+  const navigate = useNavigate();
   const [step, setStep] = useState<LoginStep>("credentials");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +68,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
     try {
-      await authApi.login({ username: email, password });
+      const response = await authApi.login({ username: email, password });
       popup.success("Logged in successfully.");
       onLogin();
+
+      if (response.missing_profile_fields?.length) {
+        const labelMap: Record<string, string> = {
+          name: "shop name",
+          contact_email: "email",
+          contact_phone: "phone",
+          bank_name: "bank name",
+          bank_account_name: "bank account name",
+          bank_account_number: "bank account number",
+        };
+        const readableFields = response.missing_profile_fields.map(
+          (field) => labelMap[field] || field,
+        );
+        popup.info(
+          `Please complete your missing profile fields: ${readableFields.join(", ")}.`,
+        );
+        navigate("/profile");
+      }
     } catch (err: any) {
       const errorData = err?.data || err?.response?.data || {};
       if (errorData?.otp) {
@@ -139,9 +159,31 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
     try {
-      await authApi.login({ username: email, password, otp: otpCode });
+      const response = await authApi.login({
+        username: email,
+        password,
+        otp: otpCode,
+      });
       popup.success("Logged in successfully.");
       onLogin();
+
+      if (response.missing_profile_fields?.length) {
+        const labelMap: Record<string, string> = {
+          name: "shop name",
+          contact_email: "email",
+          contact_phone: "phone",
+          bank_name: "bank name",
+          bank_account_name: "bank account name",
+          bank_account_number: "bank account number",
+        };
+        const readableFields = response.missing_profile_fields.map(
+          (field) => labelMap[field] || field,
+        );
+        popup.info(
+          `Please complete your missing profile fields: ${readableFields.join(", ")}.`,
+        );
+        navigate("/profile");
+      }
     } catch (err: any) {
       const errorData = err?.data || err?.response?.data || {};
       if (errorData?.otp) {
