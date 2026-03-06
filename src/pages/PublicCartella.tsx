@@ -11,13 +11,16 @@ const labels = {
   en: {
     title: "Public Cartella Checker",
     subtitle:
-      "Enter a game ID and one or more cartella numbers to view matching boards, called numbers, and mark each card.",
+      "Enter a game ID and up to 4 cartella numbers to view matching boards, their number order, called numbers, and mark each card.",
     gameId: "Game ID",
     cartella: "Cartella Numbers",
-    cartellaHint: "Use commas or spaces, for example: 1, 5, 12",
+    cartellaHint:
+      "Use commas or spaces, for example: 1, 5, 12, 16. Maximum 4 cartellas.",
     load: "Load Cartellas",
     checking: "Checking...",
     called: "Called Numbers",
+    orderTitle: "Number Order",
+    orderSubtitle: "Full draw order for this cartella",
     marked: "Marked",
     resultWin: "BINGO Found!",
     resultNoWin: "No Bingo Yet",
@@ -25,6 +28,7 @@ const labels = {
     found: "Loaded Cartellas",
     missing: "Missing Cartellas",
     noMatches: "No matching cartellas were found for this game.",
+    tooManyCartellas: "You can check at most 4 cartella numbers at once.",
     method: "Public View",
     light: "Light",
     dark: "Dark",
@@ -41,13 +45,15 @@ const labels = {
   am: {
     title: "የህዝብ ካርቴላ መፈተሻ",
     subtitle:
-      "የጨዋታ መለያ እና አንድ ወይም ከአንድ በላይ የካርቴላ ቁጥሮችን በማስገባት ቦርዶቹን እና የተጠሩ ቁጥሮችን ይመልከቱ።",
+      "የጨዋታ መለያ እና እስከ 4 የሚደርሱ የካርቴላ ቁጥሮችን በማስገባት ቦርዶቹን፣ የቁጥር ቅደም ተከተሉን እና የተጠሩ ቁጥሮችን ይመልከቱ።",
     gameId: "የጨዋታ መለያ",
     cartella: "የካርቴላ ቁጥሮች",
-    cartellaHint: "በኮማ ወይም በክፍተት ይለዩ፣ ምሳሌ: 1, 5, 12",
+    cartellaHint: "በኮማ ወይም በክፍተት ይለዩ፣ ምሳሌ: 1, 5, 12, 16። ከፍተኛው 4 ካርቴላዎች ናቸው።",
     load: "ካርቴላዎችን አሳይ",
     checking: "በመፈተሽ ላይ...",
     called: "የተጠሩ ቁጥሮች",
+    orderTitle: "የቁጥር ቅደም ተከተል",
+    orderSubtitle: "የዚህ ካርቴላ ሙሉ የጥሪ ቅደም ተከተል",
     marked: "የተምረጡ",
     resultWin: "ቢንጎ ተገኝቷል!",
     resultNoWin: "ገና ቢንጎ የለም",
@@ -55,6 +61,7 @@ const labels = {
     found: "የተገኙ ካርቴላዎች",
     missing: "ያልተገኙ ካርቴላዎች",
     noMatches: "ለዚህ ጨዋታ የሚመሳሰሉ ካርቴላዎች አልተገኙም።",
+    tooManyCartellas: "በአንድ ጊዜ ከፍተኛው 4 ካርቴላ ቁጥሮችን ብቻ ማረጋገጥ ይችላሉ።",
     method: "የህዝብ እይታ",
     light: "ብርሃን",
     dark: "ጨለማ",
@@ -142,6 +149,11 @@ export const PublicCartella: React.FC = () => {
     const parsedCartellas = parseCartellaNumbers(cartellaNumber);
     if (!gameId.trim() || parsedCartellas.length === 0) {
       setError(copy.invalidInput);
+      return;
+    }
+
+    if (parsedCartellas.length > 4) {
+      setError(copy.tooManyCartellas);
       return;
     }
 
@@ -396,6 +408,28 @@ export const PublicCartella: React.FC = () => {
                       <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                         {copy.howTo}
                       </p>
+
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950/60">
+                        <div className="mb-2">
+                          <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                            {copy.orderTitle}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {copy.orderSubtitle}
+                          </p>
+                        </div>
+                        <div className="flex max-h-40 flex-wrap gap-2 overflow-auto">
+                          {cartella.cartella_draw_sequence.map((num, index) => (
+                            <span
+                              key={`${cartella.cartella_number}-order-${num}-${index}`}
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                            >
+                              {index + 1}. {getLetter(num)}
+                              {num}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
 
                       <div
                         className={`mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black ${
