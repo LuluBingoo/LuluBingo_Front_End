@@ -4,6 +4,7 @@ export interface PlaygroundGameConfig {
   numPlayers: string;
   winBirr: string;
   selectedPatterns: number[];
+  playMode?: "online" | "offline";
   backendStatus?: "pending" | "active" | "completed" | "cancelled";
   gameCode?: string;
   cartelaNumbers?: string[];

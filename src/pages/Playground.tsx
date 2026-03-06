@@ -20,6 +20,7 @@ import { FullscreenControls } from "./playground/components/FullscreenControls";
 import { DesktopControlPanels } from "./playground/components/DesktopControlPanels";
 import { StatusOverlays } from "./playground/components/StatusOverlays";
 import { pickRandomBingoIllustration } from "../assets/illustrations";
+import { getOfflineCartellaBoard } from "../data/offlineCartellas";
 import {
   GameStatus,
   PlaygroundProps,
@@ -84,11 +85,52 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [resumeGameCode, location.pathname, location.search, navigate]);
 
   const currentGameConfig = resolvedGameConfig ?? gameConfig;
+  const playModeLabel =
+    currentGameConfig?.playMode === "offline" ? "Offline" : "Online";
+  const playModeBadgeClass =
+    currentGameConfig?.playMode === "offline"
+      ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+      : "border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
+  const resolvedCartelaNumbers = React.useMemo(() => {
+    const explicitNumbers = currentGameConfig?.cartelaNumbers?.filter(Boolean);
+    if (explicitNumbers && explicitNumbers.length > 0) {
+      return explicitNumbers;
+    }
+
+    const selectedPatternNumbers = currentGameConfig?.selectedPatterns
+      ?.filter((value) => Number.isFinite(value) && value > 0)
+      .map((value) => String(value));
+    if (selectedPatternNumbers && selectedPatternNumbers.length > 0) {
+      return selectedPatternNumbers;
+    }
+
+    if (
+      currentGameConfig?.playMode === "offline" &&
+      currentGameConfig?.cartelaData?.length
+    ) {
+      return Array.from(
+        { length: currentGameConfig.cartelaData.length },
+        (_, index) => String(index + 1),
+      );
+    }
+
+    return [] as string[];
+  }, [
+    currentGameConfig?.cartelaNumbers,
+    currentGameConfig?.selectedPatterns,
+    currentGameConfig?.playMode,
+    currentGameConfig?.cartelaData,
+  ]);
 
   const buildConfigFromGame = React.useCallback((game: Game) => {
     const fallbackCartelaNumbers = Array.from(
-      { length: game.cartella_numbers?.length || 0 },
-      (_, index) => String(index + 1),
+      game.assigned_cartella_numbers?.length
+        ? game.assigned_cartella_numbers
+        : Array.from(
+            { length: game.cartella_numbers?.length || 0 },
+            (_, index) => index + 1,
+          ),
+      (value) => String(value),
     );
 
     return {
@@ -98,6 +140,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       numPlayers: String(game.num_players),
       winBirr: game.win_amount,
       selectedPatterns: [],
+      playMode: game.game_mode === "shop_offline" ? "offline" : "online",
       cartelaNumbers: fallbackCartelaNumbers,
       cartelaData: game.cartella_numbers,
       drawSequence: game.draw_sequence,
@@ -284,13 +327,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const status = (currentGameConfig.backendStatus as any) || "pending";
     setGameStatus(status);
     setIsGameActive(status === "active" || status === "pending");
-    setActiveCartelas(currentGameConfig.cartelaNumbers || []);
-    setServerCartelaOrder(currentGameConfig.cartelaNumbers || []);
+    setActiveCartelas(resolvedCartelaNumbers);
+    setServerCartelaOrder(resolvedCartelaNumbers);
     setCartellaStatuses(currentGameConfig.cartellaStatuses || {});
     setDrawSequence(currentGameConfig.drawSequence || []);
     setDrawCursor(0);
     onGameStateChange?.(status === "active");
-  }, [currentGameConfig?.gameCode, currentGameConfig?.game]);
+  }, [
+    currentGameConfig?.gameCode,
+    currentGameConfig?.game,
+    resolvedCartelaNumbers,
+  ]);
 
   useEffect(() => {
     setAutoCallTimer(getConfiguredAutoCallSeconds());
@@ -298,19 +345,31 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Sync activeCartelas with gameConfig changes
   useEffect(() => {
-    if (currentGameConfig?.cartelaNumbers) {
-      setActiveCartelas(currentGameConfig.cartelaNumbers);
+    if (resolvedCartelaNumbers.length > 0) {
+      setActiveCartelas(resolvedCartelaNumbers);
+      setServerCartelaOrder(resolvedCartelaNumbers);
     }
-  }, [currentGameConfig?.cartelaNumbers]);
+  }, [resolvedCartelaNumbers]);
 
   const cartelaDataMap = React.useMemo(() => {
     const numbers = currentGameConfig?.cartelaData || [];
     const entries = serverCartelaOrder.map((cartelaNumber, index) => {
+      if (currentGameConfig?.playMode === "offline") {
+        return [
+          cartelaNumber,
+          getOfflineCartellaBoard(cartelaNumber) ?? [],
+        ] as const;
+      }
+
       const data = numbers[index] || [];
       return [cartelaNumber, data] as const;
     });
     return Object.fromEntries(entries);
-  }, [currentGameConfig?.cartelaData, serverCartelaOrder]);
+  }, [
+    currentGameConfig?.cartelaData,
+    currentGameConfig?.playMode,
+    serverCartelaOrder,
+  ]);
 
   const normalizeCartelaNumber = (value: string | number): number | null => {
     const digits = String(value).replace(/\D/g, "");
@@ -801,10 +860,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Open cartela modal without specific number (show dropdown)
   const openCartelaModal = () => {
-    if (activeCartelas.length === 0) {
+    const availableCartelas =
+      activeCartelas.length > 0 ? activeCartelas : resolvedCartelaNumbers;
+
+    if (availableCartelas.length === 0) {
       popup.warning("No cartelas in this game");
       return;
     }
+
+    if (activeCartelas.length === 0 && availableCartelas.length > 0) {
+      setActiveCartelas(availableCartelas);
+      setServerCartelaOrder(availableCartelas);
+    }
+
     setSelectedCartela("");
     setShowCartelaModal(true);
   };
@@ -1223,6 +1291,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         isOpen={showCartelaModal}
         onClose={() => setShowCartelaModal(false)}
         cartelaNumber={selectedCartela}
+        playMode={currentGameConfig?.playMode}
         calledNumbers={calledNumbers}
         cartelaNumbers={activeCartelas}
         cartelaDataMap={cartelaDataMap}
@@ -1235,6 +1304,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       {/* Header */}
       <div className={isFullscreen ? "hidden" : "block"}>
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className={`rounded-md border px-3 py-2 ${playModeBadgeClass}`}>
+            <span className="mr-1 text-xs uppercase opacity-80">Mode</span>
+            <span className="font-semibold">{playModeLabel}</span>
+          </div>
           <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
             <span className="mr-1 text-xs uppercase text-slate-500">
               {t("playground.game")}
@@ -1288,6 +1361,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
           )}
         </div>
       </div>
+
+      {isFullscreen && currentGameConfig?.playMode && (
+        <div className="pointer-events-none fixed right-4 top-4 z-40">
+          <div
+            className={`rounded-full border px-3 py-1.5 text-sm font-semibold shadow-lg backdrop-blur ${playModeBadgeClass}`}
+          >
+            {playModeLabel} Mode
+          </div>
+        </div>
+      )}
 
       {!isFullscreen && (
         <Card className="overflow-hidden p-2">

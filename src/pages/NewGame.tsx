@@ -223,6 +223,7 @@ interface GameConfig {
   betBirr: string;
   numPlayers: string;
   winBirr: string;
+  playMode?: "online" | "offline";
   gameCode?: string;
   cartelaData?: number[][];
   drawSequence?: number[];
@@ -239,6 +240,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [showBetDialog, setShowBetDialog] = useState(true);
   const [betInput, setBetInput] = useState("20");
   const [playersInput, setPlayersInput] = useState("4");
+  const [playMode, setPlayMode] = useState<"online" | "offline">("online");
   const [fixedPlayers, setFixedPlayers] = useState(4);
   const [betLocked, setBetLocked] = useState(false);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
@@ -299,6 +301,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       const created = await gamesApi.createShopSession({
         min_bet_per_cartella: betPerCartella,
         fixed_players: fixedPlayers,
+        play_mode: playMode,
       });
       setSession(created);
       return created;
@@ -473,7 +476,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         return;
       }
 
-      const cartelaNumbers = Object.keys(createdGame.cartella_number_map || {});
+      const cartelaNumbers = (createdGame.assigned_cartella_numbers || []).map(
+        (value) => String(value),
+      );
       const allSelectedPatterns = cartelaNumbers.map((value) =>
         Number.parseInt(value, 10),
       );
@@ -484,6 +489,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         betBirr: createdGame.bet_amount,
         numPlayers: String(createdGame.num_players),
         winBirr: createdGame.win_amount,
+        playMode,
         cartelaNumbers,
         cartelaData: createdGame.cartella_numbers,
         drawSequence: createdGame.draw_sequence,
@@ -617,6 +623,39 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
             placeholder={t("newGame.numPlayers")}
           />
 
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={playMode === "online" ? "default" : "outline"}
+              className={
+                playMode === "online"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : ""
+              }
+              onClick={() => setPlayMode("online")}
+            >
+              Online Mode
+            </Button>
+            <Button
+              type="button"
+              variant={playMode === "offline" ? "default" : "outline"}
+              className={
+                playMode === "offline"
+                  ? "bg-red-700 text-white hover:bg-red-800"
+                  : ""
+              }
+              onClick={() => setPlayMode("offline")}
+            >
+              Offline Mode
+            </Button>
+          </div>
+
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            {playMode === "online"
+              ? "Online uses newly generated random cartella boards for each game."
+              : "Offline uses the same fixed 200 printable cartellas for every game."}
+          </p>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => navigate("/playground")}>
               {t("newGame.cancelToDashboard")}
@@ -713,6 +752,10 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       {t("newGame.currentPlayer")}
                     </label>
                     <Input value={currentPlayerName} disabled />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Play Mode</label>
+                    <Input value={session?.play_mode || playMode} disabled />
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium">

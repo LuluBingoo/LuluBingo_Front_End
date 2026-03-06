@@ -5,11 +5,13 @@ import { Button } from "../components/ui/button";
 import { Trophy, X, UserX, ChevronDown } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
+import { getOfflineCartellaBoard } from "../data/offlineCartellas";
 
 interface CartelaModalProps {
   isOpen: boolean;
   onClose: () => void;
   cartelaNumber?: string;
+  playMode?: "online" | "offline";
   calledNumbers: number[];
   cartelaNumbers: string[];
   cartelaDataMap?: Record<string, number[]>;
@@ -19,7 +21,7 @@ interface CartelaModalProps {
   gameActive?: boolean;
 }
 
-// Generate random cartela numbers (5x5 grid, no FREE center)
+// Generate random cartela numbers (5x5 grid with FREE center)
 const generateCartelaNumbers = (seed: string): number[] => {
   const numbers: number[] = [];
 
@@ -56,6 +58,7 @@ const generateCartelaNumbers = (seed: string): number[] => {
     numbers.push(...columnNumbers);
   }
 
+  numbers[12] = 0;
   return numbers;
 };
 
@@ -63,6 +66,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   isOpen,
   onClose,
   cartelaNumber,
+  playMode = "online",
   calledNumbers,
   cartelaNumbers,
   cartelaDataMap,
@@ -111,15 +115,21 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   // Generate or retrieve cartela data when cartela changes
   useEffect(() => {
     if (selectedCartela) {
-      const providedNumbers = cartelaDataMap?.[selectedCartela];
-      if (providedNumbers && providedNumbers.length > 0) {
-        setCartelaData(providedNumbers);
+      if (playMode === "offline") {
+        const offlineBoard = getOfflineCartellaBoard(selectedCartela);
+        setCartelaData(offlineBoard ? [...offlineBoard] : []);
       } else {
+        const providedNumbers = cartelaDataMap?.[selectedCartela];
+        if (providedNumbers && providedNumbers.length > 0) {
+          setCartelaData(providedNumbers);
+          return;
+        }
+
         const generatedNumbers = generateCartelaNumbers(selectedCartela);
         setCartelaData(generatedNumbers);
       }
     }
-  }, [selectedCartela, cartelaDataMap]);
+  }, [selectedCartela, cartelaDataMap, playMode]);
 
   // Initialize with provided cartela number
   useEffect(() => {
@@ -145,11 +155,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   };
 
   const getCalledCount = () => {
-    return cartelaData.filter((num) => calledNumbers.includes(num)).length;
+    return cartelaData.filter((num) => num !== 0 && calledNumbers.includes(num))
+      .length;
   };
 
   const isMarked = useCallback(
-    (value: number) => calledNumbers.includes(value),
+    (value: number) => value === 0 || calledNumbers.includes(value),
     [calledNumbers],
   );
 
@@ -231,20 +242,31 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       for (let col = 0; col < 5; col++) {
         const index = col * 5 + row;
 
-        const num = cartelaData[index];
-        const isCalled = calledNumbers.includes(num);
+        if (row === 2 && col === 2) {
+          rowCells.push(
+            <div
+              key={`${row}-${col}`}
+              className="relative flex h-14 items-center justify-center rounded-md border border-slate-300 bg-amber-100 dark:border-slate-700 dark:bg-amber-900/40"
+            >
+              <span className="text-sm font-bold">FREE</span>
+            </div>,
+          );
+        } else {
+          const num = cartelaData[index];
+          const isCalled = calledNumbers.includes(num);
 
-        rowCells.push(
-          <div
-            key={`${row}-${col}`}
-            className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
-          >
-            <span>{num}</span>
-            {isCalled && (
-              <div className="absolute right-1 top-1 text-xs">✓</div>
-            )}
-          </div>,
-        );
+          rowCells.push(
+            <div
+              key={`${row}-${col}`}
+              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
+            >
+              <span>{num}</span>
+              {isCalled && (
+                <div className="absolute right-1 top-1 text-xs">✓</div>
+              )}
+            </div>,
+          );
+        }
       }
       board.push(
         <div key={`row-${row}`} className="grid grid-cols-5 gap-2">
@@ -387,14 +409,14 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                         <span className="mr-1 text-xs uppercase text-slate-500">
                           Called
                         </span>
-                        <span className="font-semibold">{calledCount}/25</span>
+                        <span className="font-semibold">{calledCount}/24</span>
                       </div>
                       <div className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
                         <span className="mr-1 text-xs uppercase text-slate-500">
                           Remaining
                         </span>
                         <span className="font-semibold">
-                          {25 - calledCount}
+                          {24 - calledCount}
                         </span>
                       </div>
                       {isBingo && (

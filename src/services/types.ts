@@ -90,10 +90,13 @@ export interface TwoFactorSetup {
 export interface Game {
   id: number;
   game_code: string;
+  game_mode?: "standard" | "shop_fixed4" | "shop_online" | "shop_offline";
   bet_amount: string;
   num_players: number;
   win_amount: string;
   cartella_numbers: number[][];
+  assigned_cartella_numbers?: number[];
+  cartella_number_map?: Record<string, number>;
   cartella_draw_sequences: number[][];
   draw_sequence: number[];
   called_numbers?: number[];
@@ -166,6 +169,7 @@ export interface ShopBingoPlayer {
 export interface ShopBingoSession {
   session_id: string;
   status: "waiting" | "locked" | "cancelled";
+  play_mode: "online" | "offline";
   fixed_players: number;
   min_bet_per_cartella: string;
   players_data: ShopBingoPlayer[];
@@ -179,6 +183,7 @@ export interface ShopBingoSession {
 export interface ShopBingoSessionCreateRequest {
   min_bet_per_cartella?: string;
   fixed_players?: number;
+  play_mode?: "online" | "offline";
 }
 
 export interface ShopBingoReserveRequest {
