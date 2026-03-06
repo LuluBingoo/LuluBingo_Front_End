@@ -123,9 +123,11 @@ import { BackendStatusBadge } from "./components/BackendStatusBadge";
 import { Dashboard } from "./pages/Dashboard";
 import { Playground } from "./pages/Playground";
 import { NewGame } from "./pages/NewGame";
+import About from "./pages/About";
 import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
+import type { PlaygroundGameConfig } from "./pages/playground/types";
 import { PublicCartella } from "./pages/PublicCartella";
 import {
   Error400Page,
@@ -145,20 +147,9 @@ import { setCurrencySetting } from "./services/settings";
 /* ===============================
    TYPES
 ================================ */
-interface GameConfig {
-  game: string;
-  betBirr: string;
-  numPlayers: string;
-  winBirr: string;
-  selectedPatterns: number[];
-  gameCode?: string;
-  cartelaNumbers?: string[];
-  cartelaData?: number[][];
-  drawSequence?: number[];
+type GameConfig = PlaygroundGameConfig & {
   cartellaDrawSequences?: number[][];
-  cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
-  backendStatus?: string;
-}
+};
 
 /* ===============================
    PROTECTED APP CONTENT
@@ -335,6 +326,7 @@ function AppLayout({
 
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/about" element={<About />} />
 
             {/* Default */}
             <Route path="*" element={<Error404Page />} />

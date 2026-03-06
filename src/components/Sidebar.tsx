@@ -5,6 +5,7 @@ import {
   PlusCircle,
   User,
   Settings,
+  Info,
   Trophy,
   Circle,
   PanelLeftClose,
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { path: "/newgame", label: t("common.newGame"), icon: PlusCircle },
     { path: "/profile", label: t("common.profile"), icon: User },
     { path: "/settings", label: t("common.settings"), icon: Settings },
+    { path: "/about", label: "About", icon: Info },
   ];
 
   const sidebarParticles = React.useMemo(
