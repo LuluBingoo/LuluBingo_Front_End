@@ -317,7 +317,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
           >
             {/* Modal Container */}
             <motion.div
-              className="mx-auto my-6 max-w-3xl"
+              // className="mx-auto my-6 max-w-3xl"
+              className="mx-auto my-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}

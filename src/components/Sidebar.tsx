@@ -189,19 +189,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <Circle
                 className="h-2 w-2"
                 size={8}
                 fill="#10b981"
                 color="#10b981"
               />
-              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 pr-2">
                 {t("common.gameActive") || "Game Active"}
               </span>
             </div>
             <div
-              className={`mt-1 text-[11px] text-emerald-700/80 dark:text-emerald-300/80 max-sm:hidden ${isCollapsed ? "hidden" : "block"}`}
+              className={`mt-1 text-[11px] justify-center pl-11 text-emerald-700/80 dark:text-emerald-300/80 max-sm:hidden ${isCollapsed ? "hidden" : "block"}`}
             >
               {t("common.playgroundRunning") || "Playground is running"}
             </div>
