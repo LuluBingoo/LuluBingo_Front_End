@@ -170,8 +170,17 @@ export const Header: React.FC<HeaderProps> = ({
         ))}
       </div>
 
-      <div className="relative z-10 min-w-0" />
-
+      <div className="relative z-10 flex min-w-0 justify-start gap-2 sm:gap-3">
+        <button
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-red-300 dark:hover:bg-slate-800 ml-5"
+          onClick={() => navigate("/newgame")}
+          aria-label={t("common.newGame")}
+          title={t("common.newGame")}
+        >
+          <PlusCircle className="h-5 w-5" />
+        </button>
+      </div>
+      
       <div className="pointer-events-none relative z-10 flex items-center justify-center gap-2">
         <Trophy className="h-5 w-5 text-red-700 dark:text-red-400" />
         <div className="text-base font-bold tracking-wide text-red-700 sm:text-lg dark:text-red-400">
@@ -180,61 +189,54 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="relative z-10 flex min-w-0 items-center justify-end gap-2 sm:gap-3">
-        <button
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-red-300 dark:hover:bg-slate-800"
-          onClick={() => navigate("/newgame")}
-          aria-label={t("common.newGame")}
-          title={t("common.newGame")}
-        >
-          <PlusCircle className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 rounded-full bg-red-50 px-3 py-2 text-sm text-slate-700 md:flex dark:bg-slate-800 dark:text-slate-200">
+            <User className="h-4 w-4" />
+            <span className="max-w-28 truncate">{username}</span>
+          </div>
 
-        <div className="hidden items-center gap-2 rounded-full bg-red-50 px-3 py-2 text-sm text-slate-700 md:flex dark:bg-slate-800 dark:text-slate-200">
-          <User className="h-4 w-4" />
-          <span className="max-w-28 truncate">{username}</span>
+          <motion.button
+            className="rounded-full border border-red-200 p-2 text-slate-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
+            onClick={handleToggleTheme}
+            disabled={isSavingTheme}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {theme === "light" ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+          </motion.button>
+
+          <motion.button
+            className="rounded-full border border-red-200 p-2 text-slate-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
+            onClick={handleToggleSiteFullscreen}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            aria-label={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isSiteFullscreen ? (
+              <Minimize2 className="h-5 w-5" />
+            ) : (
+              <Maximize2 className="h-5 w-5" />
+            )}
+          </motion.button>
+
+          <motion.button
+            className="flex shrink-0 items-center gap-2 rounded-lg bg-red-700 px-2.5 py-2 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isLoggingOut ? t("header.loggingOut") : t("common.logout")}
+            </span>
+          </motion.button>
         </div>
-
-        <motion.button
-          className="rounded-full border border-red-200 p-2 text-slate-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
-          onClick={handleToggleTheme}
-          disabled={isSavingTheme}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {theme === "light" ? (
-            <Moon className="h-5 w-5" />
-          ) : (
-            <Sun className="h-5 w-5" />
-          )}
-        </motion.button>
-
-        <motion.button
-          className="rounded-full border border-red-200 p-2 text-slate-700 transition hover:bg-red-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
-          onClick={handleToggleSiteFullscreen}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          title={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isSiteFullscreen ? (
-            <Minimize2 className="h-5 w-5" />
-          ) : (
-            <Maximize2 className="h-5 w-5" />
-          )}
-        </motion.button>
-
-        <motion.button
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-red-700 px-2.5 py-2 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {isLoggingOut ? t("header.loggingOut") : t("common.logout")}
-          </span>
-        </motion.button>
       </div>
     </motion.header>
   );
