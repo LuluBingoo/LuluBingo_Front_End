@@ -245,7 +245,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [showBetDialog, setShowBetDialog] = useState(true);
   const [betInput, setBetInput] = useState("20");
   const [playersInput, setPlayersInput] = useState("4");
-  const [playMode, setPlayMode] = useState<"online" | "offline">("online");
+  const [playMode, setPlayMode] = useState<"online" | "offline">("offline");
   const [fixedPlayers, setFixedPlayers] = useState(4);
   const [betLocked, setBetLocked] = useState(false);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);

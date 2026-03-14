@@ -1466,6 +1466,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         <StatusOverlays
           isCheckingCartela={isCheckingCartela}
+          isStoppingGame={isStoppingGame}
           showBallPopup={showBallPopup}
           ballPopupLabel={ballPopupLabel}
           isFullscreen={isFullscreen}
