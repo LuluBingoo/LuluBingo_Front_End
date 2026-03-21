@@ -50,7 +50,9 @@ Current workflow already builds with default repo settings; add the above only i
 
 - Trigger: push to `main`
 - Build command: `npm ci && npm run build`
-- Upload target: `/home/${CPANEL_USERNAME}/public_html/`
+- Upload target: FTP root (`./`) for cPanel accounts rooted at `public_html`
+
+If your FTP account root is your home directory instead of `public_html`, change `server-dir` in workflow to `public_html/`.
 
 ## 5. SPA Routing
 
