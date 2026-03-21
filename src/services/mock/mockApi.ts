@@ -11,7 +11,7 @@ import {
   ChangePasswordRequest,
   TwoFactorSetup,
   GameCompleteRequest,
-} from '../types';
+} from "../types";
 import {
   mockAuthResponse,
   mockProfile,
@@ -19,10 +19,11 @@ import {
   mockTransactions,
   mockUser,
   generateMockGame,
-} from './mockData';
+} from "./mockData";
 
 // Simulate network delay
-const delay = (ms: number = 500) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number = 500) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // Mock storage for games and transactions
 let gamesStore: Game[] = [...mockGames];
@@ -33,13 +34,13 @@ let currentUser = { ...mockUser };
 export const mockAuthApi = {
   async login(credentials: LoginRequest): Promise<AuthTokenResponse> {
     await delay();
-    
+
     // Simple mock validation
     if (credentials.username && credentials.password) {
       return { ...mockAuthResponse };
     }
-    
-    throw new Error('Invalid credentials');
+
+    throw new Error("Invalid credentials");
   },
 
   async getMe(): Promise<{ user: typeof mockUser }> {
@@ -47,17 +48,26 @@ export const mockAuthApi = {
     return { user: currentUser };
   },
 
-  async changePassword(data: ChangePasswordRequest): Promise<AuthTokenResponse> {
+  async changePassword(
+    data: ChangePasswordRequest,
+  ): Promise<AuthTokenResponse> {
     await delay();
     return { ...mockAuthResponse };
   },
 
-  async forgotPassword(data: { username: string; contact_email: string }): Promise<void> {
+  async forgotPassword(data: {
+    username: string;
+    contact_email: string;
+  }): Promise<void> {
     await delay();
-    console.log('Password reset email sent to:', data.contact_email);
+    console.log("Password reset email sent to:", data.contact_email);
   },
 
-  async resetPassword(data: { uid: string; token: string; new_password: string }): Promise<AuthTokenResponse> {
+  async resetPassword(data: {
+    uid: string;
+    token: string;
+    new_password: string;
+  }): Promise<AuthTokenResponse> {
     await delay();
     return { ...mockAuthResponse };
   },
@@ -65,8 +75,9 @@ export const mockAuthApi = {
   async setup2FA(): Promise<TwoFactorSetup> {
     await delay();
     return {
-      secret: 'MOCK_SECRET_KEY',
-      provisioning_uri: 'otpauth://totp/DallolBingo:shop_demo?secret=MOCK_SECRET_KEY&issuer=DallolBingo',
+      secret: "MOCK_SECRET_KEY",
+      provisioning_uri:
+        "otpauth://totp/LuluBingo:shop_demo?secret=MOCK_SECRET_KEY&issuer=LuluBingo",
     };
   },
 
@@ -94,7 +105,7 @@ export const mockGamesApi = {
     const newGame = generateMockGame(
       data.bet_amount,
       data.num_players,
-      data.win_amount
+      data.win_amount,
     );
     gamesStore.unshift(newGame);
     return newGame;
@@ -102,46 +113,46 @@ export const mockGamesApi = {
 
   async getGame(code: string): Promise<Game> {
     await delay();
-    const game = gamesStore.find(g => g.game_code === code);
+    const game = gamesStore.find((g) => g.game_code === code);
     if (!game) {
-      throw new Error('Game not found');
+      throw new Error("Game not found");
     }
     return { ...game };
   },
 
   async getGameDraw(code: string): Promise<Game> {
     await delay();
-    const game = gamesStore.find(g => g.game_code === code);
+    const game = gamesStore.find((g) => g.game_code === code);
     if (!game) {
-      throw new Error('Game not found');
+      throw new Error("Game not found");
     }
     return { ...game };
   },
 
   async completeGame(code: string, data: GameCompleteRequest): Promise<Game> {
     await delay();
-    const gameIndex = gamesStore.findIndex(g => g.game_code === code);
+    const gameIndex = gamesStore.findIndex((g) => g.game_code === code);
     if (gameIndex === -1) {
-      throw new Error('Game not found');
+      throw new Error("Game not found");
     }
-    
+
     gamesStore[gameIndex] = {
       ...gamesStore[gameIndex],
       status: data.status,
       winners: data.winners,
       ended_at: new Date().toISOString(),
     };
-    
+
     return { ...gamesStore[gameIndex] };
   },
 
   async getCartellaDraw(code: string, cartellaNumber: number): Promise<any> {
     await delay();
-    const game = gamesStore.find(g => g.game_code === code);
+    const game = gamesStore.find((g) => g.game_code === code);
     if (!game) {
-      throw new Error('Game not found');
+      throw new Error("Game not found");
     }
-    
+
     return {
       cartella_number: cartellaNumber,
       draw_sequence: game.draw_sequence,
@@ -176,22 +187,22 @@ export const mockTransactionsApi = {
     const balanceBefore = parseFloat(userProfile.wallet_balance);
     const amount = parseFloat(data.amount);
     const balanceAfter = balanceBefore + amount;
-    
+
     const transaction: Transaction = {
       id: transactionsStore.length + 1,
-      tx_type: 'deposit',
+      tx_type: "deposit",
       amount: data.amount,
       balance_before: balanceBefore.toFixed(2),
       balance_after: balanceAfter.toFixed(2),
       reference: data.reference,
-      metadata: '{}',
+      metadata: "{}",
       created_at: new Date().toISOString(),
     };
-    
+
     transactionsStore.unshift(transaction);
     userProfile.wallet_balance = balanceAfter.toFixed(2);
     currentUser.wallet_balance = balanceAfter.toFixed(2);
-    
+
     return transaction;
   },
 
@@ -199,28 +210,28 @@ export const mockTransactionsApi = {
     await delay();
     const balanceBefore = parseFloat(userProfile.wallet_balance);
     const amount = parseFloat(data.amount);
-    
+
     if (balanceBefore < amount) {
-      throw new Error('Insufficient balance');
+      throw new Error("Insufficient balance");
     }
-    
+
     const balanceAfter = balanceBefore - amount;
-    
+
     const transaction: Transaction = {
       id: transactionsStore.length + 1,
-      tx_type: 'withdraw',
+      tx_type: "withdraw",
       amount: `-${data.amount}`,
       balance_before: balanceBefore.toFixed(2),
       balance_after: balanceAfter.toFixed(2),
       reference: data.reference,
-      metadata: '{}',
+      metadata: "{}",
       created_at: new Date().toISOString(),
     };
-    
+
     transactionsStore.unshift(transaction);
     userProfile.wallet_balance = balanceAfter.toFixed(2);
     currentUser.wallet_balance = balanceAfter.toFixed(2);
-    
+
     return transaction;
   },
 };
