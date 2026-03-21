@@ -35,7 +35,7 @@ const getEnvBoolean = (
 export const API_CONFIG = {
   BASE_URL: getEnvString(
     import.meta.env.VITE_API_BASE_URL,
-    "https://lulubingo-back-end-kvf3.onrender.com/api",
+    "https://api.lulubingo.com/api",
   ),
   USE_MOCK: getEnvBoolean(import.meta.env.VITE_API_USE_MOCK, false),
   TIMEOUT: getEnvNumber(import.meta.env.VITE_API_TIMEOUT, 10000),
