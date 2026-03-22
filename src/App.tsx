@@ -138,7 +138,6 @@ import {
   Error418Page,
   Error429Page,
   Error500Page,
-  Error503Page,
 } from "./pages/ErrorPages";
 import { authApi, shopApi } from "./services/api";
 import { useTheme } from "./contexts/ThemeContext";
@@ -487,7 +486,6 @@ function App() {
               <Route path="/error/418" element={<Error418Page />} />
               <Route path="/error/429" element={<Error429Page />} />
               <Route path="/error/500" element={<Error500Page />} />
-              <Route path="/error/503" element={<Error503Page />} />
               <Route
                 path="/*"
                 element={

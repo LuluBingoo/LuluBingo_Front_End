@@ -1,6 +1,7 @@
 // HTTP Client for API calls
 import { API_CONFIG } from "../config";
 import { markBackendOffline, markBackendOnline } from "../backendHealth";
+import { toast } from "sonner";
 
 export class ApiError extends Error {
   constructor(
@@ -29,18 +30,6 @@ class ApiClient {
     }
 
     window.location.assign(`/login?reason=${reason}`);
-  }
-
-  private redirectToServiceUnavailable() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.location.pathname === "/error/503") {
-      return;
-    }
-
-    window.location.assign("/error/503");
   }
 
   setToken(token: string | null) {
@@ -99,7 +88,7 @@ class ApiClient {
 
       if (response.status === 503) {
         markBackendOffline("Service unavailable");
-        this.redirectToServiceUnavailable();
+        toast.error("Service unavailable", { id: "backend-error" });
       }
 
       if (response.status === 401 || response.status === 403) {
@@ -130,16 +119,16 @@ class ApiClient {
       if (error instanceof Error) {
         if (error.name === "AbortError") {
           markBackendOffline("Request timeout");
-          this.redirectToServiceUnavailable();
+          toast.error("Request timeout", { id: "backend-error" });
           throw new ApiError("Request timeout", 408);
         }
         markBackendOffline(error.message || "Backend unavailable");
-        this.redirectToServiceUnavailable();
+        toast.error(error.message || "Backend unavailable", { id: "backend-error" });
         throw new ApiError(error.message, 0);
       }
 
       markBackendOffline("Unknown backend connectivity error");
-      this.redirectToServiceUnavailable();
+      toast.error("Unknown backend connectivity error", { id: "backend-error" });
       throw new ApiError("Unknown error occurred", 0);
     }
   }

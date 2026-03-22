@@ -108,11 +108,6 @@ export const FunnyErrorPage: React.FC<{ code: number }> = ({ code }) => {
         className="w-full max-w-2xl"
       >
         <Card className="border-slate-200 bg-white/95 p-8 text-center shadow-xl dark:border-slate-700 dark:bg-slate-900/95">
-          {error.code === 503 && (
-            <div className="mx-auto mb-3 w-fit rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 dark:border-red-800/60 dark:bg-red-900/30 dark:text-red-300">
-              Backend Offline
-            </div>
-          )}
           <motion.div
             animate={{ rotate: [0, -8, 8, -4, 4, 0] }}
             transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 3 }}
@@ -156,4 +151,3 @@ export const Error404Page = () => <FunnyErrorPage code={404} />;
 export const Error418Page = () => <FunnyErrorPage code={418} />;
 export const Error429Page = () => <FunnyErrorPage code={429} />;
 export const Error500Page = () => <FunnyErrorPage code={500} />;
-export const Error503Page = () => <FunnyErrorPage code={503} />;
