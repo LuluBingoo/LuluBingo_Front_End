@@ -27,6 +27,7 @@ import {
   WinnerCelebration,
   WinnerConfettiPiece,
 } from "./playground/types";
+import audioMap from "../audioMap";
 
 export const Playground: React.FC<PlaygroundProps> = ({
   gameConfig,
@@ -446,6 +447,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const triggerCalledBall = (label: string, calledNumber?: number | null) => {
+    // Play the audio for the called number (e.g. "B12", "N42")
+    playAudio(label);
+
     setBallPopupLabel(label);
     setShowBallPopup(true);
 
@@ -469,49 +473,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
     payoutAmount?: string | number | null,
     shopCutAmount?: string | number | null,
   ) => {
-    const playWinnerCelebrationSound = () => {
-      if (typeof window === "undefined") return;
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-
-      if (!AudioContextClass) return;
-
-      const audioContext = new AudioContextClass();
-      const startTime = audioContext.currentTime;
-      const notes = [523.25, 659.25, 783.99, 1046.5];
-
-      notes.forEach((frequency, index) => {
-        const noteStart = startTime + index * 0.11;
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.type = "triangle";
-        oscillator.frequency.setValueAtTime(frequency, noteStart);
-
-        gainNode.gain.setValueAtTime(0.0001, noteStart);
-        gainNode.gain.exponentialRampToValueAtTime(0.16, noteStart + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.13);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        oscillator.start(noteStart);
-        oscillator.stop(noteStart + 0.14);
-      });
-
-      window.setTimeout(() => {
-        void audioContext.close();
-      }, 900);
-    };
-
     setWinnerCelebration({
       cartela: cartelaNumber,
       pattern: pattern || null,
       payoutAmount: payoutAmount ?? null,
       shopCutAmount: shopCutAmount ?? null,
     });
-    playWinnerCelebrationSound();
+    playAudio("you_won");
   };
 
   const winnerConfetti = React.useMemo<WinnerConfettiPiece[]>(
@@ -699,6 +667,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (response.is_complete) {
         setAutoCall(false);
+        playAudio("Game_Finished");
         popup.info("All 75 numbers have been called.");
       }
 
@@ -910,6 +879,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setAutoCall(false);
     setAutoCallTimer(getConfiguredAutoCallSeconds());
     setIsCheckingCartela(true);
+    playAudio("Check_is_your_card_is_saved");
     try {
       const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: cartellaIndex,
@@ -967,6 +937,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       popup.warning(
         claim.detail || "No bingo found yet (row or diagonal only).",
       );
+      playAudio("you_didnt_win");
     } catch (error) {
       console.error("Failed to validate cartela", error);
       popup.error(
@@ -1037,6 +1008,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       );
       onGameStateChange?.(false);
       popup.success("Game closed without winner.");
+      playAudio("Game_stopped");
     }
   };
 
@@ -1062,6 +1034,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           5,
       );
       popup.success("Game started.");
+      playAudio("Game_has_started");
       await syncGameState();
     } catch (error) {
       console.error("Failed to start game", error);
@@ -1279,6 +1252,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
     };
   }, [isFullscreen]);
+
+  // Play any audio from the audioMap by key
+  const playAudio = (key: string) => {
+    const audioPath = audioMap[key];
+    if (audioPath) {
+      const audio = new Audio(audioPath);
+      void audio.play();
+    }
+  };
 
   return (
     <div className={`space-y-4 ${isFullscreen ? "p-0" : "p-6"}`}>

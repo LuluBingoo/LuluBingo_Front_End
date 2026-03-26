@@ -213,6 +213,7 @@ import { gamesApi } from "../services/api";
 import { ShopBingoPlayer, ShopBingoSession } from "../services/types";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency, getCurrencyLabel } from "../services/settings";
+import audioMap from "../audioMap";
 
 interface NewGameProps {
   onGameCreated: (
@@ -380,6 +381,14 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       ]);
 
       popup.success(`${currentPlayerName} locked locally.`);
+
+      // Play sound when all players are locked
+      const newTotal = (session?.players_data.length ?? 0) + stagedPlayers.length + 1;
+      if (newTotal >= targetPlayers) {
+        const audio = new Audio(audioMap["Check_is_your_card_is_saved"]);
+        void audio.play();
+      }
+
       setSelectedCartellas([]);
       setCurrentPage(1);
     } catch (error) {
