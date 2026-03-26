@@ -726,11 +726,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         if (!claim.is_bingo) {
           if (claim.is_banned) {
+            playAudio("you_didnt_win");
             popup.error(
               claim.detail || "This cartela is banned and cannot claim bingo.",
             );
             return;
           }
+          playAudio("you_didnt_win");
           popup.warning(
             claim.detail || "No bingo found yet (row or diagonal only).",
           );
@@ -928,6 +930,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       if (claim.is_banned) {
+        playAudio("you_didnt_win");
         popup.error(
           claim.detail || "This cartela is banned and cannot claim bingo.",
         );
