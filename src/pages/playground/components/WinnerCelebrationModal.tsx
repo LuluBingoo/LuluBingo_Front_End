@@ -1,5 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { createPortal } from "react-dom";
 import { Trophy, X } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { formatCurrency } from "../../../services/settings";
@@ -91,30 +92,37 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
       ? "Winning Diagonal"
       : "Winning Row";
 
-  return (
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
       {winnerCelebration && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-1400 flex items-start justify-center overflow-y-auto bg-black/55 px-4 py-5 sm:py-7"
+          className="fixed inset-0 z-1800 flex items-start justify-center overflow-y-auto bg-linear-to-br from-slate-950/78 via-black/72 to-amber-950/60 px-4 py-5 backdrop-blur-sm sm:py-7"
         >
           <motion.div
             initial={{ scale: 0.6, y: 30, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.85, y: 20, opacity: 0 }}
             transition={{ type: "spring", stiffness: 180, damping: 14 }}
-            className="relative w-full max-w-6xl overflow-y-auto rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-5 text-center shadow-2xl sm:p-8 lg:max-h-[90vh] lg:text-left"
+            className="relative w-full max-w-6xl overflow-y-auto rounded-3xl border border-amber-100/75 bg-linear-to-br from-amber-100 via-orange-50 to-yellow-100 p-5 text-center shadow-[0_32px_110px_rgba(2,6,23,0.5)] sm:p-8 lg:max-h-[90vh] lg:text-left dark:border-amber-600/35 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/35"
           >
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-3 right-3 z-30 h-9 w-9 rounded-full bg-white/80 text-slate-700 hover:bg-white"
+              className="absolute top-3 right-3 z-40 h-9 w-9 rounded-full border border-white/60 bg-white/90 text-slate-700 hover:bg-white dark:border-slate-600 dark:bg-slate-900/90 dark:text-slate-200"
               onClick={onClose}
             >
               <X className="h-5 w-5" />
             </Button>
+            <div className="pointer-events-none absolute -top-20 -left-16 h-56 w-56 rounded-full bg-amber-300/45 blur-3xl dark:bg-amber-500/20" />
+            <div className="pointer-events-none absolute -right-20 -bottom-20 h-72 w-72 rounded-full bg-rose-300/38 blur-3xl dark:bg-rose-500/20" />
+            <div className="pointer-events-none absolute inset-0 opacity-35 dark:opacity-25 bg-[radial-gradient(circle_at_12%_22%,rgba(255,255,255,0.6)_1px,transparent_1.6px),radial-gradient(circle_at_80%_58%,rgba(251,191,36,0.3)_1px,transparent_1.7px)] bg-size-[22px_22px,28px_28px]" />
             <div className="pointer-events-none absolute inset-0">
               {winnerConfetti.slice(0, 20).map((piece) => (
                 <motion.div
@@ -163,13 +171,13 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                 />
               ))}
             </div>
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24 lg:mx-0">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-amber-300 bg-linear-to-br from-amber-400 to-amber-600 text-white shadow-[0_10px_35px_rgba(245,158,11,0.45)] sm:h-24 sm:w-24 lg:mx-0">
               <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
             </div>
             <motion.div
               animate={{ scale: [1, 1.06, 1] }}
               transition={{ duration: 1.1, repeat: 2 }}
-              className="text-4xl font-black tracking-tight text-amber-700 sm:text-6xl"
+              className="text-4xl font-black tracking-tight text-amber-700 drop-shadow-[0_4px_14px_rgba(245,158,11,0.35)] sm:text-6xl"
             >
               BINGO!
             </motion.div>
@@ -316,7 +324,6 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                         </div>
                       ))}
                     </div>
-
                     {Array.from({ length: 5 }, (_, row) => (
                       <div
                         key={`how-row-${row}`}
@@ -365,6 +372,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 };
