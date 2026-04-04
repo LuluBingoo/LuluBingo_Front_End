@@ -15,6 +15,8 @@ interface WinnerCelebrationModalProps {
   currentGameConfig?: PlaygroundGameConfig | null;
   activeCartelasCount: number;
   calledNumbersCount: number;
+  calledNumbers: number[];
+  winnerCartelaData?: number[];
   showWinnerLogButton: boolean;
   calculateWinMoney: () => number;
   onClose: () => void;
@@ -27,11 +29,95 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   currentGameConfig,
   activeCartelasCount,
   calledNumbersCount,
+  calledNumbers,
+  winnerCartelaData = [],
   showWinnerLogButton,
   calculateWinMoney,
   onClose,
   onViewGameLog,
 }) => {
+  const [showHow, setShowHow] = React.useState(false);
+
+  React.useEffect(() => {
+    setShowHow(false);
+  }, [winnerCelebration?.cartela, winnerCelebration?.pattern]);
+
+  const winningLineIndices = React.useMemo<number[]>(() => {
+    if (
+      !winnerCelebration?.pattern ||
+      !winnerCartelaData ||
+      winnerCartelaData.length !== 25
+    ) {
+      return [];
+    }
+
+    const isMarked = (index: number) => {
+      const value = winnerCartelaData[index];
+      return value === 0 || calledNumbers.includes(value);
+    };
+
+    if (winnerCelebration.pattern === "diagonal") {
+      const mainDiagonal = [0, 6, 12, 18, 24];
+      if (mainDiagonal.every((index) => isMarked(index))) {
+        return mainDiagonal;
+      }
+
+      const antiDiagonal = [4, 8, 12, 16, 20];
+      if (antiDiagonal.every((index) => isMarked(index))) {
+        return antiDiagonal;
+      }
+
+      return [];
+    }
+
+    for (let col = 0; col < 5; col++) {
+      const columnIndices = [
+        col * 5,
+        col * 5 + 1,
+        col * 5 + 2,
+        col * 5 + 3,
+        col * 5 + 4,
+      ];
+
+      if (columnIndices.every((index) => isMarked(index))) {
+        return columnIndices;
+      }
+    }
+
+    for (let row = 0; row < 5; row++) {
+      const rowIndices = [row, 5 + row, 10 + row, 15 + row, 20 + row];
+
+      if (rowIndices.every((index) => isMarked(index))) {
+        return rowIndices;
+      }
+    }
+
+    return [];
+  }, [winnerCelebration?.pattern, winnerCartelaData, calledNumbers]);
+
+  const canShowHow =
+    Boolean(winnerCelebration?.pattern) &&
+    winnerCartelaData.length === 25 &&
+    winningLineIndices.length > 0;
+
+  const patternLabel = React.useMemo(() => {
+    if (winnerCelebration?.pattern === "diagonal") {
+      return "Winning Diagonal";
+    }
+
+    if (winningLineIndices.length === 5) {
+      const sorted = [...winningLineIndices].sort((a, b) => a - b);
+      const isColumn = sorted
+        .slice(1)
+        .every((value, index) => value - sorted[index] === 1);
+      if (isColumn) {
+        return "Winning Column";
+      }
+    }
+
+    return "Winning Row";
+  }, [winnerCelebration?.pattern, winningLineIndices]);
+
   return (
     <AnimatePresence>
       {winnerCelebration && (
@@ -212,16 +298,97 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               🎉 Congratulations to the winner! Close this card using the X
               button.
             </div>
-            {showWinnerLogButton && (
-              <div className="mt-4 flex justify-center">
+
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {canShowHow && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowHow((prev) => !prev)}
+                  className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                >
+                  {showHow ? "Hide How" : "Show How"}
+                </Button>
+              )}
+
+              {showWinnerLogButton && (
                 <Button
                   onClick={onViewGameLog}
                   className="bg-amber-600 text-white hover:bg-amber-700"
                 >
                   View Game Log
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
+
+            <AnimatePresence>
+              {showHow && canShowHow && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="mt-4 rounded-2xl border border-amber-300 bg-white/75 p-4 text-left shadow-inner backdrop-blur-sm"
+                >
+                  <div className="mb-3 text-sm font-bold uppercase tracking-wide text-amber-700">
+                    {patternLabel}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-2">
+                      {["B", "I", "N", "G", "O"].map((letter) => (
+                        <div
+                          key={letter}
+                          className="rounded-md bg-amber-600 py-1.5 text-center text-xs font-black tracking-wide text-white"
+                        >
+                          {letter}
+                        </div>
+                      ))}
+                    </div>
+
+                    {Array.from({ length: 5 }, (_, row) => (
+                      <div
+                        key={`how-row-${row}`}
+                        className="grid grid-cols-5 gap-2"
+                      >
+                        {Array.from({ length: 5 }, (_, col) => {
+                          const index = col * 5 + row;
+                          const value = winnerCartelaData[index];
+                          const isMarked =
+                            value === 0 || calledNumbers.includes(value);
+                          const isWinningCell =
+                            winningLineIndices.includes(index);
+
+                          return (
+                            <motion.div
+                              key={`how-cell-${row}-${col}`}
+                              className={`relative flex h-12 items-center justify-center rounded-md border text-sm font-bold ${
+                                isWinningCell
+                                  ? "border-amber-500 bg-linear-to-br from-amber-300 via-amber-400 to-amber-500 text-slate-900 shadow-[0_0_18px_rgba(245,158,11,0.55)]"
+                                  : isMarked
+                                    ? "border-emerald-500 bg-emerald-500 text-white"
+                                    : "border-slate-300 bg-white text-slate-900"
+                              }`}
+                              animate={
+                                isWinningCell
+                                  ? { scale: [1, 1.06, 1], y: [0, -1, 0] }
+                                  : { scale: 1, y: 0 }
+                              }
+                              transition={{
+                                duration: 0.75,
+                                repeat: isWinningCell ? Infinity : 0,
+                                repeatDelay: 0.35,
+                                delay: isWinningCell ? (row + col) * 0.03 : 0,
+                              }}
+                            >
+                              <span>{value === 0 ? "FREE" : value}</span>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}

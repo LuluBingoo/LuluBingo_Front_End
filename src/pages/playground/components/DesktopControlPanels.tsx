@@ -1,16 +1,16 @@
 import React from "react";
-import { Check, Eye, Loader2, Play, Shuffle, X } from "lucide-react";
+import { Check, Eye, Loader2, Pause, Play, Shuffle, X } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { formatCurrency } from "../../../services/settings";
-import { GameStatus } from "../types";
+import { DisplayGameStatus } from "../types";
 import { ShuffleSpeedPresets } from "./ShuffleSpeedPresets";
 
 interface DesktopControlPanelsProps {
   isFullscreen: boolean;
-  gameStatus: GameStatus;
+  gameStatus: DisplayGameStatus;
   currentCalledNumber: string;
   displayCurrentNumber: () => void;
   callRandomNumber: () => Promise<void>;
@@ -24,7 +24,9 @@ interface DesktopControlPanelsProps {
   startGame: () => Promise<void>;
   onStartNewGame?: () => void;
   autoCall: boolean;
-  setAutoCall: React.Dispatch<React.SetStateAction<boolean>>;
+  onToggleAutoCall: (nextValue?: boolean) => void;
+  isPaused: boolean;
+  togglePauseGame: () => void;
   autoCallTimer: number;
   t: (key: string) => string;
   shuffleSpeedMs: number;
@@ -57,7 +59,9 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
   startGame,
   onStartNewGame,
   autoCall,
-  setAutoCall,
+  onToggleAutoCall,
+  isPaused,
+  togglePauseGame,
   autoCallTimer,
   t,
   shuffleSpeedMs,
@@ -75,8 +79,10 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
 }) => {
   if (isFullscreen) return null;
 
+  const isLiveGame = gameStatus === "active" || gameStatus === "paused";
+
   const controlMode =
-    gameStatus === "active"
+    gameStatus === "active" || gameStatus === "paused"
       ? "active"
       : gameStatus === "pending"
         ? "pending"
@@ -97,8 +103,14 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="space-y-2"
           >
-            {gameStatus === "active" ? (
+            {isLiveGame ? (
               <>
+                {isPaused && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                    Game Paused
+                  </div>
+                )}
+
                 <Button
                   className="h-10 w-full"
                   onClick={displayCurrentNumber}
@@ -111,13 +123,35 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
                   onClick={callRandomNumber}
                   disabled={
+                    isPaused ||
                     calledNumbersLength >= 75 ||
                     isCallingNumber ||
                     isStoppingGame ||
                     isCheckingCartela
                   }
                 >
-                  {isCallingNumber ? "Calling..." : t("playground.callNumber")}
+                  {isPaused
+                    ? "Paused"
+                    : isCallingNumber
+                      ? "Calling..."
+                      : t("playground.callNumber")}
+                </Button>
+
+                <Button
+                  className="h-10 w-full"
+                  onClick={togglePauseGame}
+                  variant={isPaused ? "default" : "outline"}
+                  disabled={isStoppingGame || isCheckingCartela}
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="mr-1 h-4 w-4" /> Resume Game
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="mr-1 h-4 w-4" /> Pause Game
+                    </>
+                  )}
                 </Button>
 
                 <Button
@@ -174,20 +208,27 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
             )}
           </motion.div>
 
-          {gameStatus === "active" && (
+          {isLiveGame && (
             <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input
                   type="checkbox"
                   checked={autoCall}
-                  onChange={(e) => setAutoCall(e.target.checked)}
+                  onChange={(e) => onToggleAutoCall(e.target.checked)}
                   className="h-4 w-4 rounded"
-                  disabled={calledNumbersLength >= 75 || isCheckingCartela}
+                  disabled={
+                    calledNumbersLength >= 75 ||
+                    isCheckingCartela ||
+                    gameStatus !== "active" ||
+                    isPaused
+                  }
                 />
                 {t("playground.autoCall")}
               </label>
               <span className="mt-2 block text-xs text-slate-500">
-                {autoCallTimer} {t("playground.seconds")}
+                {isPaused
+                  ? "Paused"
+                  : `${autoCallTimer} ${t("playground.seconds")}`}
               </span>
             </div>
           )}

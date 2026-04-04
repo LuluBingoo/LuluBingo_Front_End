@@ -383,7 +383,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       popup.success(`${currentPlayerName} locked locally.`);
 
       // Play sound when all players are locked
-      const newTotal = (session?.players_data.length ?? 0) + stagedPlayers.length + 1;
+      const newTotal =
+        (session?.players_data.length ?? 0) + stagedPlayers.length + 1;
       if (newTotal >= targetPlayers) {
         const audio = new Audio(audioMap["Check_is_your_card_is_saved"]);
         void audio.play();
@@ -889,7 +890,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10">
+                <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
                   {pageRange.map((number) => {
                     const isSelected = selectedCartellas.includes(number);
                     const isLocked = lockedByOthers.has(number);
@@ -897,9 +898,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border text-sm font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_8px_18px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_6px_8px_rgba(255,255,255,0.75),0_5px_12px_rgba(15,23,42,0.16)] hover:border-red-300 hover:shadow-[inset_0_8px_10px_rgba(255,255,255,0.85),0_8px_16px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
+                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
                         onClick={() => handleCartellaToggle(number)}
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.07 }}
                         whileTap={{ scale: 0.95 }}
                         disabled={isLocked}
                       >

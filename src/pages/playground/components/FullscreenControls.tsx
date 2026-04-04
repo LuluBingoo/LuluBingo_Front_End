@@ -1,7 +1,7 @@
 import React from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { MoreHorizontal, Play, Shuffle } from "lucide-react";
-import { GameStatus } from "../types";
+import { MoreHorizontal, Pause, Play, Shuffle } from "lucide-react";
+import { DisplayGameStatus } from "../types";
 import { ShuffleSpeedPresets } from "./ShuffleSpeedPresets";
 
 interface FullscreenControlsProps {
@@ -9,13 +9,15 @@ interface FullscreenControlsProps {
   showFullscreenHud: boolean;
   theme: "light" | "dark";
   calledNumbersLength: number;
-  gameStatus: GameStatus;
+  gameStatus: DisplayGameStatus;
   isShuffling: boolean;
   shuffleSpeedMs: number;
   setShuffleSpeedMs: React.Dispatch<React.SetStateAction<number>>;
   shuffleNumbers: () => void;
   autoCall: boolean;
-  setAutoCall: React.Dispatch<React.SetStateAction<boolean>>;
+  onToggleAutoCall: (nextValue?: boolean) => void;
+  isPaused: boolean;
+  togglePauseGame: () => void;
   showRadialControls: boolean;
   setShowRadialControls: React.Dispatch<React.SetStateAction<boolean>>;
   isStoppingGame: boolean;
@@ -37,7 +39,9 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   setShuffleSpeedMs,
   shuffleNumbers,
   autoCall,
-  setAutoCall,
+  onToggleAutoCall,
+  isPaused,
+  togglePauseGame,
   showRadialControls,
   setShowRadialControls,
   isStoppingGame,
@@ -48,6 +52,8 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   startGame,
 }) => {
   if (!isFullscreen) return null;
+
+  const canPauseOrResume = gameStatus === "active" || gameStatus === "paused";
 
   return (
     <div className="pointer-events-none fixed right-5 bottom-5 z-1150 flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
@@ -102,11 +108,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (gameStatus === "active") {
-                  setAutoCall((prev) => !prev);
-                }
-              }}
+              onClick={() => onToggleAutoCall()}
               disabled={gameStatus !== "active" || calledNumbersLength >= 75}
               className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
                 autoCall
@@ -119,6 +121,26 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
               aria-label="Auto Call"
             >
               <Play className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={togglePauseGame}
+              disabled={!canPauseOrResume}
+              className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
+                isPaused
+                  ? "bg-amber-500 text-slate-900 hover:bg-amber-400"
+                  : theme === "dark"
+                    ? "bg-slate-700 text-white hover:bg-slate-600"
+                    : "bg-slate-200 text-slate-900 hover:bg-slate-300"
+              }`}
+              title={isPaused ? "Resume game" : "Pause game"}
+              aria-label={isPaused ? "Resume game" : "Pause game"}
+            >
+              {isPaused ? (
+                <Play className="h-5 w-5" />
+              ) : (
+                <Pause className="h-5 w-5" />
+              )}
             </button>
           </motion.div>
         ) : (
@@ -154,11 +176,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
                     exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
                     transition={{ duration: 0.2 }}
                     type="button"
-                    onClick={() => {
-                      if (gameStatus === "active") {
-                        setAutoCall((prev) => !prev);
-                      }
-                    }}
+                    onClick={() => onToggleAutoCall()}
                     disabled={
                       gameStatus !== "active" || calledNumbersLength >= 75
                     }
@@ -173,6 +191,30 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
                     aria-label="Auto Call"
                   >
                     <Play className="h-4 w-4" />
+                  </motion.button>
+                  <motion.button
+                    initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, x: -48, y: -46, scale: 1 }}
+                    exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                    transition={{ duration: 0.2 }}
+                    type="button"
+                    onClick={togglePauseGame}
+                    disabled={!canPauseOrResume}
+                    className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${
+                      isPaused
+                        ? "bg-amber-500 text-slate-900 hover:bg-amber-400"
+                        : theme === "dark"
+                          ? "bg-slate-700 text-white hover:bg-slate-600"
+                          : "bg-slate-200 text-slate-900 hover:bg-slate-300"
+                    }`}
+                    title={isPaused ? "Resume game" : "Pause game"}
+                    aria-label={isPaused ? "Resume game" : "Pause game"}
+                  >
+                    {isPaused ? (
+                      <Play className="h-4 w-4" />
+                    ) : (
+                      <Pause className="h-4 w-4" />
+                    )}
                   </motion.button>
                 </>
               )}
@@ -194,7 +236,9 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
         <button
           type="button"
           onClick={() => {
-            if (gameStatus === "active") {
+            if (gameStatus === "paused") {
+              togglePauseGame();
+            } else if (gameStatus === "active") {
               void callRandomNumber();
             } else if (gameStatus === "pending") {
               void startGame();
@@ -210,10 +254,22 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             gameStatus === "cancelled"
           }
           className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-[0_0_25px_rgba(239,68,68,0.75)] transition hover:scale-105 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-          title={gameStatus === "pending" ? "Start game" : "Call number"}
-          aria-label={gameStatus === "pending" ? "Start game" : "Call number"}
+          title={
+            gameStatus === "pending"
+              ? "Start game"
+              : gameStatus === "paused"
+                ? "Resume game"
+                : "Call number"
+          }
+          aria-label={
+            gameStatus === "pending"
+              ? "Start game"
+              : gameStatus === "paused"
+                ? "Resume game"
+                : "Call number"
+          }
         >
-          {gameStatus === "pending" ? (
+          {gameStatus === "pending" || gameStatus === "paused" ? (
             <Play className="h-8 w-8" />
           ) : (
             <span className="text-xs font-black tracking-wider">CALL</span>

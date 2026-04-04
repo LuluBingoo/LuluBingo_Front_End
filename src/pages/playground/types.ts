@@ -23,6 +23,8 @@ export interface PlaygroundProps {
 
 export type GameStatus = "pending" | "active" | "completed" | "cancelled";
 
+export type DisplayGameStatus = GameStatus | "paused";
+
 export interface WinnerCelebration {
   cartela: string;
   pattern?: string | null;

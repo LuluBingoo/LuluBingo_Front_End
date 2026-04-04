@@ -22,6 +22,8 @@ import { StatusOverlays } from "./playground/components/StatusOverlays";
 import { pickRandomBingoIllustration } from "../assets/illustrations";
 import { getOfflineCartellaBoard } from "../data/offlineCartellas";
 import {
+  DisplayGameStatus,
+  PlaygroundGameConfig,
   GameStatus,
   PlaygroundProps,
   WinnerCelebration,
@@ -123,32 +125,35 @@ export const Playground: React.FC<PlaygroundProps> = ({
     currentGameConfig?.cartelaData,
   ]);
 
-  const buildConfigFromGame = React.useCallback((game: Game) => {
-    const fallbackCartelaNumbers = Array.from(
-      game.assigned_cartella_numbers?.length
-        ? game.assigned_cartella_numbers
-        : Array.from(
-            { length: game.cartella_numbers?.length || 0 },
-            (_, index) => index + 1,
-          ),
-      (value) => String(value),
-    );
+  const buildConfigFromGame = React.useCallback(
+    (game: Game): PlaygroundGameConfig => {
+      const fallbackCartelaNumbers = Array.from(
+        game.assigned_cartella_numbers?.length
+          ? game.assigned_cartella_numbers
+          : Array.from(
+              { length: game.cartella_numbers?.length || 0 },
+              (_, index) => index + 1,
+            ),
+        (value) => String(value),
+      );
 
-    return {
-      game: game.game_code,
-      gameCode: game.game_code,
-      betBirr: game.bet_amount,
-      numPlayers: String(game.num_players),
-      winBirr: game.win_amount,
-      selectedPatterns: [],
-      playMode: game.game_mode === "shop_offline" ? "offline" : "online",
-      cartelaNumbers: fallbackCartelaNumbers,
-      cartelaData: game.cartella_numbers,
-      drawSequence: game.draw_sequence,
-      cartellaStatuses: game.cartella_statuses || {},
-      backendStatus: game.status,
-    };
-  }, []);
+      return {
+        game: game.game_code,
+        gameCode: game.game_code,
+        betBirr: game.bet_amount,
+        numPlayers: String(game.num_players),
+        winBirr: game.win_amount,
+        selectedPatterns: [],
+        playMode: game.game_mode === "shop_offline" ? "offline" : "online",
+        cartelaNumbers: fallbackCartelaNumbers,
+        cartelaData: game.cartella_numbers,
+        drawSequence: game.draw_sequence,
+        cartellaStatuses: game.cartella_statuses || {},
+        backendStatus: game.status,
+      };
+    },
+    [],
+  );
 
   const getConfiguredAutoCallSeconds = React.useCallback(() => {
     const parsed = Number.parseInt(
@@ -166,6 +171,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   );
   const [currentCalledNumber, setCurrentCalledNumber] = useState<string>("");
   const [gameStatus, setGameStatus] = useState<GameStatus>("pending");
+  const [isPaused, setIsPaused] = useState(false);
   const [isCallingNumber, setIsCallingNumber] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [isStoppingGame, setIsStoppingGame] = useState(false);
@@ -221,6 +227,26 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastCallTimeRef = React.useRef(0);
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
+  const callInFlightRef = React.useRef(false);
+  const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const effectiveGameStatus: DisplayGameStatus =
+    isPaused && gameStatus === "active" ? "paused" : gameStatus;
+  const statusLabel =
+    effectiveGameStatus === "paused"
+      ? "Paused"
+      : `${effectiveGameStatus.charAt(0).toUpperCase()}${effectiveGameStatus.slice(1)}`;
+  const statusBadgeClass =
+    effectiveGameStatus === "active"
+      ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+      : effectiveGameStatus === "paused"
+        ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+        : effectiveGameStatus === "pending"
+          ? "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-200"
+          : effectiveGameStatus === "completed"
+            ? "border-cyan-300 bg-cyan-100 text-cyan-800 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+            : "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300";
 
   useEffect(() => {
     gameStatusRef.current = gameStatus;
@@ -254,6 +280,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setResolvedGameConfig(config);
         setRestoredGame(game);
         setGameStatus(state.status as any);
+        setIsPaused(false);
         setIsGameActive(
           state.status === "active" || state.status === "pending",
         );
@@ -265,6 +292,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setDrawSequence(game.draw_sequence || []);
         setDrawCursor(state.call_cursor || 0);
         setCalledNumbers(state.called_numbers || []);
+        setAutoCall(
+          state.status === "active" && (state.called_numbers?.length || 0) < 75,
+        );
+        setAutoCallTimer(getConfiguredAutoCallSeconds());
 
         if (state.current_called_number) {
           setCurrentCalledNumber(
@@ -291,7 +322,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [resumeGameCode, buildConfigFromGame, onGameStateChange]);
+  }, [
+    resumeGameCode,
+    buildConfigFromGame,
+    getConfiguredAutoCallSeconds,
+    onGameStateChange,
+  ]);
 
   useEffect(() => {
     if (!currentGameConfig || resumeGameCode) {
@@ -327,7 +363,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     const status = (currentGameConfig.backendStatus as any) || "pending";
     setGameStatus(status);
+    setIsPaused(false);
     setIsGameActive(status === "active" || status === "pending");
+    setAutoCall(status === "active");
+    setAutoCallTimer(getConfiguredAutoCallSeconds());
     setActiveCartelas(resolvedCartelaNumbers);
     setServerCartelaOrder(resolvedCartelaNumbers);
     setCartellaStatuses(currentGameConfig.cartellaStatuses || {});
@@ -337,6 +376,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [
     currentGameConfig?.gameCode,
     currentGameConfig?.game,
+    getConfiguredAutoCallSeconds,
     resolvedCartelaNumbers,
   ]);
 
@@ -420,10 +460,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return cartellaStatuses[String(index)] || "active";
   };
 
+  useEffect(() => {
+    if (gameStatus !== "active") {
+      setIsPaused(false);
+    }
+  }, [gameStatus]);
+
   // Notify parent when game state changes
   useEffect(() => {
-    onGameStateChange?.(isGameActive && gameStatus === "active");
-  }, [isGameActive, gameStatus]);
+    onGameStateChange?.(isGameActive && (gameStatus === "active" || isPaused));
+  }, [isGameActive, gameStatus, isPaused]);
 
   const mapNumberToLabel = (number: number) => {
     const letter = getNumberLetter(number);
@@ -505,6 +551,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }),
     [],
   );
+
+  const winnerCartelaData = React.useMemo(() => {
+    if (!winnerCelebration?.cartela) {
+      return [] as number[];
+    }
+
+    return cartelaDataMap[winnerCelebration.cartela] || [];
+  }, [winnerCelebration?.cartela, cartelaDataMap]);
 
   const syncGameState = async () => {
     if (!currentGameConfig?.gameCode || syncInFlightRef.current) return;
@@ -593,7 +647,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     if (
       autoCall &&
       isGameActive &&
-      gameStatus === "active" &&
+      effectiveGameStatus === "active" &&
       !isCheckingCartela &&
       calledNumbers.length < 75
     ) {
@@ -601,12 +655,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setAutoCallTimer((prev) => {
           const configuredSeconds = getConfiguredAutoCallSeconds();
 
-          if (isCallingNumber) {
+          if (callInFlightRef.current || isCallingNumber) {
             return prev;
           }
 
           if (prev <= 1) {
-            void callRandomNumber();
+            void callRandomNumber("auto");
             return configuredSeconds;
           }
           return prev - 1;
@@ -621,7 +675,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [
     autoCall,
     isGameActive,
-    gameStatus,
+    effectiveGameStatus,
     isCheckingCartela,
     calledNumbers.length,
     isCallingNumber,
@@ -639,16 +693,34 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   // Call one random number manually or via auto-call
-  const callRandomNumber = async () => {
-    if (!currentGameConfig?.gameCode || isCallingNumber) return;
-    if (isCheckingCartela) {
-      return;
-    }
-    if (gameStatus !== "active") {
-      popup.info("Start the game first.");
+  const callRandomNumber = async (trigger: "manual" | "auto" = "manual") => {
+    if (
+      !currentGameConfig?.gameCode ||
+      isCallingNumber ||
+      callInFlightRef.current
+    ) {
       return;
     }
 
+    if (isCheckingCartela) {
+      return;
+    }
+
+    if (isPaused) {
+      if (trigger === "manual") {
+        popup.info("Game is paused. Resume the game to continue calling.");
+      }
+      return;
+    }
+
+    if (gameStatus !== "active") {
+      if (trigger === "manual") {
+        popup.info("Start the game first.");
+      }
+      return;
+    }
+
+    callInFlightRef.current = true;
     setIsCallingNumber(true);
     try {
       const response = await gamesApi.nextGameCall(currentGameConfig.gameCode);
@@ -676,11 +748,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
     } catch (error) {
       console.error("Failed to call next number", error);
-      popup.error(
-        getApiErrorDetail(error, "Failed to get next number from backend."),
-      );
+      if (trigger === "manual") {
+        popup.error(
+          getApiErrorDetail(error, "Failed to get next number from backend."),
+        );
+      }
       await syncGameState();
     } finally {
+      callInFlightRef.current = false;
       setIsCallingNumber(false);
     }
   };
@@ -754,6 +829,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           claim.shop_cut_amount,
         );
         setGameStatus("completed");
+        setIsPaused(false);
         setIsGameActive(false);
         setAutoCall(false);
         setRestoredGame((prev) =>
@@ -907,6 +983,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           claim.shop_cut_amount,
         );
         setGameStatus("completed");
+        setIsPaused(false);
         setIsGameActive(false);
         setAutoCall(false);
         setRestoredGame((prev) =>
@@ -992,6 +1069,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       setIsGameActive(false);
       setGameStatus("cancelled");
+      setIsPaused(false);
       setAutoCall(false);
       setAutoCallTimer(
         Number.parseInt(localStorage.getItem("autoCallSeconds") || "5", 10) ||
@@ -1022,7 +1100,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       await gamesApi.startGame(currentGameConfig.gameCode);
       startTransitionUntilRef.current = Date.now() + 5000;
       setGameStatus("active");
+      setIsPaused(false);
       setIsGameActive(true);
+      setAutoCall(true);
       setRestoredGame((prev) =>
         prev
           ? {
@@ -1047,6 +1127,49 @@ export const Playground: React.FC<PlaygroundProps> = ({
       setIsStartingGame(false);
     }
   };
+
+  const toggleAutoCall = React.useCallback(
+    (nextValue?: boolean) => {
+      if (effectiveGameStatus !== "active") {
+        if (effectiveGameStatus === "paused") {
+          popup.info("Resume the game to enable auto-call.");
+        } else {
+          popup.info("Start the game first.");
+        }
+        return;
+      }
+
+      setAutoCall((prev) => {
+        const next = typeof nextValue === "boolean" ? nextValue : !prev;
+        if (next) {
+          setAutoCallTimer(getConfiguredAutoCallSeconds());
+        }
+        return next;
+      });
+    },
+    [effectiveGameStatus, getConfiguredAutoCallSeconds, popup],
+  );
+
+  const togglePauseGame = React.useCallback(() => {
+    if (gameStatus !== "active") {
+      popup.info("Game can only be paused while active.");
+      return;
+    }
+
+    setIsPaused((prev) => {
+      const nextPaused = !prev;
+      if (nextPaused) {
+        setAutoCall(false);
+        setAutoCallTimer(getConfiguredAutoCallSeconds());
+        popup.info("Game paused.");
+      } else {
+        setAutoCall(true);
+        setAutoCallTimer(getConfiguredAutoCallSeconds());
+        popup.success("Game resumed. Auto-call restarted.");
+      }
+      return nextPaused;
+    });
+  }, [gameStatus, getConfiguredAutoCallSeconds, popup]);
 
   // Shuffle/reshuffle numbers inside each Bingo column
   const reshuffleBoard = () => {
@@ -1183,7 +1306,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [isFullscreen, onFullscreenChange]);
 
   useEffect(() => {
-    if (!isGameActive || gameStatus !== "active") {
+    if (!isGameActive || effectiveGameStatus !== "active") {
       setCallStreak(0);
       return;
     }
@@ -1193,7 +1316,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }, 9000);
 
     return () => window.clearInterval(streakDecay);
-  }, [isGameActive, gameStatus]);
+  }, [isGameActive, effectiveGameStatus]);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -1256,13 +1379,40 @@ export const Playground: React.FC<PlaygroundProps> = ({
     };
   }, [isFullscreen]);
 
-  // Play any audio from the audioMap by key
+  useEffect(() => {
+    return () => {
+      if (voiceAudioRef.current) {
+        voiceAudioRef.current.pause();
+        voiceAudioRef.current.currentTime = 0;
+      }
+      if (effectAudioRef.current) {
+        effectAudioRef.current.pause();
+        effectAudioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+
+  // Play audio by key and avoid overlapping number-call voice playback.
   const playAudio = (key: string) => {
     const audioPath = audioMap[key];
-    if (audioPath) {
-      const audio = new Audio(audioPath);
-      void audio.play();
+    if (!audioPath) {
+      return;
     }
+
+    const isCalledBallKey = /^[BINGO]_?\d{1,2}$/i.test(key);
+    const targetRef = isCalledBallKey ? voiceAudioRef : effectAudioRef;
+
+    if (targetRef.current) {
+      targetRef.current.pause();
+      targetRef.current.currentTime = 0;
+    }
+
+    const audio = new Audio(audioPath);
+    audio.preload = "auto";
+    targetRef.current = audio;
+    void audio.play().catch(() => {
+      // Ignore autoplay/interrupt errors because calls can happen rapidly.
+    });
   };
 
   return (
@@ -1292,6 +1442,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
           <div className={`rounded-md border px-3 py-2 ${playModeBadgeClass}`}>
             <span className="mr-1 text-xs uppercase opacity-80">Mode</span>
             <span className="font-semibold">{playModeLabel}</span>
+          </div>
+          <div className={`rounded-md border px-3 py-2 ${statusBadgeClass}`}>
+            <span className="mr-1 text-xs uppercase opacity-80">Status</span>
+            <span className="font-semibold">{statusLabel}</span>
           </div>
           <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800">
             <span className="mr-1 text-xs uppercase text-slate-500">
@@ -1349,10 +1503,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       {isFullscreen && currentGameConfig?.playMode && (
         <div className="pointer-events-none fixed right-4 top-4 z-40">
-          <div
-            className={`rounded-full border px-3 py-1.5 text-sm font-semibold shadow-lg backdrop-blur ${playModeBadgeClass}`}
-          >
-            {playModeLabel} Mode
+          <div className="flex flex-col items-end gap-2">
+            <div
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold shadow-lg backdrop-blur ${playModeBadgeClass}`}
+            >
+              {playModeLabel} Mode
+            </div>
+            <div
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur ${statusBadgeClass}`}
+            >
+              {statusLabel}
+            </div>
           </div>
         </div>
       )}
@@ -1443,6 +1604,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
           currentGameConfig={currentGameConfig}
           activeCartelasCount={activeCartelas.length}
           calledNumbersCount={calledNumbers.length}
+          calledNumbers={calledNumbers}
+          winnerCartelaData={winnerCartelaData}
           showWinnerLogButton={showWinnerLogButton}
           calculateWinMoney={calculateWinMoney}
           onClose={() => setWinnerCelebration(null)}
@@ -1462,13 +1625,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
           showFullscreenHud={showFullscreenHud}
           theme={theme}
           calledNumbersLength={calledNumbers.length}
-          gameStatus={gameStatus}
+          gameStatus={effectiveGameStatus}
           isShuffling={isShuffling}
           shuffleSpeedMs={shuffleSpeedMs}
           setShuffleSpeedMs={setShuffleSpeedMs}
           shuffleNumbers={shuffleNumbers}
           autoCall={autoCall}
-          setAutoCall={setAutoCall}
+          onToggleAutoCall={toggleAutoCall}
+          isPaused={isPaused}
+          togglePauseGame={togglePauseGame}
           showRadialControls={showRadialControls}
           setShowRadialControls={setShowRadialControls}
           isStoppingGame={isStoppingGame}
@@ -1481,7 +1646,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
         <DesktopControlPanels
           isFullscreen={isFullscreen}
-          gameStatus={gameStatus}
+          gameStatus={effectiveGameStatus}
           currentCalledNumber={currentCalledNumber}
           displayCurrentNumber={displayCurrentNumber}
           callRandomNumber={callRandomNumber}
@@ -1495,7 +1660,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
           startGame={startGame}
           onStartNewGame={onStartNewGame}
           autoCall={autoCall}
-          setAutoCall={setAutoCall}
+          onToggleAutoCall={toggleAutoCall}
+          isPaused={isPaused}
+          togglePauseGame={togglePauseGame}
           autoCallTimer={autoCallTimer}
           t={t}
           shuffleSpeedMs={shuffleSpeedMs}
