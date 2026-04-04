@@ -37,6 +37,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   onGameStateChange,
   onCartelaRemoved,
   onFullscreenChange,
+  onWinnerCelebrationVisibilityChange,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -232,6 +233,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const winnerClaimInFlightRef = React.useRef(false);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const isWinnerModalOpen = Boolean(winnerCelebration);
+
+  useEffect(() => {
+    onWinnerCelebrationVisibilityChange?.(isWinnerModalOpen);
+
+    return () => {
+      if (isWinnerModalOpen) {
+        onWinnerCelebrationVisibilityChange?.(false);
+      }
+    };
+  }, [isWinnerModalOpen, onWinnerCelebrationVisibilityChange]);
 
   const effectiveGameStatus: DisplayGameStatus =
     isPaused && gameStatus === "active" ? "paused" : gameStatus;

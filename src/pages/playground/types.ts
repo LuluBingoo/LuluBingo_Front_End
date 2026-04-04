@@ -20,6 +20,7 @@ export interface PlaygroundProps {
   onGameStateChange?: (isActive: boolean) => void;
   onCartelaRemoved?: (cartelaNumber: string) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
+  onWinnerCelebrationVisibilityChange?: (isVisible: boolean) => void;
 }
 
 export type GameStatus = "pending" | "active" | "completed" | "cancelled";

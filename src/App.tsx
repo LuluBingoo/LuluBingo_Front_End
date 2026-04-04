@@ -196,6 +196,7 @@ function AppLayout({
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
+  const sidebarStateBeforeWinnerModalRef = useRef<boolean | null>(null);
   const currentYear = new Date().getFullYear();
 
   const refreshAccessState = async () => {
@@ -327,6 +328,28 @@ function AppLayout({
     setIsGameActive(active);
   };
 
+  const handleWinnerCelebrationVisibilityChange = React.useCallback(
+    (isVisible: boolean) => {
+      if (isPlaygroundFullscreen) {
+        return;
+      }
+
+      if (isVisible) {
+        if (sidebarStateBeforeWinnerModalRef.current === null) {
+          sidebarStateBeforeWinnerModalRef.current = isSidebarCollapsed;
+        }
+        setIsSidebarCollapsed(true);
+        return;
+      }
+
+      if (sidebarStateBeforeWinnerModalRef.current !== null) {
+        setIsSidebarCollapsed(sidebarStateBeforeWinnerModalRef.current);
+        sidebarStateBeforeWinnerModalRef.current = null;
+      }
+    },
+    [isPlaygroundFullscreen, isSidebarCollapsed],
+  );
+
   // Handle cartela removal
   const handleCartelaRemoved = (cartelaNumber: string) => {
     if (gameConfig && gameConfig.cartelaNumbers) {
@@ -382,6 +405,9 @@ function AppLayout({
                   onGameStateChange={handleGameStateChange}
                   onCartelaRemoved={handleCartelaRemoved}
                   onFullscreenChange={setIsPlaygroundFullscreen}
+                  onWinnerCelebrationVisibilityChange={
+                    handleWinnerCelebrationVisibilityChange
+                  }
                 />
               }
             />
