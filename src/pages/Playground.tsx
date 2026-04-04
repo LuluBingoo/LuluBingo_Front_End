@@ -706,6 +706,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    if (trigger === "manual" && autoCall) {
+      popup.info("Manual call is disabled while auto-call is running.");
+      return;
+    }
+
     if (isPaused) {
       if (trigger === "manual") {
         popup.info("Game is paused. Resume the game to continue calling.");

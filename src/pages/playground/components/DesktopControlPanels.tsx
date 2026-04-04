@@ -123,6 +123,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   className="h-10 w-full bg-red-700 text-white hover:bg-red-800"
                   onClick={callRandomNumber}
                   disabled={
+                    autoCall ||
                     isPaused ||
                     calledNumbersLength >= 75 ||
                     isCallingNumber ||
@@ -132,9 +133,11 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                 >
                   {isPaused
                     ? "Paused"
-                    : isCallingNumber
-                      ? "Calling..."
-                      : t("playground.callNumber")}
+                    : autoCall
+                      ? "Auto Calling..."
+                      : isCallingNumber
+                        ? "Calling..."
+                        : t("playground.callNumber")}
                 </Button>
 
                 <Button

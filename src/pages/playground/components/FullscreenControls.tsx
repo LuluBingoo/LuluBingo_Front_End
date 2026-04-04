@@ -245,6 +245,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             }
           }}
           disabled={
+            autoCall ||
             isCallingNumber ||
             isCheckingCartela ||
             isStartingGame ||
