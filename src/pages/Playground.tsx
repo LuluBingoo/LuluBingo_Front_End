@@ -426,13 +426,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
     );
 
     const entries = sourceCartelaNumbers.map((cartelaNumber) => {
-      if (currentGameConfig?.playMode === "offline") {
-        return [
-          cartelaNumber,
-          getOfflineCartellaBoard(cartelaNumber) ?? [],
-        ] as const;
-      }
-
       let index = -1;
 
       const target = normalizeCartelaNumber(cartelaNumber);
@@ -467,7 +460,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
         );
       }
 
-      const data = index >= 0 ? numbers[index] || [] : [];
+      const backendBoard = index >= 0 ? numbers[index] || [] : [];
+      if (backendBoard.length === 25) {
+        return [cartelaNumber, backendBoard] as const;
+      }
+
+      if (currentGameConfig?.playMode === "offline") {
+        return [
+          cartelaNumber,
+          getOfflineCartellaBoard(cartelaNumber) ?? [],
+        ] as const;
+      }
+
+      const data = backendBoard;
       return [cartelaNumber, data] as const;
     });
 
@@ -881,6 +886,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (currentGameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
           cartella_index: winnerIndex,
+          called_numbers: calledNumbers,
           ban_on_false_claim: false,
         });
 
@@ -910,6 +916,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             currentGameConfig.gameCode,
             {
               cartella_index: winnerIndex,
+              called_numbers: calledNumbers,
               ban_on_false_claim: true,
             },
           );
@@ -1074,6 +1081,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     try {
       const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: cartellaIndex,
+        called_numbers: calledNumbers,
         ban_on_false_claim: false,
       });
 
@@ -1141,6 +1149,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       setIsCheckingCartela(true);
       const banClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: cartellaIndex,
+        called_numbers: calledNumbers,
         ban_on_false_claim: true,
       });
 
