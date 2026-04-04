@@ -135,6 +135,7 @@ export interface GameClaimRequest {
   cartella_index: number;
   called_numbers?: number[];
   pattern?: "row" | "diagonal";
+  ban_on_false_claim?: boolean;
 }
 
 export interface GameClaimResponse {
@@ -143,6 +144,7 @@ export interface GameClaimResponse {
   pattern?: "row" | "diagonal";
   is_bingo: boolean;
   is_banned?: boolean;
+  would_ban?: boolean;
   cartella_status?: "active" | "banned" | "winner";
   cartella_statuses?: Record<string, "active" | "banned" | "winner">;
   status?: GameStatus;

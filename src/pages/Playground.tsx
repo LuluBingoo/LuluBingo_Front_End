@@ -793,6 +793,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (currentGameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
           cartella_index: winnerIndex,
+          ban_on_false_claim: false,
         });
 
         if (claim.cartella_statuses) {
@@ -800,16 +801,37 @@ export const Playground: React.FC<PlaygroundProps> = ({
         }
 
         if (!claim.is_bingo) {
-          if (claim.is_banned) {
-            playAudio("you_didnt_win");
-            popup.error(
-              claim.detail || "This cartela is banned and cannot claim bingo.",
-            );
+          playAudio("you_didnt_win");
+          setSelectedCartela(cartelaNumber);
+          setShowCartelaModal(true);
+
+          const shouldBan = await popup.confirm({
+            title: "No Bingo Yet",
+            description: `${claim.detail || "Cartela did not win yet."}\n\nCartela ${cartelaNumber} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
+            confirmText: "Ban Cartela",
+            cancelText: "Keep Playing",
+          });
+
+          if (!shouldBan) {
+            popup.info(`Cartela ${cartelaNumber} stays in play.`);
             return;
           }
-          playAudio("you_didnt_win");
-          popup.warning(
-            claim.detail || "No bingo found yet (row or diagonal only).",
+
+          const banClaim = await gamesApi.claimGame(
+            currentGameConfig.gameCode,
+            {
+              cartella_index: winnerIndex,
+              ban_on_false_claim: true,
+            },
+          );
+
+          if (banClaim.cartella_statuses) {
+            setCartellaStatuses(banClaim.cartella_statuses);
+          }
+
+          popup.error(
+            banClaim.detail ||
+              `Cartela ${cartelaNumber} has been banned after false claim.`,
           );
           return;
         }
@@ -961,6 +983,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     try {
       const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: cartellaIndex,
+        ban_on_false_claim: false,
       });
 
       if (claim.cartella_statuses) {
@@ -1006,18 +1029,37 @@ export const Playground: React.FC<PlaygroundProps> = ({
         return;
       }
 
-      if (claim.is_banned) {
-        playAudio("you_didnt_win");
-        popup.error(
-          claim.detail || "This cartela is banned and cannot claim bingo.",
-        );
+      playAudio("you_didnt_win");
+      setSelectedCartela(matchedCartela);
+      setShowCartelaModal(true);
+      setIsCheckingCartela(false);
+
+      const shouldBan = await popup.confirm({
+        title: "No Bingo Yet",
+        description: `${claim.detail || "Cartela did not win yet."}\n\nCartela ${matchedCartela} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
+        confirmText: "Ban Cartela",
+        cancelText: "Keep Playing",
+      });
+
+      if (!shouldBan) {
+        popup.info(`Cartela ${matchedCartela} stays in play.`);
         return;
       }
 
-      popup.warning(
-        claim.detail || "No bingo found yet (row or diagonal only).",
+      setIsCheckingCartela(true);
+      const banClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+        cartella_index: cartellaIndex,
+        ban_on_false_claim: true,
+      });
+
+      if (banClaim.cartella_statuses) {
+        setCartellaStatuses(banClaim.cartella_statuses);
+      }
+
+      popup.error(
+        banClaim.detail ||
+          `Cartela ${matchedCartela} has been banned after false claim.`,
       );
-      playAudio("you_didnt_win");
     } catch (error) {
       console.error("Failed to validate cartela", error);
       popup.error(

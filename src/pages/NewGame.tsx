@@ -198,7 +198,7 @@ import { motion } from "motion/react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Check, Users, Wallet } from "lucide-react";
+import { Check, ShieldCheck, Sparkles, Users, Wallet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -611,74 +611,154 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         }}
       >
         <DialogContent
-          className="[&>button]:hidden"
+          className="max-w-4xl border-0 bg-transparent p-0 shadow-none [&>button]:hidden"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => event.preventDefault()}
         >
-          <DialogHeader>
-            <DialogTitle>{t("newGame.setBetAmount")}</DialogTitle>
-            <DialogDescription>
-              {t("newGame.betDialogDescription")}
-            </DialogDescription>
-          </DialogHeader>
+          <div className="relative overflow-hidden rounded-[28px] border border-white/60 bg-linear-to-br from-rose-100 via-amber-50 to-sky-100 p-1 shadow-[0_35px_90px_rgba(15,23,42,0.28)] dark:border-slate-700/70 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+            <div className="pointer-events-none absolute -top-16 -left-12 h-48 w-48 rounded-full bg-rose-300/35 blur-3xl dark:bg-rose-500/20" />
+            <div className="pointer-events-none absolute -right-14 -bottom-16 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl dark:bg-cyan-500/20" />
 
-          <Input
-            type="number"
-            min={20}
-            value={betInput}
-            onChange={(e) => setBetInput(e.target.value)}
-          />
+            <div className="relative rounded-3xl bg-white/92 p-6 backdrop-blur-xl dark:bg-slate-950/88 sm:p-7">
+              <DialogHeader className="space-y-4 text-left">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-rose-700 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                      <Sparkles size={14} />
+                      Setup Required
+                    </span>
 
-          <Input
-            type="number"
-            min={2}
-            max={7}
-            value={playersInput}
-            onChange={(e) => setPlayersInput(e.target.value)}
-            placeholder={t("newGame.numPlayers")}
-          />
+                    <DialogTitle className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                      {t("newGame.setBetAmount")}
+                    </DialogTitle>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={playMode === "online" ? "default" : "outline"}
-              className={
-                playMode === "online"
-                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                  : ""
-              }
-              onClick={() => setPlayMode("online")}
-            >
-              Online Mode
-            </Button>
-            <Button
-              type="button"
-              variant={playMode === "offline" ? "default" : "outline"}
-              className={
-                playMode === "offline"
-                  ? "bg-red-700 text-white hover:bg-red-800"
-                  : ""
-              }
-              onClick={() => setPlayMode("offline")}
-            >
-              Offline Mode
-            </Button>
+                    <DialogDescription className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
+                      This step is mandatory. Enter bet amount once to continue.
+                      Minimum is 20 {currencyLabel} per cartella.
+                    </DialogDescription>
+                  </div>
+
+                  <div className="hidden rounded-2xl border border-emerald-200 bg-emerald-100/80 p-3 text-emerald-700 shadow-sm dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:block">
+                    <ShieldCheck size={26} />
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-rose-200 bg-white/85 p-4 shadow-sm dark:border-rose-800/60 dark:bg-slate-900/70">
+                  <label className="text-xs font-bold uppercase tracking-[0.14em] text-rose-700 dark:text-rose-300">
+                    {t("newGame.betPerCartella")}
+                  </label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex h-11 min-w-12 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-2 text-sm font-black text-rose-700 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                      {currencyLabel}
+                    </span>
+                    <Input
+                      type="number"
+                      min={20}
+                      value={betInput}
+                      onChange={(e) => setBetInput(e.target.value)}
+                      className="h-11 border-rose-200 bg-white text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-950"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Minimum: 20 {currencyLabel} per cartella
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-sky-200 bg-white/85 p-4 shadow-sm dark:border-sky-800/60 dark:bg-slate-900/70">
+                  <label className="text-xs font-bold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">
+                    {t("newGame.numPlayers")}
+                  </label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={7}
+                    value={playersInput}
+                    onChange={(e) => setPlayersInput(e.target.value)}
+                    placeholder={t("newGame.numPlayers")}
+                    className="mt-2 h-11 border-sky-200 bg-white text-lg font-semibold dark:border-sky-700/70 dark:bg-slate-950"
+                  />
+                  <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Allowed range: 2 to 7 players
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  Mandatory Step
+                </span>
+                <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  One-Time Setup
+                </span>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">
+                    Play Mode
+                  </span>
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    {playMode === "online"
+                      ? "Dynamic Boards"
+                      : "Fixed Printable Boards"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={playMode === "online" ? "default" : "outline"}
+                    className={
+                      playMode === "online"
+                        ? "h-11 bg-linear-to-r from-emerald-500 to-emerald-700 text-white shadow-[0_8px_20px_rgba(16,185,129,0.35)] hover:from-emerald-600 hover:to-emerald-800"
+                        : "h-11 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+                    }
+                    onClick={() => setPlayMode("online")}
+                  >
+                    Online Mode
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={playMode === "offline" ? "default" : "outline"}
+                    className={
+                      playMode === "offline"
+                        ? "h-11 bg-linear-to-r from-rose-600 to-red-800 text-white shadow-[0_8px_20px_rgba(225,29,72,0.35)] hover:from-rose-700 hover:to-red-900"
+                        : "h-11 border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/20"
+                    }
+                    onClick={() => setPlayMode("offline")}
+                  >
+                    Offline Mode
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                className={`mt-4 rounded-xl border px-3 py-2.5 text-sm ${playMode === "online" ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300" : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700 dark:bg-rose-900/20 dark:text-rose-300"}`}
+              >
+                {playMode === "online"
+                  ? "Online uses newly generated random cartella boards for each game."
+                  : "Offline uses the same fixed 200 printable cartellas for every game."}
+              </div>
+
+              <DialogFooter className="mt-6 gap-2 sm:justify-between">
+                <Button
+                  variant="outline"
+                  className="h-11 border-slate-300 bg-white/80 px-5 font-semibold hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900"
+                  onClick={() => navigate("/playground")}
+                >
+                  {t("newGame.cancelToDashboard")}
+                </Button>
+                <Button
+                  className="h-11 bg-linear-to-r from-rose-600 via-red-600 to-red-800 px-6 font-bold text-white shadow-[0_10px_24px_rgba(225,29,72,0.4)] hover:from-rose-700 hover:via-red-700 hover:to-red-900"
+                  onClick={handleLockBet}
+                >
+                  {t("newGame.lockBetAmount")}
+                </Button>
+              </DialogFooter>
+            </div>
           </div>
-
-          <p className="text-sm text-slate-500 dark:text-slate-300">
-            {playMode === "online"
-              ? "Online uses newly generated random cartella boards for each game."
-              : "Offline uses the same fixed 200 printable cartellas for every game."}
-          </p>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => navigate("/playground")}>
-              {t("newGame.cancelToDashboard")}
-            </Button>
-            <Button onClick={handleLockBet}>
-              {t("newGame.lockBetAmount")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

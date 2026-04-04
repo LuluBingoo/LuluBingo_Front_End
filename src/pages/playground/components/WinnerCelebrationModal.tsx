@@ -70,20 +70,6 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
       return [];
     }
 
-    for (let col = 0; col < 5; col++) {
-      const columnIndices = [
-        col * 5,
-        col * 5 + 1,
-        col * 5 + 2,
-        col * 5 + 3,
-        col * 5 + 4,
-      ];
-
-      if (columnIndices.every((index) => isMarked(index))) {
-        return columnIndices;
-      }
-    }
-
     for (let row = 0; row < 5; row++) {
       const rowIndices = [row, 5 + row, 10 + row, 15 + row, 20 + row];
 
@@ -100,23 +86,10 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
     winnerCartelaData.length === 25 &&
     winningLineIndices.length > 0;
 
-  const patternLabel = React.useMemo(() => {
-    if (winnerCelebration?.pattern === "diagonal") {
-      return "Winning Diagonal";
-    }
-
-    if (winningLineIndices.length === 5) {
-      const sorted = [...winningLineIndices].sort((a, b) => a - b);
-      const isColumn = sorted
-        .slice(1)
-        .every((value, index) => value - sorted[index] === 1);
-      if (isColumn) {
-        return "Winning Column";
-      }
-    }
-
-    return "Winning Row";
-  }, [winnerCelebration?.pattern, winningLineIndices]);
+  const patternLabel =
+    winnerCelebration?.pattern === "diagonal"
+      ? "Winning Diagonal"
+      : "Winning Row";
 
   return (
     <AnimatePresence>
@@ -125,14 +98,14 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-1400 flex items-center justify-center bg-black/55 px-4"
+          className="fixed inset-0 z-1400 flex items-start justify-center overflow-y-auto bg-black/55 px-4 py-5 sm:py-7"
         >
           <motion.div
             initial={{ scale: 0.6, y: 30, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.85, y: 20, opacity: 0 }}
             transition={{ type: "spring", stiffness: 180, damping: 14 }}
-            className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-6 text-center shadow-2xl sm:p-10"
+            className="relative w-full max-w-6xl overflow-y-auto rounded-3xl border border-amber-200 bg-linear-to-br from-amber-100 via-orange-100 to-yellow-100 p-5 text-center shadow-2xl sm:p-8 lg:max-h-[90vh] lg:text-left"
           >
             <Button
               variant="ghost"
@@ -190,7 +163,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                 />
               ))}
             </div>
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg sm:h-24 sm:w-24 lg:mx-0">
               <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
             </div>
             <motion.div
@@ -209,11 +182,11 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               </div>
             )}
             <div className="mt-4 h-px w-full bg-amber-300/80" />
-            <div className="mt-4 rounded-2xl border border-amber-200/90 bg-white/70 p-4 text-left shadow-inner backdrop-blur-sm sm:p-5">
+            <div className="mt-4 rounded-2xl border border-amber-200/90 bg-white/70 p-4 text-left shadow-inner backdrop-blur-sm sm:p-5 lg:mt-5">
               <div className="mb-3 text-sm font-bold uppercase tracking-wide text-amber-700">
                 Game Summary
               </div>
-              <div className="grid grid-cols-1 gap-2 text-sm text-slate-800 sm:grid-cols-2 sm:gap-3 sm:text-base">
+              <div className="grid grid-cols-1 gap-2 text-sm text-slate-800 sm:grid-cols-2 sm:gap-3 sm:text-base lg:grid-cols-3">
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
                   <span className="font-semibold text-slate-600">
                     Game Code
@@ -299,7 +272,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               button.
             </div>
 
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <div className="mt-4 flex flex-wrap justify-center gap-2 lg:justify-start">
               {canShowHow && (
                 <Button
                   variant="outline"
