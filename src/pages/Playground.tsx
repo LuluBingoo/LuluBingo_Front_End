@@ -406,9 +406,26 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
   }, [resolvedCartelaNumbers]);
 
+  const normalizeCartelaNumber = (value: string | number): number | null => {
+    const digits = String(value).replace(/\D/g, "");
+    if (!digits) return null;
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
+
   const cartelaDataMap = React.useMemo(() => {
     const numbers = currentGameConfig?.cartelaData || [];
-    const entries = serverCartelaOrder.map((cartelaNumber, index) => {
+    const authoritativeMap =
+      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map;
+    const sourceCartelaNumbers = Array.from(
+      new Set([
+        ...serverCartelaOrder,
+        ...activeCartelas,
+        ...resolvedCartelaNumbers,
+      ]),
+    );
+
+    const entries = sourceCartelaNumbers.map((cartelaNumber) => {
       if (currentGameConfig?.playMode === "offline") {
         return [
           cartelaNumber,
@@ -416,22 +433,54 @@ export const Playground: React.FC<PlaygroundProps> = ({
         ] as const;
       }
 
-      const data = numbers[index] || [];
+      let index = -1;
+
+      const target = normalizeCartelaNumber(cartelaNumber);
+      if (
+        target !== null &&
+        authoritativeMap &&
+        typeof authoritativeMap === "object"
+      ) {
+        for (const [mappedCartelaNumber, mappedIndex] of Object.entries(
+          authoritativeMap,
+        )) {
+          if (normalizeCartelaNumber(mappedCartelaNumber) === target) {
+            const parsedMappedIndex = Number(mappedIndex);
+            index =
+              Number.isInteger(parsedMappedIndex) && parsedMappedIndex >= 0
+                ? parsedMappedIndex
+                : -1;
+            break;
+          }
+        }
+      }
+
+      if (index < 0 && target !== null) {
+        index = serverCartelaOrder.findIndex(
+          (item) => normalizeCartelaNumber(item) === target,
+        );
+      }
+
+      if (index < 0 && target !== null) {
+        index = activeCartelas.findIndex(
+          (item) => normalizeCartelaNumber(item) === target,
+        );
+      }
+
+      const data = index >= 0 ? numbers[index] || [] : [];
       return [cartelaNumber, data] as const;
     });
+
     return Object.fromEntries(entries);
   }, [
     currentGameConfig?.cartelaData,
+    currentGameConfig?.cartellaNumberMap,
     currentGameConfig?.playMode,
+    resolvedCartelaNumbers,
+    restoredGame?.cartella_number_map,
+    activeCartelas,
     serverCartelaOrder,
   ]);
-
-  const normalizeCartelaNumber = (value: string | number): number | null => {
-    const digits = String(value).replace(/\D/g, "");
-    if (!digits) return null;
-    const parsed = Number.parseInt(digits, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  };
 
   const findCartelaInList = (value: string, list: string[]): string | null => {
     const target = normalizeCartelaNumber(value);
@@ -459,7 +508,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
         authoritativeMap,
       )) {
         if (normalizeCartelaNumber(mappedCartelaNumber) === target) {
-          return Number.isFinite(mappedIndex) ? Number(mappedIndex) : -1;
+          const parsedMappedIndex = Number(mappedIndex);
+          return Number.isInteger(parsedMappedIndex) && parsedMappedIndex >= 0
+            ? parsedMappedIndex
+            : -1;
         }
       }
     }
@@ -1512,6 +1564,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
         calledNumbers={calledNumbers}
         cartelaNumbers={activeCartelas}
         cartelaDataMap={cartelaDataMap}
+        cartellaNumberMap={
+          currentGameConfig?.cartellaNumberMap ||
+          restoredGame?.cartella_number_map ||
+          undefined
+        }
         cartellaStatuses={cartellaStatuses}
         onDeclareWinner={handleDeclareWinner}
         onRemovePlayer={handleRemovePlayer}

@@ -15,52 +15,12 @@ interface CartelaModalProps {
   calledNumbers: number[];
   cartelaNumbers: string[];
   cartelaDataMap?: Record<string, number[]>;
+  cartellaNumberMap?: Record<string, number>;
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   onDeclareWinner?: (cartelaNumber: string) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
 }
-
-// Generate random cartela numbers (5x5 grid with FREE center)
-const generateCartelaNumbers = (seed: string): number[] => {
-  const numbers: number[] = [];
-
-  // Use seed to generate consistent numbers for same cartela
-  const seedNum = parseInt(seed) || 1;
-  const random = (min: number, max: number, offset: number) => {
-    const x = Math.sin(seedNum * offset) * 10000;
-    return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
-  };
-
-  // Column ranges for B, I, N, G, O
-  const columnRanges = [
-    { min: 1, max: 15 }, // B
-    { min: 16, max: 30 }, // I
-    { min: 31, max: 45 }, // N
-    { min: 46, max: 60 }, // G
-    { min: 61, max: 75 }, // O
-  ];
-
-  // Generate 5 numbers for each column
-  for (let col = 0; col < 5; col++) {
-    const { min, max } = columnRanges[col];
-    const columnNumbers: number[] = [];
-
-    let attempts = 0;
-    while (columnNumbers.length < 5 && attempts < 100) {
-      const num = random(min, max, col * 100 + columnNumbers.length + attempts);
-      if (!columnNumbers.includes(num)) {
-        columnNumbers.push(num);
-      }
-      attempts++;
-    }
-
-    numbers.push(...columnNumbers);
-  }
-
-  numbers[12] = 0;
-  return numbers;
-};
 
 export const CartelaModal: React.FC<CartelaModalProps> = ({
   isOpen,
@@ -70,6 +30,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   calledNumbers,
   cartelaNumbers,
   cartelaDataMap,
+  cartellaNumberMap,
   cartellaStatuses,
   onDeclareWinner,
   onRemovePlayer,
@@ -81,27 +42,52 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const normalizeCartelaNumber = useCallback((value: string | number) => {
+    const digits = String(value).replace(/\D/g, "");
+    if (!digits) {
+      return null;
+    }
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, []);
+
   const getCartellaStatusByNumber = useCallback(
     (number: string): "active" | "banned" | "winner" => {
-      const normalized = Number.parseInt(String(number).replace(/\D/g, ""), 10);
-      if (!Number.isFinite(normalized)) {
+      const normalized = normalizeCartelaNumber(number);
+      if (normalized === null) {
         return "active";
+      }
+
+      if (cartellaNumberMap && typeof cartellaNumberMap === "object") {
+        for (const [mappedCartelaNumber, mappedIndex] of Object.entries(
+          cartellaNumberMap,
+        )) {
+          if (normalizeCartelaNumber(mappedCartelaNumber) === normalized) {
+            const parsedMappedIndex = Number(mappedIndex);
+            if (Number.isInteger(parsedMappedIndex) && parsedMappedIndex >= 0) {
+              return cartellaStatuses?.[String(parsedMappedIndex)] || "active";
+            }
+            break;
+          }
+        }
       }
 
       for (const [index, value] of Object.entries(cartellaStatuses || {})) {
         const cartelaLabel = cartelaNumbers[Number(index)];
-        const cartelaNum = Number.parseInt(
-          String(cartelaLabel ?? "").replace(/\D/g, ""),
-          10,
-        );
-        if (Number.isFinite(cartelaNum) && cartelaNum === normalized) {
+        const cartelaNum = normalizeCartelaNumber(String(cartelaLabel ?? ""));
+        if (cartelaNum !== null && cartelaNum === normalized) {
           return value;
         }
       }
 
       return "active";
     },
-    [cartellaStatuses, cartelaNumbers],
+    [
+      cartellaNumberMap,
+      cartellaStatuses,
+      cartelaNumbers,
+      normalizeCartelaNumber,
+    ],
   );
 
   const selectableCartelaNumbers = useMemo(
@@ -125,8 +111,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
           return;
         }
 
-        const generatedNumbers = generateCartelaNumbers(selectedCartela);
-        setCartelaData(generatedNumbers);
+        // Avoid synthetic online cartelas; only trust backend-provided board data.
+        setCartelaData([]);
       }
     }
   }, [selectedCartela, cartelaDataMap, playMode]);
@@ -185,6 +171,13 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   }, [cartelaData, isMarked]);
 
   const handleDeclareWinner = async () => {
+    if (cartelaData.length !== 25) {
+      popup.warning(
+        `Cartela ${selectedCartela} data is not loaded yet. Please reopen this cartela and try again.`,
+      );
+      return;
+    }
+
     if (!hasWinningPattern) {
       popup.warning(
         `Cartela ${selectedCartela} does not have a complete row or diagonal yet.`,
