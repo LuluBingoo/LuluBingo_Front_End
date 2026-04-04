@@ -200,7 +200,6 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     });
     if (confirmed) {
       onDeclareWinner?.(selectedCartela);
-      onClose();
     }
   };
 
@@ -280,28 +279,6 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
   const calledCount = getCalledCount();
   const isBingo = hasWinningPattern;
-
-  // Auto-declare winner when BINGO is detected
-  useEffect(() => {
-    if (isBingo && selectedCartela && gameActive) {
-      // Small delay to show the BINGO animation first
-      const timer = setTimeout(() => {
-        void (async () => {
-          const confirmed = await popup.confirm({
-            title: "🎉 BINGO!",
-            description: `Cartela ${selectedCartela} has won! Declare as winner?`,
-            confirmText: "Declare",
-            cancelText: "Later",
-          });
-          if (confirmed) {
-            onDeclareWinner?.(selectedCartela);
-          }
-        })();
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isBingo, selectedCartela, gameActive, popup, onDeclareWinner]);
 
   return (
     <AnimatePresence>

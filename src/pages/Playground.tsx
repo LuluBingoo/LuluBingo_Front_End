@@ -146,6 +146,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         selectedPatterns: [],
         playMode: game.game_mode === "shop_offline" ? "offline" : "online",
         cartelaNumbers: fallbackCartelaNumbers,
+        cartellaNumberMap: game.cartella_number_map || {},
         cartelaData: game.cartella_numbers,
         drawSequence: game.draw_sequence,
         cartellaStatuses: game.cartella_statuses || {},
@@ -228,6 +229,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
   const callInFlightRef = React.useRef(false);
+  const winnerClaimInFlightRef = React.useRef(false);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
@@ -436,6 +438,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const target = normalizeCartelaNumber(cartelaNumber);
     if (target === null) {
       return -1;
+    }
+
+    const authoritativeMap =
+      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map;
+    if (authoritativeMap && typeof authoritativeMap === "object") {
+      for (const [mappedCartelaNumber, mappedIndex] of Object.entries(
+        authoritativeMap,
+      )) {
+        if (normalizeCartelaNumber(mappedCartelaNumber) === target) {
+          return Number.isFinite(mappedIndex) ? Number(mappedIndex) : -1;
+        }
+      }
     }
 
     const serverIndex = serverCartelaOrder.findIndex(
@@ -783,6 +797,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Handle winner declaration
   const handleDeclareWinner = async (cartelaNumber: string) => {
+    if (winnerClaimInFlightRef.current) {
+      return;
+    }
+
     const winnerIndex = getServerCartelaIndex(cartelaNumber);
     if (winnerIndex < 0) {
       popup.error(`Cartela ${cartelaNumber} not found in this game.`);
@@ -794,6 +812,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    winnerClaimInFlightRef.current = true;
     try {
       if (currentGameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
@@ -818,7 +837,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
           });
 
           if (!shouldBan) {
-            popup.info(`Cartela ${cartelaNumber} stays in play.`);
+            setSelectedCartela(cartelaNumber);
+            setShowCartelaModal(true);
             return;
           }
 
@@ -884,6 +904,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
         getApiErrorDetail(error, "Failed to complete game on the server."),
       );
       await syncGameState();
+    } finally {
+      winnerClaimInFlightRef.current = false;
     }
   };
 
@@ -1047,7 +1069,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
       });
 
       if (!shouldBan) {
-        popup.info(`Cartela ${matchedCartela} stays in play.`);
+        setSelectedCartela(matchedCartela);
+        setShowCartelaModal(true);
         return;
       }
 

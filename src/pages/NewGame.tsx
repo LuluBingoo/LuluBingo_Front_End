@@ -231,6 +231,7 @@ interface GameConfig {
   winBirr: string;
   playMode?: "online" | "offline";
   gameCode?: string;
+  cartellaNumberMap?: Record<string, number>;
   cartelaData?: number[][];
   drawSequence?: number[];
   cartellaDrawSequences?: number[][];
@@ -506,6 +507,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         winBirr: createdGame.win_amount,
         playMode,
         cartelaNumbers,
+        cartellaNumberMap: createdGame.cartella_number_map || {},
         cartelaData: createdGame.cartella_numbers,
         drawSequence: createdGame.draw_sequence,
         cartellaDrawSequences: createdGame.cartella_draw_sequences,
