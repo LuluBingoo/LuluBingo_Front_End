@@ -25,7 +25,7 @@ import { usePopup } from "../contexts/PopupContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { authApi, shopApi } from "../services/api";
 import { Input } from "../components/ui/input";
-import { setCurrencySetting } from "../services/settings";
+import { formatCurrency, setCurrencySetting } from "../services/settings";
 import { TwoFactorMethod } from "../services/types";
 import { pickRandomBingoIllustration } from "../assets/illustrations";
 
@@ -40,7 +40,9 @@ export const Settings: React.FC = () => {
   const [autoBackup, setAutoBackup] = useState(false);
   const [currency, setCurrency] = useState("birr");
   const [autoCallSeconds, setAutoCallSeconds] = useState("5");
-  const [cutPercentage, setCutPercentage] = useState("10");
+  const [shopCutPercentage, setShopCutPercentage] = useState("0");
+  const [luluCutPercentage, setLuluCutPercentage] = useState("0");
+  const [availableBalance, setAvailableBalance] = useState("0");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSendingPasswordOtp, setIsSendingPasswordOtp] = useState(false);
@@ -156,15 +158,9 @@ export const Settings: React.FC = () => {
               "5",
           ),
         );
-        const fallbackCut =
-          flags.cut_percentage ??
-          (flags.win_percentage != null
-            ? Math.max(
-                0,
-                Math.min(100, 100 - Number(flags.win_percentage || 90)),
-              )
-            : 10);
-        setCutPercentage(String(fallbackCut));
+        setShopCutPercentage(String(profile.shop_cut_percentage ?? "0"));
+        setLuluCutPercentage(String(profile.lulu_cut_percentage ?? "0"));
+        setAvailableBalance(String(profile.wallet_balance ?? "0"));
 
         if (flags.language === "en" || flags.language === "am") {
           setLanguage(flags.language);
@@ -226,24 +222,6 @@ export const Settings: React.FC = () => {
       "autoBackup",
     );
   }, [autoBackup]);
-
-  useEffect(() => {
-    if (isHydratingRef.current) return;
-    if (shouldSkipInitialAutosave("cutPercentage")) return;
-    const timeoutId = window.setTimeout(() => {
-      const normalizedCut = Math.max(
-        0,
-        Math.min(100, Number.parseFloat(cutPercentage || "10") || 10),
-      );
-      void persistFeatureFlagsPatch(
-        { cut_percentage: normalizedCut },
-        "Cut percentage changed locally, but backend sync failed.",
-        "cutPercentage",
-      );
-    }, 500);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [cutPercentage]);
 
   useEffect(() => {
     return () => {
@@ -698,20 +676,51 @@ export const Settings: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      Cut Percentage
+                      Shop Cut Percentage
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-300">
-                      Deducted from total winner pool for each game.
+                      Applied on each game pool before payout. Manager-only
+                      setting.
                     </p>
-                    {renderSaveStatus("cutPercentage")}
                   </div>
                   <Input
                     type="number"
-                    min={0}
-                    max={100}
-                    step="0.01"
-                    value={cutPercentage}
-                    onChange={(e) => setCutPercentage(e.target.value)}
+                    value={shopCutPercentage}
+                    disabled
+                    className="w-45"
+                  />
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Lulu Cut Percentage
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Deducted from your shop cut. Manager-only setting.
+                    </p>
+                  </div>
+                  <Input
+                    type="number"
+                    value={luluCutPercentage}
+                    disabled
+                    className="w-45"
+                  />
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Available Balance
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Current wallet balance used for Lulu-cut checks before
+                      creating games.
+                    </p>
+                  </div>
+                  <Input
+                    value={formatCurrency(availableBalance)}
+                    disabled
                     className="w-45"
                   />
                 </div>

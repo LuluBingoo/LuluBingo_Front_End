@@ -94,6 +94,16 @@ export const API_ENDPOINTS = {
     DEPOSIT: "/transactions/transactions/deposit",
     WITHDRAW: "/transactions/transactions/withdraw",
   },
+  // Admin (manager only)
+  ADMIN: {
+    SHOPS: "/admin/shops",
+    SHOP_DETAIL: (shopId: number) => `/admin/shops/${shopId}`,
+    SHOP_FILL_BALANCE: (shopId: number) =>
+      `/admin/shops/${shopId}/fill-balance`,
+    MANAGERS: "/admin/managers",
+    GAMES: "/admin/games",
+    TRANSACTIONS: "/admin/transactions",
+  },
 };
 
 // Toggle between mock and real API

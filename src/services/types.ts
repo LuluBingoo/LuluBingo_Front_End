@@ -1,6 +1,7 @@
 // Type definitions based on the API schema
 
 export type ShopStatus = "pending" | "active" | "suspended" | "blocked";
+export type ShopRole = "shop" | "manager";
 export type GameStatus = "pending" | "active" | "completed" | "cancelled";
 export type TwoFactorMethod = "totp" | "email_code";
 export type TransactionType =
@@ -8,6 +9,7 @@ export type TransactionType =
   | "withdrawal"
   | "bet_debit"
   | "bet_credit"
+  | "lulu_cut_debit"
   | "adjustment";
 
 // User/Shop types
@@ -17,11 +19,14 @@ export interface ShopUser {
   name: string;
   shop_code: string;
   human_shop_id?: string | null;
+  role?: ShopRole;
   status: ShopStatus;
   contact_phone: string;
   contact_email: string;
   wallet_balance: string;
   commission_rate: string;
+  shop_cut_percentage?: string;
+  lulu_cut_percentage?: string;
   max_stake: string;
   feature_flags: Record<string, any>;
   bank_name: string;
@@ -42,6 +47,7 @@ export interface ShopProfile {
   name: string;
   shop_code: string;
   human_shop_id?: string | null;
+  role?: ShopRole;
   contact_phone: string;
   contact_email: string;
   bank_name: string;
@@ -51,6 +57,8 @@ export interface ShopProfile {
   status: ShopStatus;
   wallet_balance: string;
   commission_rate: string;
+  shop_cut_percentage?: string;
+  lulu_cut_percentage?: string;
   max_stake: string;
   feature_flags: Record<string, any>;
   two_factor_enabled: boolean;
@@ -110,9 +118,12 @@ export interface Game {
   awarded_claims?: Array<Record<string, unknown>>;
   total_pool?: string;
   cut_percentage?: string;
+  lulu_cut_percentage?: string;
   win_percentage?: string;
   payout_amount?: string;
   shop_cut_amount?: string;
+  lulu_cut_amount?: string;
+  shop_net_cut_amount?: string;
   winning_pattern?: string;
   created_at: string;
   started_at: string | null;
@@ -157,6 +168,8 @@ export interface GameClaimResponse {
   cut_percentage?: string;
   payout_amount?: string;
   shop_cut_amount?: string;
+  lulu_cut_amount?: string;
+  shop_net_cut_amount?: string;
 }
 
 export interface ShopBingoPlayer {
@@ -260,6 +273,8 @@ export interface GameHistoryItem {
   total_pool: string;
   winner: string[];
   shop_cut: string;
+  lulu_cut?: string;
+  shop_net_cut?: string;
   status: GameStatus;
 }
 

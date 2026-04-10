@@ -209,7 +209,7 @@ import {
 } from "../components/ui/dialog";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
-import { gamesApi } from "../services/api";
+import { gamesApi, shopApi } from "../services/api";
 import { ShopBingoPlayer, ShopBingoSession } from "../services/types";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency, getCurrencyLabel } from "../services/settings";
@@ -256,8 +256,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [betPerCartella, setBetPerCartella] = useState("20");
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [walletBalance, setWalletBalance] = useState("0");
+  const [shopCutPercentage, setShopCutPercentage] = useState("0");
+  const [luluCutPercentage, setLuluCutPercentage] = useState("0");
+  const [isFinancialLoading, setIsFinancialLoading] = useState(false);
   const currencyLabel = getCurrencyLabel();
   const targetPlayers = session?.fixed_players || fixedPlayers;
+
+  const parseAmount = (value: unknown, fallback = 0) => {
+    const parsed = Number.parseFloat(String(value ?? ""));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
 
   const nextPlayerNumber = useMemo(() => {
     const reservedCount =
@@ -289,6 +298,57 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const totalPaidPlayers =
     session?.players_data.filter((player) => player.paid).length ?? 0;
 
+  const serverReservedTotal = useMemo(() => {
+    const players = session?.players_data ?? [];
+    return players.reduce((total, player) => {
+      const providedTotal = parseAmount(player.total_bet, Number.NaN);
+      if (Number.isFinite(providedTotal)) {
+        return total + providedTotal;
+      }
+      return (
+        total +
+        parseAmount(player.bet_per_cartella) *
+          (player.cartella_numbers?.length ?? 0)
+      );
+    }, 0);
+  }, [session?.players_data]);
+
+  const stagedReservedTotal = useMemo(
+    () =>
+      stagedPlayers.reduce((total, player) => {
+        const providedTotal = parseAmount(player.total_bet, Number.NaN);
+        if (Number.isFinite(providedTotal)) {
+          return total + providedTotal;
+        }
+        return (
+          total +
+          parseAmount(player.bet_per_cartella) *
+            (player.cartella_numbers?.length ?? 0)
+        );
+      }, 0),
+    [stagedPlayers],
+  );
+
+  const projectedTotalPool = useMemo(
+    () => serverReservedTotal + stagedReservedTotal,
+    [serverReservedTotal, stagedReservedTotal],
+  );
+
+  const projectedShopCut = useMemo(
+    () => (projectedTotalPool * parseAmount(shopCutPercentage)) / 100,
+    [projectedTotalPool, shopCutPercentage],
+  );
+
+  const projectedLuluCut = useMemo(
+    () => (projectedShopCut * parseAmount(luluCutPercentage)) / 100,
+    [projectedShopCut, luluCutPercentage],
+  );
+
+  const availableBalanceAmount = useMemo(
+    () => parseAmount(walletBalance),
+    [walletBalance],
+  );
+
   const pageRange = useMemo(() => {
     const start = currentPage === 1 ? 1 : 101;
     return Array.from({ length: 100 }, (_, idx) => start + idx);
@@ -297,6 +357,25 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const syncSession = async (sessionId: string) => {
     const latest = await gamesApi.getShopSession(sessionId);
     setSession(latest);
+  };
+
+  const syncShopFinancials = async () => {
+    setIsFinancialLoading(true);
+    try {
+      const profile = await shopApi.getProfile();
+      setWalletBalance(String(profile.wallet_balance ?? "0"));
+      setShopCutPercentage(String(profile.shop_cut_percentage ?? "0"));
+      setLuluCutPercentage(String(profile.lulu_cut_percentage ?? "0"));
+      return profile;
+    } catch (error) {
+      console.error("Failed to refresh shop financial profile", error);
+      popup.warning(
+        "Unable to refresh latest wallet balance. Using current data.",
+      );
+      return null;
+    } finally {
+      setIsFinancialLoading(false);
+    }
   };
 
   const ensureSession = async (): Promise<ShopBingoSession | null> => {
@@ -318,6 +397,10 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       return null;
     }
   };
+
+  useEffect(() => {
+    void syncShopFinancials();
+  }, []);
 
   useEffect(() => {
     if (!session?.session_id) return;
@@ -451,6 +534,30 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       return;
     }
 
+    const freshProfile = await syncShopFinancials();
+    const effectiveBalance = parseAmount(
+      freshProfile?.wallet_balance ?? walletBalance,
+    );
+    const effectiveShopCutPercentage = parseAmount(
+      freshProfile?.shop_cut_percentage ?? shopCutPercentage,
+    );
+    const effectiveLuluCutPercentage = parseAmount(
+      freshProfile?.lulu_cut_percentage ?? luluCutPercentage,
+    );
+
+    const effectiveProjectedShopCut =
+      (projectedTotalPool * effectiveShopCutPercentage) / 100;
+    const effectiveProjectedLuluCut =
+      (effectiveProjectedShopCut * effectiveLuluCutPercentage) / 100;
+
+    if (effectiveBalance < effectiveProjectedLuluCut) {
+      const shortBy = Math.max(0, effectiveProjectedLuluCut - effectiveBalance);
+      popup.error(
+        `Insufficient balance for Lulu cut. Required ${formatCurrency(effectiveProjectedLuluCut.toFixed(2))}, available ${formatCurrency(effectiveBalance.toFixed(2))}, short by ${formatCurrency(shortBy.toFixed(2))}.`,
+      );
+      return;
+    }
+
     const confirmed = await popup.confirm({
       title: "Check Payment",
       description: `Confirm payments for all ${targetPlayers} players and create the game now?`,
@@ -520,12 +627,18 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     } catch (error) {
       console.error("Failed during payment check", error);
       const err = error as any;
-      const detail =
-        err?.data?.detail ||
-        err?.response?.data?.detail ||
-        err?.message ||
-        t("newGame.paymentCheckFailed");
-      popup.error(String(detail));
+      const errorData = err?.data || err?.response?.data || {};
+      if (errorData?.error_code === "insufficient_lulu_cut_balance") {
+        const required = errorData?.required_lulu_cut || "0";
+        const current = errorData?.current_balance || "0";
+        popup.error(
+          `Insufficient balance for Lulu cut. Required ${formatCurrency(required)}, available ${formatCurrency(current)}.`,
+        );
+      } else {
+        const detail =
+          errorData?.detail || err?.message || t("newGame.paymentCheckFailed");
+        popup.error(String(detail));
+      }
     } finally {
       setSubmittingPayment(false);
     }
@@ -803,7 +916,11 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         <Button
           className="bg-emerald-600 text-white hover:bg-emerald-700"
           onClick={handleCheckPaymentAndCreate}
-          disabled={submittingPayment || totalLockedPlayers < targetPlayers}
+          disabled={
+            submittingPayment ||
+            totalLockedPlayers < targetPlayers ||
+            availableBalanceAmount < projectedLuluCut
+          }
         >
           {submittingPayment
             ? t("newGame.checkingPayment")
@@ -897,6 +1014,42 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     <div className="mt-1 text-lg font-bold text-emerald-600">
                       {formatCurrency(totalPayable)}
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      Available Balance
+                    </label>
+                    <div className="mt-1 text-lg font-bold text-sky-600">
+                      {formatCurrency(walletBalance)}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Shop cut {shopCutPercentage}% • Lulu cut{" "}
+                      {luluCutPercentage}%
+                    </p>
+                    {isFinancialLoading && (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Refreshing wallet...
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      Estimated Lulu Cut (Session)
+                    </label>
+                    <div className="mt-1 text-lg font-bold text-rose-600">
+                      {formatCurrency(projectedLuluCut.toFixed(2))}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Pool {formatCurrency(projectedTotalPool.toFixed(2))} •
+                      Shop cut {formatCurrency(projectedShopCut.toFixed(2))}
+                    </p>
+                    {availableBalanceAmount < projectedLuluCut && (
+                      <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-300">
+                        Balance is not enough for this Lulu cut.
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">

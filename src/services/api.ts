@@ -468,6 +468,26 @@ export const transactionsApi = {
 };
 
 // =============================================================================
+// ADMIN API (MANAGER ONLY)
+// =============================================================================
+
+export const adminApi = {
+  async fillShopBalance(
+    shopId: number,
+    amount: string,
+    reference = "",
+  ): Promise<{ shop: ShopUser; transaction: Transaction }> {
+    return await apiClient.post<{ shop: ShopUser; transaction: Transaction }>(
+      API_ENDPOINTS.ADMIN.SHOP_FILL_BALANCE(shopId),
+      {
+        amount,
+        reference,
+      },
+    );
+  },
+};
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
