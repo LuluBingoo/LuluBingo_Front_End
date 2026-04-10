@@ -281,13 +281,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       bgClass: "bg-emerald-500/15",
     },
     {
-      label: "Gross Shop Cut",
-      value: formatCurrency(grossShopCut),
-      icon: DollarSign,
-      iconClass: "text-sky-500",
-      bgClass: "bg-sky-500/15",
-    },
-    {
       label: "Lulu Deducted",
       value: formatCurrency(luluDeducted),
       icon: ArrowDown,
