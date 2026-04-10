@@ -711,10 +711,10 @@ export const Settings: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      Available Balance
+                      Lulu Reserve Balance
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-300">
-                      Current wallet balance used for Lulu-cut checks before
+                      Current reserve balance used for Lulu-cut checks before
                       creating games.
                     </p>
                   </div>

@@ -295,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       bgClass: "bg-violet-500/15",
     },
     {
-      label: "Available Balance",
+      label: "Lulu Reserve Balance",
       value: formatCurrency(latestBalance || "0"),
       icon: DollarSign,
       iconClass: "text-amber-500",

@@ -370,7 +370,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     } catch (error) {
       console.error("Failed to refresh shop financial profile", error);
       popup.warning(
-        "Unable to refresh latest wallet balance. Using current data.",
+        "Unable to refresh latest Lulu reserve balance. Using current data.",
       );
       return null;
     } finally {
@@ -553,7 +553,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     if (effectiveBalance < effectiveProjectedLuluCut) {
       const shortBy = Math.max(0, effectiveProjectedLuluCut - effectiveBalance);
       popup.error(
-        `Insufficient balance for Lulu cut. Required ${formatCurrency(effectiveProjectedLuluCut.toFixed(2))}, available ${formatCurrency(effectiveBalance.toFixed(2))}, short by ${formatCurrency(shortBy.toFixed(2))}.`,
+        `Insufficient Lulu reserve for this game. Required ${formatCurrency(effectiveProjectedLuluCut.toFixed(2))}, available ${formatCurrency(effectiveBalance.toFixed(2))}, short by ${formatCurrency(shortBy.toFixed(2))}.`,
       );
       return;
     }
@@ -632,7 +632,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         const required = errorData?.required_lulu_cut || "0";
         const current = errorData?.current_balance || "0";
         popup.error(
-          `Insufficient balance for Lulu cut. Required ${formatCurrency(required)}, available ${formatCurrency(current)}.`,
+          `Insufficient Lulu reserve for this game. Required ${formatCurrency(required)}, available ${formatCurrency(current)}.`,
         );
       } else {
         const detail =
@@ -1018,7 +1018,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      Available Balance
+                      Lulu Reserve Balance
                     </label>
                     <div className="mt-1 text-lg font-bold text-sky-600">
                       {formatCurrency(walletBalance)}
@@ -1029,7 +1029,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </p>
                     {isFinancialLoading && (
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Refreshing wallet...
+                        Refreshing reserve...
                       </p>
                     )}
                   </div>
@@ -1047,7 +1047,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </p>
                     {availableBalanceAmount < projectedLuluCut && (
                       <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-300">
-                        Balance is not enough for this Lulu cut.
+                        Reserve is not enough for this Lulu cut.
                       </p>
                     )}
                   </div>
