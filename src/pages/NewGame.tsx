@@ -286,10 +286,30 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   };
 
   const nextPlayerNumber = useMemo(() => {
-    const reservedCount =
-      (session?.players_data.length ?? 0) + stagedPlayers.length;
-    return Math.min(reservedCount + 1, targetPlayers);
-  }, [session, stagedPlayers, targetPlayers]);
+    const usedNumbers = new Set<number>();
+    const allPlayers = [
+      ...(session?.players_data ?? []),
+      ...stagedPlayers,
+    ] as ShopBingoPlayer[];
+
+    for (const player of allPlayers) {
+      const raw = String(player.player_name || "");
+      const match = raw.match(/(\d+)\s*$/);
+      if (!match) continue;
+      const num = Number.parseInt(match[1], 10);
+      if (Number.isFinite(num) && num > 0) {
+        usedNumbers.add(num);
+      }
+    }
+
+    for (let candidate = 1; candidate <= targetPlayers; candidate += 1) {
+      if (!usedNumbers.has(candidate)) {
+        return candidate;
+      }
+    }
+
+    return targetPlayers;
+  }, [session?.players_data, stagedPlayers, targetPlayers]);
 
   const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
 
@@ -467,7 +487,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       ? selectedCartellas.filter((number) => number !== cartellaNumber)
       : [...selectedCartellas, cartellaNumber];
 
-    if (betLocked && next.length > 0) {
+    if (betLocked && !alreadySelected && next.length > 0) {
       const selectionAmount = next.length * parseAmount(betPerCartella);
       const previewPool = projectedTotalPool + selectionAmount;
       const previewShopCut =
@@ -483,6 +503,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           availableBalance: availableBalanceAmount,
         });
         setShowLowReserveModal(true);
+        return;
       }
     }
 
@@ -509,16 +530,27 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       const betAmount = Number.parseFloat(betPerCartella || "0");
       const totalBet = (selectedCartellas.length * betAmount).toFixed(2);
 
-      setStagedPlayers((prev) => [
-        ...prev,
-        {
+      setStagedPlayers((prev) => {
+        const payload: ShopBingoPlayer = {
           player_name: currentPlayerName,
           cartella_numbers: [...selectedCartellas],
           bet_per_cartella: betPerCartella,
           total_bet: totalBet,
           paid: false,
-        },
-      ]);
+        };
+
+        const existingIndex = prev.findIndex(
+          (player) => player.player_name === currentPlayerName,
+        );
+
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          next[existingIndex] = payload;
+          return next;
+        }
+
+        return [...prev, payload];
+      });
 
       popup.success(`${currentPlayerName} locked locally.`);
 
