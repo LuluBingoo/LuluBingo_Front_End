@@ -239,6 +239,13 @@ interface GameConfig {
   backendStatus?: string;
 }
 
+type LockedPlayerEntry = {
+  player_name: string;
+  cartella_numbers: number[];
+  paid: boolean;
+  source: "server" | "staged";
+};
+
 export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -256,10 +263,20 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [betPerCartella, setBetPerCartella] = useState("20");
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [unlockingPlayerName, setUnlockingPlayerName] = useState<string | null>(
+    null,
+  );
   const [walletBalance, setWalletBalance] = useState("0");
   const [shopCutPercentage, setShopCutPercentage] = useState("0");
   const [luluCutPercentage, setLuluCutPercentage] = useState("0");
   const [isFinancialLoading, setIsFinancialLoading] = useState(false);
+  const [showLowReserveModal, setShowLowReserveModal] = useState(false);
+  const [lowReservePreview, setLowReservePreview] = useState<{
+    projectedPool: number;
+    projectedShopCut: number;
+    projectedLuluCut: number;
+    availableBalance: number;
+  } | null>(null);
   const currencyLabel = getCurrencyLabel();
   const targetPlayers = session?.fixed_players || fixedPlayers;
 
@@ -349,6 +366,26 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     [walletBalance],
   );
 
+  const lockedPlayers = useMemo<LockedPlayerEntry[]>(() => {
+    const serverPlayers: LockedPlayerEntry[] = (session?.players_data ?? [])
+      .filter((player) => (player.cartella_numbers?.length ?? 0) > 0)
+      .map((player) => ({
+        player_name: player.player_name,
+        cartella_numbers: player.cartella_numbers,
+        paid: Boolean(player.paid),
+        source: "server",
+      }));
+
+    const staged: LockedPlayerEntry[] = stagedPlayers.map((player) => ({
+      player_name: player.player_name,
+      cartella_numbers: player.cartella_numbers,
+      paid: Boolean(player.paid),
+      source: "staged",
+    }));
+
+    return [...serverPlayers, ...staged];
+  }, [session?.players_data, stagedPlayers]);
+
   const pageRange = useMemo(() => {
     const start = currentPage === 1 ? 1 : 101;
     return Array.from({ length: 100 }, (_, idx) => start + idx);
@@ -430,6 +467,25 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       ? selectedCartellas.filter((number) => number !== cartellaNumber)
       : [...selectedCartellas, cartellaNumber];
 
+    if (betLocked && next.length > 0) {
+      const selectionAmount = next.length * parseAmount(betPerCartella);
+      const previewPool = projectedTotalPool + selectionAmount;
+      const previewShopCut =
+        (previewPool * parseAmount(shopCutPercentage)) / 100;
+      const previewLuluCut =
+        (previewShopCut * parseAmount(luluCutPercentage)) / 100;
+
+      if (availableBalanceAmount < previewLuluCut) {
+        setLowReservePreview({
+          projectedPool: previewPool,
+          projectedShopCut: previewShopCut,
+          projectedLuluCut: previewLuluCut,
+          availableBalance: availableBalanceAmount,
+        });
+        setShowLowReserveModal(true);
+      }
+    }
+
     setSelectedCartellas(next);
   };
 
@@ -485,14 +541,86 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   };
 
   const handleClear = async () => {
+    if (selectedCartellas.length > 0) {
+      const confirmed = await popup.confirm({
+        title: "Clear selected cartellas",
+        description: "Remove your current cartella selection?",
+        confirmText: "Clear",
+        cancelText: "Keep",
+      });
+      if (!confirmed) return;
+      setSelectedCartellas([]);
+      return;
+    }
+
+    const stagedLast = [...stagedPlayers].reverse()[0];
+    if (!stagedLast) {
+      popup.info("No staged player lock to clear.");
+      return;
+    }
+
     const confirmed = await popup.confirm({
-      title: "Clear selected cartellas",
-      description: "Remove your current cartella selection?",
-      confirmText: "Clear",
-      cancelText: "Keep",
+      title: "Unlock last staged player",
+      description: `Unlock ${stagedLast.player_name} and release their cartellas?`,
+      confirmText: "Unlock",
+      cancelText: "Cancel",
     });
     if (!confirmed) return;
-    setSelectedCartellas([]);
+
+    setStagedPlayers((prev) =>
+      prev.filter((player) => player.player_name !== stagedLast.player_name),
+    );
+    popup.success(`${stagedLast.player_name} unlocked.`);
+  };
+
+  const handleUnlockPlayer = async (entry: LockedPlayerEntry) => {
+    if (entry.paid) {
+      popup.warning("Paid player locks cannot be unlocked.");
+      return;
+    }
+
+    const confirmed = await popup.confirm({
+      title: "Unlock player cartellas",
+      description: `Unlock ${entry.player_name} and release cartellas ${entry.cartella_numbers.join(", ")}?`,
+      confirmText: "Unlock",
+      cancelText: "Cancel",
+    });
+
+    if (!confirmed) return;
+
+    if (entry.source === "staged") {
+      setStagedPlayers((prev) =>
+        prev.filter((player) => player.player_name !== entry.player_name),
+      );
+      popup.success(`${entry.player_name} unlocked.`);
+      return;
+    }
+
+    if (!session?.session_id) {
+      popup.error("Session is not connected.");
+      return;
+    }
+
+    setUnlockingPlayerName(entry.player_name);
+    try {
+      const latestSession = await gamesApi.reserveShopCartellas(
+        session.session_id,
+        {
+          player_name: entry.player_name,
+          cartella_numbers: [],
+          bet_per_cartella: betPerCartella,
+        },
+      );
+      setSession(latestSession);
+      popup.success(`${entry.player_name} unlocked.`);
+    } catch (error) {
+      const err = error as any;
+      const detail =
+        err?.data?.detail || err?.response?.data?.detail || err?.message;
+      popup.error(String(detail || "Failed to unlock player cartellas."));
+    } finally {
+      setUnlockingPlayerName(null);
+    }
   };
 
   const handleLockBet = () => {
@@ -877,6 +1005,60 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showLowReserveModal} onOpenChange={setShowLowReserveModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Balance Low For This Game</DialogTitle>
+            <DialogDescription>
+              Lulu reserve is not enough for this setup.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm dark:border-rose-700/60 dark:bg-rose-900/20">
+            <p className="font-semibold text-rose-700 dark:text-rose-300">
+              Estimated Lulu Cut (Session):{" "}
+              {formatCurrency(
+                (
+                  lowReservePreview?.projectedLuluCut ?? projectedLuluCut
+                ).toFixed(2),
+              )}
+            </p>
+            <p className="text-slate-700 dark:text-slate-300">
+              Pool{" "}
+              {formatCurrency(
+                (
+                  lowReservePreview?.projectedPool ?? projectedTotalPool
+                ).toFixed(2),
+              )}{" "}
+              • Shop cut{" "}
+              {formatCurrency(
+                (
+                  lowReservePreview?.projectedShopCut ?? projectedShopCut
+                ).toFixed(2),
+              )}
+            </p>
+            <p className="text-slate-700 dark:text-slate-300">
+              Available reserve:{" "}
+              {formatCurrency(
+                (
+                  lowReservePreview?.availableBalance ?? availableBalanceAmount
+                ).toFixed(2),
+              )}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowLowReserveModal(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <motion.div
         className="mb-2"
         initial={{ opacity: 0, y: 20 }}
@@ -1045,11 +1227,6 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       Pool {formatCurrency(projectedTotalPool.toFixed(2))} •
                       Shop cut {formatCurrency(projectedShopCut.toFixed(2))}
                     </p>
-                    {availableBalanceAmount < projectedLuluCut && (
-                      <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-300">
-                        Reserve is not enough for this Lulu cut.
-                      </p>
-                    )}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
@@ -1062,6 +1239,51 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       {t("newGame.playersReserved")}, {totalPaidPlayers}/
                       {targetPlayers} {t("newGame.paid")}
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <label className="text-sm font-medium">
+                      Locked Players
+                    </label>
+                    {lockedPlayers.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                        No locked players yet.
+                      </p>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {lockedPlayers.map((entry) => (
+                          <div
+                            key={`${entry.source}-${entry.player_name}`}
+                            className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950/50"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                {entry.player_name}
+                              </p>
+                              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                {entry.cartella_numbers.join(", ")} •{" "}
+                                {entry.source}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void handleUnlockPlayer(entry)}
+                              disabled={
+                                entry.paid ||
+                                submittingPayment ||
+                                unlockingPlayerName === entry.player_name
+                              }
+                            >
+                              {unlockingPlayerName === entry.player_name
+                                ? "Unlocking..."
+                                : "Unlock"}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
