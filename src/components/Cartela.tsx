@@ -156,7 +156,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     }
 
     const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[col * 5 + row]),
+      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
     );
 
     const hasRow = grid.some((row) => row.every(isMarked));
@@ -232,7 +232,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     for (let row = 0; row < 5; row++) {
       const rowCells = [];
       for (let col = 0; col < 5; col++) {
-        const index = col * 5 + row;
+        const index = row * 5 + col;
 
         if (row === 2 && col === 2) {
           rowCells.push(

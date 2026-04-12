@@ -72,7 +72,13 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
     }
 
     for (let row = 0; row < 5; row++) {
-      const rowIndices = [row, 5 + row, 10 + row, 15 + row, 20 + row];
+      const rowIndices = [
+        row * 5,
+        row * 5 + 1,
+        row * 5 + 2,
+        row * 5 + 3,
+        row * 5 + 4,
+      ];
 
       if (rowIndices.every((index) => isMarked(index))) {
         return rowIndices;
@@ -330,7 +336,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                         className="grid grid-cols-5 gap-2"
                       >
                         {Array.from({ length: 5 }, (_, col) => {
-                          const index = col * 5 + row;
+                          const index = row * 5 + col;
                           const value = winnerCartelaData[index];
                           const isMarked =
                             value === 0 || calledNumbers.includes(value);

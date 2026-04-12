@@ -77,7 +77,7 @@ const About: React.FC = () => {
   const previewGrid = React.useMemo(
     () =>
       Array.from({ length: 5 }, (_, row) =>
-        Array.from({ length: 5 }, (_, col) => selectedBoard[col * 5 + row]),
+        Array.from({ length: 5 }, (_, col) => selectedBoard[row * 5 + col]),
       ),
     [selectedBoard],
   );
