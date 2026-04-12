@@ -808,12 +808,18 @@ export const getOfflineCartellaBoard = (
   cartellaNumber: string | number,
 ): number[] | undefined => {
   const rawBoard = OFFLINE_CARTELLA_CATALOG[String(cartellaNumber)];
-  if (!rawBoard) {
+  return normalizeCartellaBoard(rawBoard);
+};
+
+export const normalizeCartellaBoard = (
+  board: number[] | readonly number[] | null | undefined,
+): number[] | undefined => {
+  if (!Array.isArray(board)) {
     return undefined;
   }
 
-  // Ensure every offline board is exactly 5x5 and has FREE cell in the middle.
-  const normalizedBoard = rawBoard.slice(0, 25);
+  // Ensure every board is exactly 5x5 and has FREE cell in the middle.
+  const normalizedBoard = board.slice(0, 25);
   if (normalizedBoard.length < 25) {
     return undefined;
   }

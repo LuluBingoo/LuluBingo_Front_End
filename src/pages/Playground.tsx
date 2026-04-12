@@ -20,7 +20,10 @@ import { FullscreenControls } from "./playground/components/FullscreenControls";
 import { DesktopControlPanels } from "./playground/components/DesktopControlPanels";
 import { StatusOverlays } from "./playground/components/StatusOverlays";
 import { pickRandomBingoIllustration } from "../assets/illustrations";
-import { getOfflineCartellaBoard } from "../data/offlineCartellas";
+import {
+  getOfflineCartellaBoard,
+  normalizeCartellaBoard,
+} from "../data/offlineCartellas";
 import {
   DisplayGameStatus,
   PlaygroundGameConfig,
@@ -461,8 +464,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       const backendBoard = index >= 0 ? numbers[index] || [] : [];
-      if (backendBoard.length === 25) {
-        return [cartelaNumber, backendBoard] as const;
+      const normalizedBackendBoard = normalizeCartellaBoard(backendBoard);
+      if (normalizedBackendBoard) {
+        return [cartelaNumber, normalizedBackendBoard] as const;
       }
 
       if (currentGameConfig?.playMode === "offline") {
@@ -472,7 +476,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         ] as const;
       }
 
-      const data = backendBoard;
+      const data = normalizeCartellaBoard(backendBoard) ?? backendBoard;
       return [cartelaNumber, data] as const;
     });
 

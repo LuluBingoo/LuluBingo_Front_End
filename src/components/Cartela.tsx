@@ -5,7 +5,10 @@ import { Button } from "../components/ui/button";
 import { Trophy, X, UserX, ChevronDown } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
-import { getOfflineCartellaBoard } from "../data/offlineCartellas";
+import {
+  getOfflineCartellaBoard,
+  normalizeCartellaBoard,
+} from "../data/offlineCartellas";
 
 interface CartelaModalProps {
   isOpen: boolean;
@@ -102,8 +105,9 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   useEffect(() => {
     if (selectedCartela) {
       const providedNumbers = cartelaDataMap?.[selectedCartela];
-      if (providedNumbers && providedNumbers.length === 25) {
-        setCartelaData(providedNumbers);
+      const normalizedProvided = normalizeCartellaBoard(providedNumbers);
+      if (normalizedProvided) {
+        setCartelaData(normalizedProvided);
         return;
       }
 

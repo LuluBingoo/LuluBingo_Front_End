@@ -6,6 +6,7 @@ import { PublicCartellaResponse } from "../services/types";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Skeleton } from "../components/ui/skeleton";
+import { normalizeCartellaBoard } from "../data/offlineCartellas";
 
 const labels = {
   en: {
@@ -95,10 +96,15 @@ const parseCartellaNumbers = (value: string) => {
 };
 
 const toGrid = (numbers: number[]) => {
+  const normalized = normalizeCartellaBoard(numbers);
+  if (!normalized) {
+    return [];
+  }
+
   const grid: number[][] = [];
   for (let row = 0; row < 5; row++) {
     const start = row * 5;
-    grid.push(numbers.slice(start, start + 5));
+    grid.push(normalized.slice(start, start + 5));
   }
   return grid;
 };
@@ -340,10 +346,12 @@ export const PublicCartella: React.FC = () => {
 
               <div className="grid gap-4 xl:grid-cols-2">
                 {data.cartellas.map((cartella) => {
-                  const grid = toGrid(cartella.cartella_numbers);
+                  const normalizedBoard =
+                    normalizeCartellaBoard(cartella.cartella_numbers) || [];
+                  const grid = toGrid(normalizedBoard);
                   const markedSet = getMarkedSet(cartella.cartella_number);
                   const isBingo = hasBingo(
-                    cartella.cartella_numbers,
+                    normalizedBoard,
                     cartella.cartella_number,
                   );
 
