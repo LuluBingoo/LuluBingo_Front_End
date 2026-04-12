@@ -104,6 +104,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   // Generate or retrieve cartela data when cartela changes
   useEffect(() => {
     if (selectedCartela) {
+      if (playMode === "offline") {
+        const offlineBoard = getOfflineCartellaBoard(selectedCartela);
+        setCartelaData(offlineBoard ? [...offlineBoard] : []);
+        return;
+      }
+
       const providedNumbers = cartelaDataMap?.[selectedCartela];
       const normalizedProvided = normalizeCartellaBoard(providedNumbers);
       if (normalizedProvided) {
@@ -111,13 +117,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
         return;
       }
 
-      if (playMode === "offline") {
-        const offlineBoard = getOfflineCartellaBoard(selectedCartela);
-        setCartelaData(offlineBoard ? [...offlineBoard] : []);
-      } else {
-        // Avoid synthetic online cartelas; only trust backend-provided board data.
-        setCartelaData([]);
-      }
+      // Avoid synthetic online cartelas; only trust backend-provided board data.
+      setCartelaData([]);
     }
   }, [selectedCartela, cartelaDataMap, playMode]);
 
