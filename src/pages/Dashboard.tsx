@@ -15,7 +15,7 @@ import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePopup } from "../contexts/PopupContext";
-import { gamesApi } from "../services/api";
+import { gamesApi, shopApi } from "../services/api";
 import { GameAuditReportResponse } from "../services/types";
 import { formatCurrency } from "../services/settings";
 
@@ -64,6 +64,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     banned_cartellas: [],
     transactions: [],
   });
+  const [walletBalance, setWalletBalance] = useState("0");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [sortByTab, setSortByTab] = useState<Record<string, SortConfig>>({
@@ -123,6 +124,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     rangeEnd,
   ]);
 
+  useEffect(() => {
+    const loadProfileBalance = async () => {
+      try {
+        const profile = await shopApi.getProfile();
+        setWalletBalance(String(profile.wallet_balance ?? "0"));
+      } catch (error) {
+        console.error("Failed to load wallet balance", error);
+      }
+    };
+
+    loadProfileBalance();
+  }, []);
+
   const filteredGameHistory = useMemo(() => {
     const config = sortByTab.games;
     const items = [...reportData.game_history];
@@ -142,6 +156,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return (
           (Number.parseFloat(a.shop_cut || "0") -
             Number.parseFloat(b.shop_cut || "0")) *
+          direction
+        );
+      }
+      if (config.key === "shop_net_cut") {
+        return (
+          (Number.parseFloat(a.shop_net_cut || a.shop_cut || "0") -
+            Number.parseFloat(b.shop_net_cut || b.shop_cut || "0")) *
           direction
         );
       }
@@ -235,43 +256,46 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return items;
   }, [reportData.transactions, sortByTab.transactions]);
 
-  const gamesToday = filteredGameHistory.length;
-  const earningToday = filteredGameHistory.reduce(
+  const gameCount = filteredGameHistory.length;
+  const grossShopCut = filteredGameHistory.reduce(
     (sum, game) => sum + Number.parseFloat(game.shop_cut || "0"),
     0,
   );
-  const latestBalance =
-    filteredTransactions.length > 0
-      ? filteredTransactions[0].balance_after
-      : gameConfig?.winBirr || "0";
-  const depositCountToday = filteredTransactions.filter(
-    (tx) => tx.type === "deposit",
-  ).length;
+  const luluDeducted = filteredGameHistory.reduce(
+    (sum, game) => sum + Number.parseFloat(game.lulu_cut || "0"),
+    0,
+  );
+  const moneyMade = filteredGameHistory.reduce(
+    (sum, game) =>
+      sum + Number.parseFloat(game.shop_net_cut || game.shop_cut || "0"),
+    0,
+  );
+  const latestBalance = walletBalance || gameConfig?.winBirr || "0";
 
   const stats = [
     {
-      label: t("dashboard.deposit"),
-      value: depositCountToday.toString(),
-      icon: DollarSign,
-      iconClass: "text-sky-500",
-      bgClass: "bg-sky-500/15",
-    },
-    {
-      label: t("dashboard.gamesToday"),
-      value: gamesToday.toString(),
-      icon: Gamepad2,
-      iconClass: "text-violet-500",
-      bgClass: "bg-violet-500/15",
-    },
-    {
-      label: t("dashboard.earningToday"),
-      value: formatCurrency(earningToday),
+      label: "Money Made",
+      value: formatCurrency(moneyMade),
       icon: TrendingUp,
       iconClass: "text-emerald-500",
       bgClass: "bg-emerald-500/15",
     },
     {
-      label: t("dashboard.availableBalance"),
+      label: "Lulu Deducted",
+      value: formatCurrency(luluDeducted),
+      icon: ArrowDown,
+      iconClass: "text-rose-500",
+      bgClass: "bg-rose-500/15",
+    },
+    {
+      label: "Games",
+      value: gameCount.toString(),
+      icon: Gamepad2,
+      iconClass: "text-violet-500",
+      bgClass: "bg-violet-500/15",
+    },
+    {
+      label: "Lulu Reserve Balance",
       value: formatCurrency(latestBalance || "0"),
       icon: DollarSign,
       iconClass: "text-amber-500",
@@ -411,6 +435,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <option value="withdrawal">Withdrawal</option>
             <option value="bet_debit">Bet Debit</option>
             <option value="bet_credit">Bet Credit</option>
+            <option value="lulu_cut_debit">Lulu Cut Debit</option>
             <option value="adjustment">Adjustment</option>
           </select>
         </div>
@@ -573,11 +598,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <button
                         type="button"
                         className="inline-flex items-center gap-1 whitespace-nowrap"
-                        onClick={() => toggleSort("games", "shop_cut")}
+                        onClick={() => toggleSort("games", "shop_net_cut")}
                       >
-                        Shop Cut {getSortIcon("games", "shop_cut")}
+                        Money Made {getSortIcon("games", "shop_net_cut")}
                       </button>
                     </th>
+                    <th className="px-3 py-2">Lulu Cut</th>
                     <th className="px-3 py-2">Status</th>
                   </tr>
                 </thead>
@@ -607,7 +633,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {game.winner.length ? game.winner.join(", ") : "-"}
                       </td>
                       <td className="px-3 py-2">
-                        {formatCurrency(game.shop_cut || "0")}
+                        {formatCurrency(
+                          game.shop_net_cut || game.shop_cut || "0",
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {formatCurrency(game.lulu_cut || "0")}
                       </td>
                       <td className="px-3 py-2">
                         <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200">

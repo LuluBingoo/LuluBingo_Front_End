@@ -31,15 +31,25 @@ const getEnvBoolean = (
   return fallback;
 };
 
+type RuntimeEnv = {
+  VITE_API_BASE_URL?: string;
+  VITE_API_USE_MOCK?: string;
+  VITE_API_TIMEOUT?: string;
+  VITE_API_RETRY_ATTEMPTS?: string;
+};
+
+const runtimeEnv = ((import.meta as ImportMeta & { env?: RuntimeEnv }).env ||
+  {}) as RuntimeEnv;
+
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: getEnvString(
-    import.meta.env.VITE_API_BASE_URL,
+    runtimeEnv.VITE_API_BASE_URL,
     "https://api.lulubingo.com/api",
   ),
-  USE_MOCK: getEnvBoolean(import.meta.env.VITE_API_USE_MOCK, false),
-  TIMEOUT: getEnvNumber(import.meta.env.VITE_API_TIMEOUT, 10000),
-  RETRY_ATTEMPTS: getEnvNumber(import.meta.env.VITE_API_RETRY_ATTEMPTS, 3),
+  USE_MOCK: getEnvBoolean(runtimeEnv.VITE_API_USE_MOCK, false),
+  TIMEOUT: getEnvNumber(runtimeEnv.VITE_API_TIMEOUT, 10000),
+  RETRY_ATTEMPTS: getEnvNumber(runtimeEnv.VITE_API_RETRY_ATTEMPTS, 3),
 };
 
 // API Endpoints
@@ -93,6 +103,16 @@ export const API_ENDPOINTS = {
     HISTORY: "/transactions/transactions/history",
     DEPOSIT: "/transactions/transactions/deposit",
     WITHDRAW: "/transactions/transactions/withdraw",
+  },
+  // Admin (manager only)
+  ADMIN: {
+    SHOPS: "/admin/shops",
+    SHOP_DETAIL: (shopId: number) => `/admin/shops/${shopId}`,
+    SHOP_FILL_BALANCE: (shopId: number) =>
+      `/admin/shops/${shopId}/fill-balance`,
+    MANAGERS: "/admin/managers",
+    GAMES: "/admin/games",
+    TRANSACTIONS: "/admin/transactions",
   },
 };
 
