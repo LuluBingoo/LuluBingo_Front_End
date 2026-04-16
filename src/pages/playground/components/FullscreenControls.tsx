@@ -54,6 +54,7 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   if (!isFullscreen) return null;
 
   const canPauseOrResume = gameStatus === "active" || gameStatus === "paused";
+  const autoCallDisabled = gameStatus !== "active" || calledNumbersLength >= 75;
 
   return (
     <div className="pointer-events-none fixed right-5 bottom-5 z-1150 flex flex-col items-end gap-3 sm:right-7 sm:bottom-7">
@@ -108,19 +109,26 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onToggleAutoCall()}
-              disabled={gameStatus !== "active" || calledNumbersLength >= 75}
-              className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-55 ${
+              onClick={() => onToggleAutoCall(!autoCall)}
+              disabled={autoCallDisabled}
+              className={`relative inline-flex h-10 w-20 items-center rounded-full border px-1 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-55 ${
                 autoCall
-                  ? "bg-emerald-600 hover:bg-emerald-500"
+                  ? "border-emerald-400 bg-linear-to-r from-emerald-500 to-emerald-600 text-white"
                   : theme === "dark"
-                    ? "bg-slate-700 text-white hover:bg-slate-600"
-                    : "bg-slate-200 text-slate-900 hover:bg-slate-300"
+                    ? "border-slate-600 bg-slate-700 text-slate-200"
+                    : "border-slate-300 bg-slate-200 text-slate-700"
               }`}
-              title="Auto Call"
+              title={autoCall ? "Auto call on" : "Auto call off"}
               aria-label="Auto Call"
             >
-              <Play className="h-5 w-5" />
+              <span className="w-full text-center text-[10px] font-bold uppercase tracking-wider">
+                {autoCall ? "On" : "Off"}
+              </span>
+              <span
+                className={`pointer-events-none absolute top-1/2 inline-block h-8 w-8 -translate-y-1/2 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                  autoCall ? "translate-x-10" : "translate-x-0"
+                }`}
+              />
             </button>
             <button
               type="button"
@@ -176,21 +184,26 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
                     exit={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
                     transition={{ duration: 0.2 }}
                     type="button"
-                    onClick={() => onToggleAutoCall()}
-                    disabled={
-                      gameStatus !== "active" || calledNumbersLength >= 75
-                    }
-                    className={`absolute inline-flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition disabled:opacity-55 ${
+                    onClick={() => onToggleAutoCall(!autoCall)}
+                    disabled={autoCallDisabled}
+                    className={`absolute inline-flex h-9 w-14 items-center rounded-full border px-1 shadow-lg transition-all duration-300 disabled:opacity-55 ${
                       autoCall
-                        ? "bg-emerald-600 hover:bg-emerald-500"
+                        ? "border-emerald-400 bg-linear-to-r from-emerald-500 to-emerald-600 text-white"
                         : theme === "dark"
-                          ? "bg-slate-700 text-white hover:bg-slate-600"
-                          : "bg-slate-200 text-slate-900 hover:bg-slate-300"
+                          ? "border-slate-600 bg-slate-700 text-slate-200"
+                          : "border-slate-300 bg-slate-200 text-slate-700"
                     }`}
-                    title="Auto Call"
+                    title={autoCall ? "Auto call on" : "Auto call off"}
                     aria-label="Auto Call"
                   >
-                    <Play className="h-4 w-4" />
+                    <span className="w-full text-center text-[9px] font-bold uppercase tracking-wide">
+                      {autoCall ? "On" : "Off"}
+                    </span>
+                    <span
+                      className={`pointer-events-none absolute top-1/2 inline-block h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                        autoCall ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
                   </motion.button>
                   <motion.button
                     initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}

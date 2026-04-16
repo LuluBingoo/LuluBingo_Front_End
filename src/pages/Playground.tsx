@@ -234,6 +234,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastAnimatedCalledRef = React.useRef<number | null>(null);
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
   const callInFlightRef = React.useRef(false);
+  const autoCallFailureCountRef = React.useRef(0);
+  const lastAutoCallWarningRef = React.useRef(0);
   const winnerClaimInFlightRef = React.useRef(false);
   const activeNumberVoiceIdRef = React.useRef(0);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -573,6 +575,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return `${letter}${number}`;
   };
 
+  const mapLabelToNumber = (label: string) => {
+    const match = label.match(/(\d{1,2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const parsed = Number.parseInt(match[1], 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 75) {
+      return null;
+    }
+
+    return parsed;
+  };
+
   const getApiErrorDetail = (error: unknown, fallback: string) => {
     if (error instanceof ApiError) {
       const detail =
@@ -603,8 +619,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setBallPopupLabel(label);
     setShowBallPopup(true);
 
-    if (typeof calledNumber === "number") {
-      lastAnimatedCalledRef.current = calledNumber;
+    const resolvedCalledNumber =
+      typeof calledNumber === "number" ? calledNumber : mapLabelToNumber(label);
+    if (typeof resolvedCalledNumber === "number") {
+      lastAnimatedCalledRef.current = resolvedCalledNumber;
     }
 
     const now = Date.now();
@@ -664,8 +682,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return cartelaDataMap[winnerCelebration.cartela] || [];
   }, [winnerCelebration?.cartela, cartelaDataMap]);
 
-  const syncGameState = async () => {
+  const syncGameState = async (force = false) => {
     if (!currentGameConfig?.gameCode || syncInFlightRef.current) return;
+    if (
+      !force &&
+      autoCall &&
+      (callInFlightRef.current || isCallingNumber || isAnnouncingNumber)
+    ) {
+      return;
+    }
+
     syncInFlightRef.current = true;
     try {
       const state = await gamesApi.getGameState(currentGameConfig.gameCode);
@@ -712,12 +738,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   useEffect(() => {
     if (!currentGameConfig?.gameCode) return;
-    void syncGameState();
+    void syncGameState(true);
+
+    const syncIntervalMs = autoCall ? 6000 : 3000;
     const interval = window.setInterval(() => {
       void syncGameState();
-    }, 3000);
+    }, syncIntervalMs);
+
     return () => window.clearInterval(interval);
-  }, [currentGameConfig?.gameCode]);
+  }, [
+    currentGameConfig?.gameCode,
+    autoCall,
+    isCallingNumber,
+    isAnnouncingNumber,
+  ]);
 
   useEffect(() => {
     if (
@@ -839,6 +873,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsCallingNumber(true);
     try {
       const response = await gamesApi.nextGameCall(currentGameConfig.gameCode);
+      autoCallFailureCountRef.current = 0;
       setCalledNumbers(response.called_numbers || []);
 
       const called =
@@ -863,12 +898,34 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
     } catch (error) {
       console.error("Failed to call next number", error);
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      const isTimeout = message.includes("timeout");
+
+      if (trigger === "auto" && isTimeout) {
+        autoCallFailureCountRef.current += 1;
+        setAutoCallTimer(getConfiguredAutoCallSeconds());
+
+        if (autoCallFailureCountRef.current >= 3) {
+          setAutoCall(false);
+          const now = Date.now();
+          if (now - lastAutoCallWarningRef.current > 5000) {
+            popup.warning(
+              "Auto-call paused due to repeated network timeouts. Turn it on again when connection is stable.",
+            );
+            lastAutoCallWarningRef.current = now;
+          }
+        }
+      }
+
       if (trigger === "manual") {
         popup.error(
           getApiErrorDetail(error, "Failed to get next number from backend."),
         );
       }
-      await syncGameState();
+
+      if (!isTimeout) {
+        await syncGameState(true);
+      }
     } finally {
       callInFlightRef.current = false;
       setIsCallingNumber(false);

@@ -213,26 +213,55 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
 
           {isLiveGame && (
             <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={autoCall}
-                  onChange={(e) => onToggleAutoCall(e.target.checked)}
-                  className="h-4 w-4 rounded"
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {t("playground.autoCall")}
+                  </p>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {isPaused
+                      ? "Paused"
+                      : autoCall
+                        ? `Next in ${autoCallTimer} ${t("playground.seconds")}`
+                        : "Tap to enable automatic calling"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onToggleAutoCall(!autoCall)}
                   disabled={
                     calledNumbersLength >= 75 ||
                     isCheckingCartela ||
                     gameStatus !== "active" ||
                     isPaused
                   }
-                />
-                {t("playground.autoCall")}
-              </label>
-              <span className="mt-2 block text-xs text-slate-500">
-                {isPaused
-                  ? "Paused"
-                  : `${autoCallTimer} ${t("playground.seconds")}`}
-              </span>
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
+                    autoCall
+                      ? "border-emerald-400 bg-linear-to-r from-emerald-500 to-emerald-600"
+                      : "border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700"
+                  }`}
+                  aria-label={t("playground.autoCall")}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+                      autoCall ? "translate-x-9" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    autoCall
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  {autoCall ? "On" : "Off"}
+                </span>
+              </div>
             </div>
           )}
         </div>
