@@ -40,6 +40,7 @@ export const Settings: React.FC = () => {
   const [autoBackup, setAutoBackup] = useState(false);
   const [currency, setCurrency] = useState("birr");
   const [autoCallSeconds, setAutoCallSeconds] = useState("5");
+  const [defaultGameBet, setDefaultGameBet] = useState("10");
   const [shopCutPercentage, setShopCutPercentage] = useState("0");
   const [luluCutPercentage, setLuluCutPercentage] = useState("0");
   const [availableBalance, setAvailableBalance] = useState("0");
@@ -64,6 +65,14 @@ export const Settings: React.FC = () => {
   const [password2faMethod, setPassword2faMethod] =
     useState<TwoFactorMethod>("totp");
   const [pageIllustration] = useState(() => pickRandomBingoIllustration());
+
+  const getDefaultGameBetValue = (flags?: Record<string, any>) => {
+    const parsed = Number.parseFloat(String(flags?.default_game_bet ?? "10"));
+    if (!Number.isFinite(parsed) || parsed < 10) {
+      return "10.00";
+    }
+    return parsed.toFixed(2);
+  };
 
   const resetPasswordForm = () => {
     setCurrentPassword("");
@@ -151,6 +160,7 @@ export const Settings: React.FC = () => {
         setEmailAlerts(Boolean(flags.email_alerts ?? true));
         setAutoBackup(Boolean(flags.auto_backup ?? false));
         setCurrency(String(flags.currency ?? "birr"));
+        setDefaultGameBet(getDefaultGameBetValue(flags));
         setAutoCallSeconds(
           String(
             flags.auto_call_seconds ??
@@ -192,6 +202,23 @@ export const Settings: React.FC = () => {
 
     loadSettings();
   }, [popup, setLanguage]);
+
+  const handleSaveDefaultGameBet = async () => {
+    const parsed = Number.parseFloat(defaultGameBet);
+    if (!Number.isFinite(parsed) || parsed < 10) {
+      popup.warning("Default game bet must be at least 10 ETB.");
+      setDefaultGameBet(getDefaultGameBetValue(featureFlagsRef.current));
+      return;
+    }
+
+    const normalized = parsed.toFixed(2);
+    setDefaultGameBet(normalized);
+    await persistFeatureFlagsPatch(
+      { default_game_bet: parsed },
+      "Default game bet changed locally, but backend sync failed.",
+      "defaultGameBet",
+    );
+  };
 
   useEffect(() => {
     if (isHydratingRef.current) return;
@@ -653,6 +680,36 @@ export const Settings: React.FC = () => {
                   <Select
                     value={autoCallSeconds}
                     onValueChange={async (value) => {
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">
+                            Default Game Bet
+                          </p>
+                          <p className="text-sm text-slate-500 dark:text-slate-300">
+                            Used as the initial bet value in New Game setup.
+                            Minimum is 10 ETB.
+                          </p>
+                          {renderSaveStatus("defaultGameBet")}
+                        </div>
+                        <Input
+                          type="number"
+                          min={10}
+                          value={defaultGameBet}
+                          onChange={(event) =>
+                            setDefaultGameBet(event.target.value)
+                          }
+                          onBlur={() => {
+                            void handleSaveDefaultGameBet();
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void handleSaveDefaultGameBet();
+                            }
+                          }}
+                          className="w-45"
+                        />
+                      </div>;
                       setAutoCallSeconds(value);
                       localStorage.setItem("autoCallSeconds", value);
                       await persistFeatureFlagsPatch(

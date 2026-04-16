@@ -94,7 +94,7 @@
     "range": "100-200",
     "shopTitle": "Shop-Based 75-Ball Bingo",
     "setBetAmount": "Set Bet Amount",
-    "betDialogDescription": "This step is mandatory. Enter bet amount once to continue. Minimum is 20 ETB per cartella.",
+    "betDialogDescription": "This step is mandatory. Enter bet amount once to continue. Minimum is 10 ETB per cartella.",
     "lockBetAmount": "Lock Bet Amount",
     "cancelToDashboard": "Cancel to Dashboard",
     "lockBetFirst": "Set and lock the bet amount in the popup first to access the game setup.",

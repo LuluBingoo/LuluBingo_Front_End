@@ -213,6 +213,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [isCheckingCartela, setIsCheckingCartela] = useState(false);
   const [showBallPopup, setShowBallPopup] = useState(false);
   const [ballPopupLabel, setBallPopupLabel] = useState("");
+  const [isAnnouncingNumber, setIsAnnouncingNumber] = useState(false);
   const [shuffleCycle, setShuffleCycle] = useState(0);
   const [winnerCelebration, setWinnerCelebration] =
     useState<WinnerCelebration | null>(null);
@@ -234,6 +235,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const fullscreenHudTimeoutRef = React.useRef<number | null>(null);
   const callInFlightRef = React.useRef(false);
   const winnerClaimInFlightRef = React.useRef(false);
+  const activeNumberVoiceIdRef = React.useRef(0);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const isWinnerModalOpen = Boolean(winnerCelebration);
@@ -587,9 +589,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return fallback;
   };
 
-  const triggerCalledBall = (label: string, calledNumber?: number | null) => {
-    // Play the audio for the called number (e.g. "B12", "N42")
-    playAudio(label);
+  const triggerCalledBall = async (
+    label: string,
+    calledNumber?: number | null,
+  ) => {
+    const announcementId = ++activeNumberVoiceIdRef.current;
+    setIsAnnouncingNumber(true);
+    await playAudio(label, true);
+    if (activeNumberVoiceIdRef.current === announcementId) {
+      setIsAnnouncingNumber(false);
+    }
 
     setBallPopupLabel(label);
     setShowBallPopup(true);
@@ -675,7 +684,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           const label =
             state.current_called_formatted ||
             mapNumberToLabel(state.current_called_number);
-          triggerCalledBall(label, state.current_called_number);
+          void triggerCalledBall(label, state.current_called_number);
         }
         setCurrentCalledNumber(
           state.current_called_formatted ||
@@ -750,7 +759,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setAutoCallTimer((prev) => {
           const configuredSeconds = getConfiguredAutoCallSeconds();
 
-          if (callInFlightRef.current || isCallingNumber) {
+          if (
+            callInFlightRef.current ||
+            isCallingNumber ||
+            isAnnouncingNumber
+          ) {
             return prev;
           }
 
@@ -774,6 +787,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     isCheckingCartela,
     calledNumbers.length,
     isCallingNumber,
+    isAnnouncingNumber,
     getConfiguredAutoCallSeconds,
   ]);
 
@@ -792,7 +806,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     if (
       !currentGameConfig?.gameCode ||
       isCallingNumber ||
-      callInFlightRef.current
+      callInFlightRef.current ||
+      isAnnouncingNumber
     ) {
       return;
     }
@@ -834,7 +849,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (called) {
         setCurrentCalledNumber(called);
-        triggerCalledBall(called, response.called_number || null);
+        await triggerCalledBall(called, response.called_number || null);
       }
 
       if (response.is_complete) {
@@ -1547,11 +1562,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
     };
   }, []);
 
-  // Play audio by key and avoid overlapping number-call voice playback.
-  const playAudio = (key: string) => {
+  // Play audio by key. Number call audio can optionally wait for completion.
+  const playAudio = (key: string, waitForEnd = false): Promise<void> => {
     const audioPath = audioMap[key];
     if (!audioPath) {
-      return;
+      return Promise.resolve();
     }
 
     const isCalledBallKey = /^[BINGO]_?\d{1,2}$/i.test(key);
@@ -1565,10 +1580,39 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const audio = new Audio(audioPath);
     audio.preload = "auto";
     targetRef.current = audio;
-    void audio.play().catch(() => {
+
+    const playPromise = audio.play().catch(() => {
       // Ignore autoplay/interrupt errors because calls can happen rapidly.
     });
+
+    if (!waitForEnd) {
+      return playPromise;
+    }
+
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        audio.removeEventListener("ended", settle);
+        audio.removeEventListener("error", settle);
+        audio.removeEventListener("pause", settle);
+        resolve();
+      };
+
+      audio.addEventListener("ended", settle, { once: true });
+      audio.addEventListener("error", settle, { once: true });
+      audio.addEventListener("pause", settle, { once: true });
+
+      void playPromise.finally(() => {
+        if (audio.paused && audio.currentTime === 0) {
+          settle();
+        }
+      });
+    });
   };
+
+  const isCallActionLocked = isCallingNumber || isAnnouncingNumber;
 
   return (
     <div className={`space-y-4 ${isFullscreen ? "p-0" : "p-6"}`}>
@@ -1797,7 +1841,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           showRadialControls={showRadialControls}
           setShowRadialControls={setShowRadialControls}
           isStoppingGame={isStoppingGame}
-          isCallingNumber={isCallingNumber}
+          isCallingNumber={isCallActionLocked}
           isCheckingCartela={isCheckingCartela}
           isStartingGame={isStartingGame}
           callRandomNumber={callRandomNumber}
@@ -1811,7 +1855,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           displayCurrentNumber={displayCurrentNumber}
           callRandomNumber={callRandomNumber}
           calledNumbersLength={calledNumbers.length}
-          isCallingNumber={isCallingNumber}
+          isCallingNumber={isCallActionLocked}
           isStoppingGame={isStoppingGame}
           closeGameWithoutWinner={closeGameWithoutWinner}
           shuffleNumbers={shuffleNumbers}

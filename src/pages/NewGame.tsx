@@ -246,13 +246,26 @@ type LockedPlayerEntry = {
   source: "server" | "staged";
 };
 
+const DEFAULT_GAME_BET = 10;
+
+const resolveDefaultGameBet = (
+  featureFlags?: Record<string, unknown> | null,
+) => {
+  const raw = featureFlags?.default_game_bet;
+  const parsed = Number.parseFloat(String(raw ?? DEFAULT_GAME_BET));
+  if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
+    return DEFAULT_GAME_BET.toFixed(2);
+  }
+  return parsed.toFixed(2);
+};
+
 export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const popup = usePopup();
   const [session, setSession] = useState<ShopBingoSession | null>(null);
   const [showBetDialog, setShowBetDialog] = useState(true);
-  const [betInput, setBetInput] = useState("20");
+  const [betInput, setBetInput] = useState(DEFAULT_GAME_BET.toString());
   const [playersInput, setPlayersInput] = useState("4");
   const [playMode, setPlayMode] = useState<"online" | "offline">("offline");
   const [fixedPlayers, setFixedPlayers] = useState(4);
@@ -260,7 +273,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [selectedCartellas, setSelectedCartellas] = useState<number[]>([]);
   const [stagedPlayers, setStagedPlayers] = useState<ShopBingoPlayer[]>([]);
-  const [betPerCartella, setBetPerCartella] = useState("20");
+  const [betPerCartella, setBetPerCartella] = useState(
+    DEFAULT_GAME_BET.toFixed(2),
+  );
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [unlockingPlayerName, setUnlockingPlayerName] = useState<string | null>(
@@ -420,9 +435,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     setIsFinancialLoading(true);
     try {
       const profile = await shopApi.getProfile();
+      const defaultBet = resolveDefaultGameBet(profile.feature_flags);
       setWalletBalance(String(profile.wallet_balance ?? "0"));
       setShopCutPercentage(String(profile.shop_cut_percentage ?? "0"));
       setLuluCutPercentage(String(profile.lulu_cut_percentage ?? "0"));
+
+      if (!betLocked) {
+        setBetInput(defaultBet);
+        setBetPerCartella(defaultBet);
+      }
       return profile;
     } catch (error) {
       console.error("Failed to refresh shop financial profile", error);
@@ -657,19 +678,16 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
   const handleLockBet = () => {
     const parsed = Number.parseFloat(betInput);
-    if (!Number.isFinite(parsed) || parsed < 20) {
-      popup.warning(`Minimum bet per cartella is 20 ${currencyLabel}.`);
+    if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
+      popup.warning(
+        `Minimum bet per cartella is ${DEFAULT_GAME_BET} ${currencyLabel}.`,
+      );
       return;
     }
 
     const parsedPlayers = Number.parseInt(playersInput, 10);
     if (!Number.isFinite(parsedPlayers) || parsedPlayers < 2) {
       popup.warning("Minimum number of players is 2.");
-      return;
-    }
-
-    if (parsedPlayers > 7) {
-      popup.warning("Maximum number of players is 7.");
       return;
     }
 
@@ -909,7 +927,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                     <DialogDescription className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                       This step is mandatory. Enter bet amount once to continue.
-                      Minimum is 20 {currencyLabel} per cartella.
+                      Minimum is {DEFAULT_GAME_BET} {currencyLabel} per
+                      cartella.
                     </DialogDescription>
                   </div>
 
@@ -930,14 +949,14 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </span>
                     <Input
                       type="number"
-                      min={20}
+                      min={DEFAULT_GAME_BET}
                       value={betInput}
                       onChange={(e) => setBetInput(e.target.value)}
                       className="h-11 border-rose-200 bg-white text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-950"
                     />
                   </div>
                   <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Minimum: 20 {currencyLabel} per cartella
+                    Minimum: {DEFAULT_GAME_BET} {currencyLabel} per cartella
                   </p>
                 </div>
 
@@ -948,14 +967,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   <Input
                     type="number"
                     min={2}
-                    max={7}
                     value={playersInput}
                     onChange={(e) => setPlayersInput(e.target.value)}
                     placeholder={t("newGame.numPlayers")}
                     className="mt-2 h-11 border-sky-200 bg-white text-lg font-semibold dark:border-sky-700/70 dark:bg-slate-950"
                   />
                   <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Allowed range: 2 to 7 players
+                    Minimum: 2 players
                   </p>
                 </div>
               </div>
