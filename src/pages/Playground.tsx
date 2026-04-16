@@ -609,21 +609,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
-    const announcementId = ++activeNumberVoiceIdRef.current;
-    setIsAnnouncingNumber(true);
-    await playAudio(label, true);
-    if (activeNumberVoiceIdRef.current === announcementId) {
-      setIsAnnouncingNumber(false);
-    }
-
-    setBallPopupLabel(label);
-    setShowBallPopup(true);
-
     const resolvedCalledNumber =
       typeof calledNumber === "number" ? calledNumber : mapLabelToNumber(label);
+
+    // Mark immediately so sync polling does not replay the same call while voice is active.
     if (typeof resolvedCalledNumber === "number") {
       lastAnimatedCalledRef.current = resolvedCalledNumber;
     }
+
+    // Show center popup at the same moment the voice starts.
+    setBallPopupLabel(label);
+    setShowBallPopup(true);
 
     const now = Date.now();
     const withinStreakWindow = now - lastCallTimeRef.current <= 5000;
@@ -633,6 +629,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     window.setTimeout(() => setShowBallPopup(false), 1500);
     window.setTimeout(() => setStreakBoost(false), 350);
+
+    const announcementId = ++activeNumberVoiceIdRef.current;
+    setIsAnnouncingNumber(true);
+    await playAudio(label, true);
+    if (activeNumberVoiceIdRef.current === announcementId) {
+      setIsAnnouncingNumber(false);
+    }
   };
 
   const triggerWinnerCelebration = (
