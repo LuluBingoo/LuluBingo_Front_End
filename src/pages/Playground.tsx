@@ -319,10 +319,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setAutoCallTimer(getConfiguredAutoCallSeconds());
 
         if (state.current_called_number) {
-          setCurrentCalledNumber(
-            state.current_called_formatted ||
-              mapNumberToLabel(state.current_called_number),
+          const { label: resolvedCurrentLabel } = resolveCalledLabelAndNumber(
+            state.current_called_formatted,
+            state.current_called_number,
           );
+          setCurrentCalledNumber(resolvedCurrentLabel);
         } else {
           setCurrentCalledNumber("");
         }
@@ -589,6 +590,44 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return parsed;
   };
 
+  const resolveCalledLabelAndNumber = (
+    rawLabel?: string | null,
+    rawNumber?: number | null,
+  ) => {
+    const normalizedLabel = String(rawLabel || "").trim();
+    const normalizedNumberFromArg =
+      typeof rawNumber === "number" && rawNumber >= 1 && rawNumber <= 75
+        ? rawNumber
+        : null;
+
+    const normalizedMatch = normalizedLabel.match(
+      /^([BINGO])[\s_-]?(\d{1,2})$/i,
+    );
+    const normalizedNumberFromLabel = normalizedMatch
+      ? Number.parseInt(normalizedMatch[2], 10)
+      : mapLabelToNumber(normalizedLabel);
+
+    const resolvedNumber =
+      normalizedNumberFromArg ??
+      (typeof normalizedNumberFromLabel === "number" &&
+      normalizedNumberFromLabel >= 1 &&
+      normalizedNumberFromLabel <= 75
+        ? normalizedNumberFromLabel
+        : null);
+
+    if (resolvedNumber !== null) {
+      return {
+        number: resolvedNumber,
+        label: mapNumberToLabel(resolvedNumber),
+      };
+    }
+
+    return {
+      number: null,
+      label: normalizedLabel,
+    };
+  };
+
   const getApiErrorDetail = (error: unknown, fallback: string) => {
     if (error instanceof ApiError) {
       const detail =
@@ -609,9 +648,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
-    const postVoiceDisplayMs = 450;
-    const resolvedCalledNumber =
-      typeof calledNumber === "number" ? calledNumber : mapLabelToNumber(label);
+    const postVoiceDisplayMs = 250;
+    const { label: resolvedLabel, number: resolvedCalledNumber } =
+      resolveCalledLabelAndNumber(label, calledNumber ?? null);
 
     // Mark immediately so sync polling does not replay the same call while voice is active.
     if (typeof resolvedCalledNumber === "number") {
@@ -619,7 +658,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     // Show center popup at the same moment the voice starts.
-    setBallPopupLabel(label);
+    setBallPopupLabel(resolvedLabel);
     setShowBallPopup(true);
 
     const now = Date.now();
@@ -632,7 +671,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
-    await playAudio(label, true);
+    await playAudio(resolvedLabel, true);
 
     if (activeNumberVoiceIdRef.current === announcementId) {
       await new Promise<void>((resolve) => {
@@ -717,16 +756,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
       setCalledNumbers(state.called_numbers || []);
       if (state.current_called_number) {
-        if (state.current_called_number !== lastAnimatedCalledRef.current) {
-          const label =
-            state.current_called_formatted ||
-            mapNumberToLabel(state.current_called_number);
-          void triggerCalledBall(label, state.current_called_number);
-        }
-        setCurrentCalledNumber(
-          state.current_called_formatted ||
-            mapNumberToLabel(state.current_called_number),
+        const { label: resolvedCurrentLabel } = resolveCalledLabelAndNumber(
+          state.current_called_formatted,
+          state.current_called_number,
         );
+
+        if (state.current_called_number !== lastAnimatedCalledRef.current) {
+          void triggerCalledBall(
+            resolvedCurrentLabel,
+            state.current_called_number,
+          );
+        }
+        setCurrentCalledNumber(resolvedCurrentLabel);
       } else {
         setCurrentCalledNumber("");
       }
@@ -887,15 +928,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
       autoCallFailureCountRef.current = 0;
       setCalledNumbers(response.called_numbers || []);
 
-      const called =
-        response.called_formatted ||
-        (response.called_number
-          ? mapNumberToLabel(response.called_number)
-          : "");
+      const { label: calledLabel, number: calledNumber } =
+        resolveCalledLabelAndNumber(
+          response.called_formatted,
+          response.called_number || null,
+        );
 
-      if (called) {
-        setCurrentCalledNumber(called);
-        await triggerCalledBall(called, response.called_number || null);
+      if (calledLabel) {
+        setCurrentCalledNumber(calledLabel);
+        await triggerCalledBall(calledLabel, calledNumber);
       }
 
       if (response.is_complete) {
@@ -1632,12 +1673,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Play audio by key. Number call audio can optionally wait for completion.
   const playAudio = (key: string, waitForEnd = false): Promise<void> => {
-    const audioPath = audioMap[key];
+    const normalizedKey = key.trim();
+    const calledBallMatch = normalizedKey.match(/^([BINGO])[\s_-]?(\d{1,2})$/i);
+    const audioKey = calledBallMatch
+      ? `${calledBallMatch[1].toUpperCase()}${Number.parseInt(calledBallMatch[2], 10)}`
+      : normalizedKey;
+
+    const audioPath = audioMap[audioKey] || audioMap[normalizedKey];
     if (!audioPath) {
       return Promise.resolve();
     }
 
-    const isCalledBallKey = /^[BINGO]_?\d{1,2}$/i.test(key);
+    const isCalledBallKey = /^[BINGO]\d{1,2}$/i.test(audioKey);
     const targetRef = isCalledBallKey ? voiceAudioRef : effectAudioRef;
 
     if (targetRef.current) {
