@@ -627,13 +627,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setCallStreak((prev) => (withinStreakWindow ? prev + 1 : 1));
     setStreakBoost(true);
 
-    window.setTimeout(() => setShowBallPopup(false), 1500);
     window.setTimeout(() => setStreakBoost(false), 350);
 
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
     await playAudio(label, true);
     if (activeNumberVoiceIdRef.current === announcementId) {
+      setShowBallPopup(false);
       setIsAnnouncingNumber(false);
     }
   };
