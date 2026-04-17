@@ -240,6 +240,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const activeNumberVoiceIdRef = React.useRef(0);
   const announcementQueueRef = React.useRef<Promise<void>>(Promise.resolve());
   const activeAnnouncementNumberRef = React.useRef<number | null>(null);
+  const latestCallCursorRef = React.useRef(0);
+  const latestQueuedAnnouncementCursorRef = React.useRef(0);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const isWinnerModalOpen = Boolean(winnerCelebration);
@@ -313,7 +315,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
           state.cartella_statuses || game.cartella_statuses || {},
         );
         setDrawSequence(game.draw_sequence || []);
-        setDrawCursor(state.call_cursor || 0);
+        const restoredCursor = resolveCallCursor(
+          state.call_cursor,
+          state.called_numbers,
+        );
+        latestCallCursorRef.current = restoredCursor;
+        latestQueuedAnnouncementCursorRef.current = restoredCursor;
+        if (state.current_called_number) {
+          lastAnimatedCalledRef.current = state.current_called_number;
+        }
+        setDrawCursor(restoredCursor);
         setCalledNumbers(state.called_numbers || []);
         setAutoCall(
           state.status === "active" && (state.called_numbers?.length || 0) < 75,
@@ -592,6 +603,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return parsed;
   };
 
+  const resolveCallCursor = (
+    rawCursor?: unknown,
+    calledNumbersList?: number[] | null,
+  ) => {
+    const parsedCursor = Number(rawCursor);
+    if (Number.isInteger(parsedCursor) && parsedCursor >= 0) {
+      return parsedCursor;
+    }
+
+    if (Array.isArray(calledNumbersList)) {
+      return calledNumbersList.length;
+    }
+
+    return 0;
+  };
+
   const resolveCalledLabelAndNumber = (
     rawLabel?: string | null,
     rawNumber?: number | null,
@@ -690,15 +717,36 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const enqueueCalledBallAnnouncement = (
     label: string,
     calledNumber?: number | null,
+    callCursor?: number | null,
   ) => {
     const { label: resolvedLabel, number: resolvedCalledNumber } =
       resolveCalledLabelAndNumber(label, calledNumber ?? null);
+    const normalizedCursor =
+      typeof callCursor === "number" && callCursor > 0 ? callCursor : null;
+
+    if (
+      normalizedCursor !== null &&
+      normalizedCursor <= latestQueuedAnnouncementCursorRef.current
+    ) {
+      return Promise.resolve();
+    }
+
+    if (normalizedCursor !== null) {
+      latestQueuedAnnouncementCursorRef.current = normalizedCursor;
+    }
 
     announcementQueueRef.current = announcementQueueRef.current
       .catch(() => {
         // Keep the queue alive even if a previous announcement failed.
       })
       .then(async () => {
+        if (
+          normalizedCursor !== null &&
+          normalizedCursor < latestCallCursorRef.current
+        ) {
+          return;
+        }
+
         if (
           resolvedCalledNumber !== null &&
           resolvedCalledNumber === lastAnimatedCalledRef.current
@@ -709,6 +757,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
         activeAnnouncementNumberRef.current = resolvedCalledNumber;
         try {
           await triggerCalledBall(resolvedLabel, resolvedCalledNumber);
+          if (normalizedCursor !== null) {
+            latestCallCursorRef.current = Math.max(
+              latestCallCursorRef.current,
+              normalizedCursor,
+            );
+          }
         } finally {
           if (activeAnnouncementNumberRef.current === resolvedCalledNumber) {
             activeAnnouncementNumberRef.current = null;
@@ -779,33 +833,49 @@ export const Playground: React.FC<PlaygroundProps> = ({
     try {
       const state = await gamesApi.getGameState(currentGameConfig.gameCode);
       const nextStatus = state.status as GameStatus;
+      const stateCursor = resolveCallCursor(
+        state.call_cursor,
+        state.called_numbers,
+      );
+      const isStaleState = stateCursor < latestCallCursorRef.current;
       const shouldIgnorePendingRegression =
         nextStatus === "pending" &&
         gameStatusRef.current === "active" &&
         Date.now() < startTransitionUntilRef.current;
 
-      if (!shouldIgnorePendingRegression) {
+      const shouldApplyStatus =
+        !isStaleState ||
+        nextStatus === "completed" ||
+        nextStatus === "cancelled";
+
+      if (shouldApplyStatus && !shouldIgnorePendingRegression) {
         setGameStatus(nextStatus);
       }
-      setCalledNumbers(state.called_numbers || []);
-      if (state.current_called_number) {
-        const { label: resolvedCurrentLabel } = resolveCalledLabelAndNumber(
-          state.current_called_formatted,
-          state.current_called_number,
-        );
+      if (!isStaleState) {
+        latestCallCursorRef.current = stateCursor;
+        setDrawCursor(stateCursor);
+        setCalledNumbers(state.called_numbers || []);
 
-        if (state.current_called_number !== lastAnimatedCalledRef.current) {
-          void enqueueCalledBallAnnouncement(
-            resolvedCurrentLabel,
+        if (state.current_called_number) {
+          const { label: resolvedCurrentLabel } = resolveCalledLabelAndNumber(
+            state.current_called_formatted,
             state.current_called_number,
           );
+
+          if (stateCursor > latestQueuedAnnouncementCursorRef.current) {
+            void enqueueCalledBallAnnouncement(
+              resolvedCurrentLabel,
+              state.current_called_number,
+              stateCursor,
+            );
+          }
+          setCurrentCalledNumber(resolvedCurrentLabel);
+        } else {
+          setCurrentCalledNumber("");
         }
-        setCurrentCalledNumber(resolvedCurrentLabel);
-      } else {
-        setCurrentCalledNumber("");
       }
-      setDrawCursor(state.call_cursor || 0);
-      if (state.cartella_statuses) {
+
+      if (!isStaleState && state.cartella_statuses) {
         setCartellaStatuses(state.cartella_statuses);
       }
     } catch (error) {
@@ -958,7 +1028,19 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsCallingNumber(true);
     try {
       const response = await gamesApi.nextGameCall(currentGameConfig.gameCode);
+      const responseCursor = resolveCallCursor(
+        response.call_cursor,
+        response.called_numbers,
+      );
+      const isStaleResponse = responseCursor < latestCallCursorRef.current;
+
+      if (isStaleResponse) {
+        return;
+      }
+
+      latestCallCursorRef.current = responseCursor;
       autoCallFailureCountRef.current = 0;
+      setDrawCursor(responseCursor);
       setCalledNumbers(response.called_numbers || []);
 
       const { label: calledLabel, number: calledNumber } =
@@ -969,7 +1051,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (calledLabel) {
         setCurrentCalledNumber(calledLabel);
-        await enqueueCalledBallAnnouncement(calledLabel, calledNumber);
+        await enqueueCalledBallAnnouncement(
+          calledLabel,
+          calledNumber,
+          responseCursor,
+        );
       }
 
       if (response.is_complete) {
