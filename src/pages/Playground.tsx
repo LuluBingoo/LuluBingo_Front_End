@@ -609,6 +609,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
+    const postVoiceDisplayMs = 450;
     const resolvedCalledNumber =
       typeof calledNumber === "number" ? calledNumber : mapLabelToNumber(label);
 
@@ -632,6 +633,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
     await playAudio(label, true);
+
+    if (activeNumberVoiceIdRef.current === announcementId) {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, postVoiceDisplayMs);
+      });
+    }
+
     if (activeNumberVoiceIdRef.current === announcementId) {
       setShowBallPopup(false);
       setIsAnnouncingNumber(false);

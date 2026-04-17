@@ -680,36 +680,6 @@ export const Settings: React.FC = () => {
                   <Select
                     value={autoCallSeconds}
                     onValueChange={async (value) => {
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-slate-900 dark:text-white">
-                            Default Game Bet
-                          </p>
-                          <p className="text-sm text-slate-500 dark:text-slate-300">
-                            Used as the initial bet value in New Game setup.
-                            Minimum is 10 ETB.
-                          </p>
-                          {renderSaveStatus("defaultGameBet")}
-                        </div>
-                        <Input
-                          type="number"
-                          min={10}
-                          value={defaultGameBet}
-                          onChange={(event) =>
-                            setDefaultGameBet(event.target.value)
-                          }
-                          onBlur={() => {
-                            void handleSaveDefaultGameBet();
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              void handleSaveDefaultGameBet();
-                            }
-                          }}
-                          className="w-45"
-                        />
-                      </div>;
                       setAutoCallSeconds(value);
                       localStorage.setItem("autoCallSeconds", value);
                       await persistFeatureFlagsPatch(
@@ -728,6 +698,35 @@ export const Settings: React.FC = () => {
                       <SelectItem value="10">10s</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Minimum Initial Bet Amount
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Used as the initial bet value in New Game setup. Minimum
+                      is 10 ETB.
+                    </p>
+                    {renderSaveStatus("defaultGameBet")}
+                  </div>
+                  <Input
+                    type="number"
+                    min={10}
+                    value={defaultGameBet}
+                    onChange={(event) => setDefaultGameBet(event.target.value)}
+                    onBlur={() => {
+                      void handleSaveDefaultGameBet();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void handleSaveDefaultGameBet();
+                      }
+                    }}
+                    className="w-45"
+                  />
                 </div>
 
                 <div className="flex items-start justify-between gap-3">
