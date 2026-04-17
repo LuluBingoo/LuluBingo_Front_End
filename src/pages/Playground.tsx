@@ -238,6 +238,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const lastAutoCallWarningRef = React.useRef(0);
   const winnerClaimInFlightRef = React.useRef(false);
   const activeNumberVoiceIdRef = React.useRef(0);
+  const announcementQueueRef = React.useRef<Promise<void>>(Promise.resolve());
+  const activeAnnouncementNumberRef = React.useRef<number | null>(null);
   const voiceAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const isWinnerModalOpen = Boolean(winnerCelebration);
@@ -685,6 +687,38 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
   };
 
+  const enqueueCalledBallAnnouncement = (
+    label: string,
+    calledNumber?: number | null,
+  ) => {
+    const { label: resolvedLabel, number: resolvedCalledNumber } =
+      resolveCalledLabelAndNumber(label, calledNumber ?? null);
+
+    announcementQueueRef.current = announcementQueueRef.current
+      .catch(() => {
+        // Keep the queue alive even if a previous announcement failed.
+      })
+      .then(async () => {
+        if (
+          resolvedCalledNumber !== null &&
+          resolvedCalledNumber === lastAnimatedCalledRef.current
+        ) {
+          return;
+        }
+
+        activeAnnouncementNumberRef.current = resolvedCalledNumber;
+        try {
+          await triggerCalledBall(resolvedLabel, resolvedCalledNumber);
+        } finally {
+          if (activeAnnouncementNumberRef.current === resolvedCalledNumber) {
+            activeAnnouncementNumberRef.current = null;
+          }
+        }
+      });
+
+    return announcementQueueRef.current;
+  };
+
   const triggerWinnerCelebration = (
     cartelaNumber: string,
     pattern?: string | null,
@@ -736,7 +770,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
     if (!currentGameConfig?.gameCode || syncInFlightRef.current) return;
     if (
       !force &&
-      autoCall &&
       (callInFlightRef.current || isCallingNumber || isAnnouncingNumber)
     ) {
       return;
@@ -762,7 +795,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         );
 
         if (state.current_called_number !== lastAnimatedCalledRef.current) {
-          void triggerCalledBall(
+          void enqueueCalledBallAnnouncement(
             resolvedCurrentLabel,
             state.current_called_number,
           );
@@ -936,7 +969,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (calledLabel) {
         setCurrentCalledNumber(calledLabel);
-        await triggerCalledBall(calledLabel, calledNumber);
+        await enqueueCalledBallAnnouncement(calledLabel, calledNumber);
       }
 
       if (response.is_complete) {
