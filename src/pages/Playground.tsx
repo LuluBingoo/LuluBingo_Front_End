@@ -809,7 +809,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             isCallingNumber ||
             isAnnouncingNumber
           ) {
-            return prev;
+            return prev <= 1 ? 1 : prev - 1;
           }
 
           if (prev <= 1) {
@@ -1659,9 +1659,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     return new Promise<void>((resolve) => {
       let settled = false;
+      const fallbackTimeoutId = window.setTimeout(() => {
+        settle();
+      }, 7000);
+
       const settle = () => {
         if (settled) return;
         settled = true;
+        window.clearTimeout(fallbackTimeoutId);
         audio.removeEventListener("ended", settle);
         audio.removeEventListener("error", settle);
         audio.removeEventListener("pause", settle);
@@ -1936,6 +1941,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           isPaused={isPaused}
           togglePauseGame={togglePauseGame}
           autoCallTimer={autoCallTimer}
+          autoCallCycleSeconds={getConfiguredAutoCallSeconds()}
           t={t}
           shuffleSpeedMs={shuffleSpeedMs}
           setShuffleSpeedMs={setShuffleSpeedMs}

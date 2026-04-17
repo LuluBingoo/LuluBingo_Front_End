@@ -93,17 +93,27 @@ export const Settings: React.FC = () => {
       }
     }
 
-    const nextFlags = {
+    const optimisticFlags = {
       ...featureFlagsRef.current,
       ...patch,
     };
-    featureFlagsRef.current = nextFlags;
-    setFeatureFlags(nextFlags);
+    featureFlagsRef.current = optimisticFlags;
+    setFeatureFlags(optimisticFlags);
 
     try {
-      await shopApi.updateProfile({
-        feature_flags: nextFlags,
+      const updatedProfile = await shopApi.updateProfile({
+        feature_flags: patch,
       });
+
+      const resolvedFlags =
+        updatedProfile.feature_flags &&
+        typeof updatedProfile.feature_flags === "object"
+          ? updatedProfile.feature_flags
+          : optimisticFlags;
+
+      featureFlagsRef.current = resolvedFlags;
+      setFeatureFlags(resolvedFlags);
+
       if (settingKey) {
         setSaveStatus((prev) => ({ ...prev, [settingKey]: "saved" }));
         saveStatusTimeoutsRef.current[settingKey] = window.setTimeout(() => {
@@ -201,7 +211,7 @@ export const Settings: React.FC = () => {
     };
 
     loadSettings();
-  }, [popup, setLanguage]);
+  }, [popup, setLanguage, setTheme]);
 
   const handleSaveDefaultGameBet = async () => {
     const parsed = Number.parseFloat(defaultGameBet);
@@ -565,7 +575,6 @@ export const Settings: React.FC = () => {
                     onValueChange={async (value: string) => {
                       if (value === "en" || value === "am") {
                         setLanguage(value);
-                        localStorage.setItem("language", value);
                         await persistFeatureFlagsPatch(
                           { language: value },
                           "Language changed locally, but backend sync failed.",
@@ -829,7 +838,6 @@ export const Settings: React.FC = () => {
                     onClick={async () => {
                       const nextTheme = theme === "dark" ? "light" : "dark";
                       setTheme(nextTheme);
-                      localStorage.setItem("theme", nextTheme);
                       await persistFeatureFlagsPatch(
                         { theme: nextTheme },
                         "Theme changed locally, but backend sync failed.",

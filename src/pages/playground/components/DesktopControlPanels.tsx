@@ -28,6 +28,7 @@ interface DesktopControlPanelsProps {
   isPaused: boolean;
   togglePauseGame: () => void;
   autoCallTimer: number;
+  autoCallCycleSeconds: number;
   t: (key: string) => string;
   shuffleSpeedMs: number;
   setShuffleSpeedMs: React.Dispatch<React.SetStateAction<number>>;
@@ -63,6 +64,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
   isPaused,
   togglePauseGame,
   autoCallTimer,
+  autoCallCycleSeconds,
   t,
   shuffleSpeedMs,
   setShuffleSpeedMs,
@@ -87,6 +89,15 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
       : gameStatus === "pending"
         ? "pending"
         : "completed";
+  const cycleSeconds = Math.max(1, autoCallCycleSeconds);
+  const clampedTimer = Math.max(0, Math.min(autoCallTimer, cycleSeconds));
+  const countdownProgress = autoCall
+    ? ((cycleSeconds - clampedTimer) / cycleSeconds) * 100
+    : 0;
+  const activeCountdownSegments = autoCall
+    ? Math.max(0, Math.min(10, Math.round((countdownProgress / 100) * 10)))
+    : 0;
+  const isAutoCallBusy = autoCall && (isCallingNumber || isCheckingCartela);
 
   return (
     <div className="grid gap-4 xl:grid-cols-3">
@@ -221,9 +232,11 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                   <span className="mt-1 block text-xs text-slate-500">
                     {isPaused
                       ? "Paused"
-                      : autoCall
-                        ? `Next in ${autoCallTimer} ${t("playground.seconds")}`
-                        : "Tap to enable automatic calling"}
+                      : isAutoCallBusy
+                        ? "Calling..."
+                        : autoCall
+                          ? `Next in ${autoCallTimer} ${t("playground.seconds")}`
+                          : "Tap to enable automatic calling"}
                   </span>
                 </div>
 
@@ -261,6 +274,31 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                 >
                   {autoCall ? "On" : "Off"}
                 </span>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-slate-200 bg-linear-to-r from-white to-slate-50 p-3 shadow-inner dark:border-slate-700 dark:from-slate-900 dark:to-slate-800/80">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    Counter
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {autoCall ? `${clampedTimer}s` : "--"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-10 gap-1">
+                  {Array.from({ length: 10 }, (_, index) => (
+                    <span
+                      key={`segment-${index}`}
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        index < activeCountdownSegments
+                          ? isAutoCallBusy
+                            ? "bg-linear-to-r from-amber-400 to-orange-500"
+                            : "bg-linear-to-r from-emerald-400 to-teal-500"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}

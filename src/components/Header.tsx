@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isSavingTheme, setIsSavingTheme] = useState(false);
   const [isSiteFullscreen, setIsSiteFullscreen] = useState(false);
 
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const headerParticles = React.useMemo(
     () =>
       Array.from({ length: 14 }, (_, index) => ({
@@ -67,22 +67,12 @@ export const Header: React.FC<HeaderProps> = ({
     }
 
     const nextTheme = theme === "light" ? "dark" : "light";
-    toggleTheme();
-    localStorage.setItem("theme", nextTheme);
+    setTheme(nextTheme);
 
     setIsSavingTheme(true);
     try {
-      const profile = await shopApi.getProfile();
-      const flags =
-        profile.feature_flags && typeof profile.feature_flags === "object"
-          ? profile.feature_flags
-          : {};
-
       await shopApi.updateProfile({
-        feature_flags: {
-          ...flags,
-          theme: nextTheme,
-        },
+        feature_flags: { theme: nextTheme },
       });
     } catch (error) {
       console.error("Failed to auto-save theme", error);
@@ -180,7 +170,7 @@ export const Header: React.FC<HeaderProps> = ({
           <PlusCircle className="h-5 w-5" />
         </button>
       </div>
-      
+
       <div className="pointer-events-none relative z-10 flex items-center justify-center gap-2">
         <Trophy className="h-5 w-5 text-red-700 dark:text-red-400" />
         <div className="text-base font-bold tracking-wide text-red-700 sm:text-lg dark:text-red-400">
@@ -214,7 +204,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={handleToggleSiteFullscreen}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            aria-label={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-label={
+              isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+            }
             title={isSiteFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             {isSiteFullscreen ? (
