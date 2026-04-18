@@ -1,198 +1,3 @@
-// import React, { useState } from 'react';
-// import { motion } from 'motion/react';
-// import { Card } from '../components/ui/card';
-// import { Button } from '../components/ui/button';
-// import { Input } from '../components/ui/input';
-// import { Check } from 'lucide-react';
-// import { useLanguage } from '../contexts/LanguageContext';
-// import './NewGame.css';
-
-// interface NewGameProps {
-//   onGameCreated: (config: GameConfig, patterns: number[]) => void;
-// }
-
-// interface GameConfig {
-//   game: string;
-//   betBirr: string;
-//   numPlayers: string;
-//   winBirr: string;
-
-// }
-
-// export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
-//   const { t } = useLanguage();
-//   const [selectedPatterns, setSelectedPatterns] = useState<number[]>([]);
-//   const [gameConfig, setGameConfig] = useState<GameConfig>({
-//     game: '2',
-//     betBirr: '10',
-//     numPlayers: '',
-//     winBirr: '0',
-
-//   });
-
-//   const handlePatternClick = (num: number) => {
-//     if (selectedPatterns.length >= parseInt(gameConfig.numPlayers) && !selectedPatterns.includes(num)) {
-//       alert(`You can only select up to ${gameConfig.numPlayers} patterns`);
-//       return;
-//     }
-//     setSelectedPatterns(prev =>
-//       prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]
-//     );
-//   };
-
-//   const handleConfigChange = (field: keyof GameConfig, value: string) => {
-//     setGameConfig(prev => ({ ...prev, [field]: value }));
-//   };
-
-//   const handleConfirm = () => {
-//     if (!gameConfig.numPlayers) {
-//       alert('Please enter the number of players');
-//       return;
-//     }
-//     if (selectedPatterns.length === 0) {
-//       alert('Please select at least one pattern');
-//       return;
-//     }
-//     if(gameConfig.winBirr === '0' || gameConfig.winBirr === ''){
-//       gameConfig.winBirr = (parseInt(gameConfig.betBirr) * selectedPatterns.length).toString();
-//     }
-
-//     // Instead of showing alert, pass data to parent
-//     onGameCreated(gameConfig, selectedPatterns);
-
-//     // Optional: Still show confirmation message
-//     const message = `Game Configuration:\n
-// Game: ${gameConfig.game}
-// Bet: ${gameConfig.betBirr} Birr
-// Players: ${gameConfig.numPlayers}
-// Win: ${gameConfig.winBirr} Birr
-// Selected Patterns: ${selectedPatterns.length}
-
-// Game created successfully! Redirecting to Playground...`;
-
-//     alert(message);
-//   };
-
-//   const handleClear = () => {
-//     if (window.confirm('Clear all selected patterns?')) {
-//       setSelectedPatterns([]);
-//     }
-//   };
-
-//   const patterns = Array.from({ length: 100 }, (_, i) => i + 1);
-
-//   return (
-//     <div className="new-game">
-//       <motion.div
-//         className="new-game-header"
-//         initial={{ opacity: 0, y: 20 }}
-//         animate={{ opacity: 1, y: 0 }}
-//       >
-//         {/* <div className="wallet-badge">{t('newGame.badWallet')}</div> */}
-//         <h1 className=''>{t('newGame.title')}</h1>
-//       </motion.div>
-
-//       <div className="new-game-content">
-//         <motion.div
-//           className="game-config"
-//           initial={{ opacity: 0, x: -20 }}
-//           animate={{ opacity: 1, x: 0 }}
-//           transition={{ delay: 0.1 }}
-//         >
-//           <Card className="config-card">
-//             <h2>{t('newGame.gameConfig')}</h2>
-//             <div className="config-form">
-//               <div className="form-group">
-//                 <label>{t('newGame.game')}</label>
-//                 <Input
-//                   type="number"
-//                   value={gameConfig.game}
-//                   onChange={(e) => handleConfigChange('game', e.target.value)}
-//                 />
-//               </div>
-//               <div className="form-group">
-//                 <label>{t('newGame.betBirr')}</label>
-//                 <Input
-//                   type="number"
-//                   value={gameConfig.betBirr}
-//                   onChange={(e) => handleConfigChange('betBirr', e.target.value)}
-//                 />
-//               </div>
-//               <div className="form-group">
-//                 <label>{t('newGame.numPlayers')}</label>
-//                 <Input
-//                   type="number"
-//                   placeholder={t('newGame.enterNumber')}
-//                   value={gameConfig.numPlayers}
-//                   onChange={(e) => handleConfigChange('numPlayers', e.target.value)}
-//                 />
-//               </div>
-//               <div className="form-group">
-//                 <label>{t('newGame.winBirr')}</label>
-//                 <Input
-//                   type="number"
-//                   value={gameConfig.winBirr}
-//                   onChange={(e) => handleConfigChange('winBirr', e.target.value)}
-//                 />
-//               </div>
-
-//             </div>
-//           </Card>
-//         </motion.div>
-
-//         <motion.div
-//           className="patterns-section"
-//           initial={{ opacity: 0, x: 20 }}
-//           animate={{ opacity: 1, x: 0 }}
-//           transition={{ delay: 0.2 }}
-//         >
-//           <Card className="patterns-card">
-//             <h2>{t('newGame.choosePatterns')}</h2>
-//             <div className="patterns-grid">
-//               {patterns.map((num) => (
-//                 <motion.button
-//                   key={num}
-//                   className={`pattern-box ${selectedPatterns.includes(num) ? 'selected' : ''}`}
-//                   onClick={() => handlePatternClick(num)}
-//                   whileHover={{ scale: 1.05 }}
-//                   whileTap={{ scale: 0.95 }}
-//                 >
-//                   {selectedPatterns.includes(num) && (
-//                     <motion.div
-//                       className="check-icon"
-//                       initial={{ scale: 0 }}
-//                       animate={{ scale: 1 }}
-//                       exit={{ scale: 0 }}
-//                     >
-//                       <Check size={16} />
-//                     </motion.div>
-//                   )}
-//                   {num}
-//                 </motion.button>
-//               ))}
-//             </div>
-//           </Card>
-//         </motion.div>
-//       </div>
-
-//       <motion.div
-//         className="action-buttons"
-//         initial={{ opacity: 0, y: 20 }}
-//         animate={{ opacity: 1, y: 0 }}
-//         transition={{ delay: 0.3 }}
-//       >
-//         <Button className="confirm-btn" onClick={handleConfirm}>
-//           {t('common.confirm')}
-//         </Button>
-
-//         <Button className="clear-btn" variant="outline" onClick={handleClear}>
-//           {t('common.clear')}
-//         </Button>
-//       </motion.div>
-//     </div>
-//   );
-// };
-
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Card } from "../components/ui/card";
@@ -247,6 +52,7 @@ type LockedPlayerEntry = {
 };
 
 const DEFAULT_GAME_BET = 10;
+const BET_CURRENCY_LABEL = "ETB";
 
 const resolveDefaultGameBet = (
   featureFlags?: Record<string, unknown> | null,
@@ -265,7 +71,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const popup = usePopup();
   const [session, setSession] = useState<ShopBingoSession | null>(null);
   const [showBetDialog, setShowBetDialog] = useState(true);
-  const [betInput, setBetInput] = useState(DEFAULT_GAME_BET.toString());
+  const [betInput, setBetInput] = useState(DEFAULT_GAME_BET.toFixed(2));
   const [playersInput, setPlayersInput] = useState("4");
   const [playMode, setPlayMode] = useState<"online" | "offline">("offline");
   const [fixedPlayers, setFixedPlayers] = useState(4);
@@ -278,6 +84,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   );
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [isLockingBet, setIsLockingBet] = useState(false);
   const [unlockingPlayerName, setUnlockingPlayerName] = useState<string | null>(
     null,
   );
@@ -676,26 +483,37 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     }
   };
 
-  const handleLockBet = () => {
-    const parsed = Number.parseFloat(betInput);
-    if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
-      popup.warning(
-        `Minimum bet per cartella is ${DEFAULT_GAME_BET} ${currencyLabel}.`,
-      );
-      return;
-    }
+  const handleLockBet = async () => {
+    if (isLockingBet) return;
+    setIsLockingBet(true);
 
-    const parsedPlayers = Number.parseInt(playersInput, 10);
-    if (!Number.isFinite(parsedPlayers) || parsedPlayers < 2) {
-      popup.warning("Minimum number of players is 2.");
-      return;
-    }
+    try {
+      const latestProfile = await syncShopFinancials();
+      const settingsBet = resolveDefaultGameBet(latestProfile?.feature_flags);
+      const parsed = Number.parseFloat(settingsBet);
+      if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
+        popup.warning(
+          `Minimum bet per cartella is ${DEFAULT_GAME_BET} ${BET_CURRENCY_LABEL}.`,
+        );
+        return;
+      }
 
-    const locked = parsed.toFixed(2);
-    setBetPerCartella(locked);
-    setFixedPlayers(parsedPlayers);
-    setBetLocked(true);
-    setShowBetDialog(false);
+      setBetInput(settingsBet);
+
+      const parsedPlayers = Number.parseInt(playersInput, 10);
+      if (!Number.isFinite(parsedPlayers) || parsedPlayers < 2) {
+        popup.warning("Minimum number of players is 2.");
+        return;
+      }
+
+      const locked = parsed.toFixed(2);
+      setBetPerCartella(locked);
+      setFixedPlayers(parsedPlayers);
+      setBetLocked(true);
+      setShowBetDialog(false);
+    } finally {
+      setIsLockingBet(false);
+    }
   };
 
   const handleCheckPaymentAndCreate = async () => {
@@ -926,9 +744,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </DialogTitle>
 
                     <DialogDescription className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
-                      This step is mandatory. Enter bet amount once to continue.
-                      Minimum is {DEFAULT_GAME_BET} {currencyLabel} per
-                      cartella.
+                      This step is mandatory. Bet amount is loaded from
+                      Settings. Minimum is {DEFAULT_GAME_BET}{" "}
+                      {BET_CURRENCY_LABEL} per cartella.
                     </DialogDescription>
                   </div>
 
@@ -945,18 +763,19 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   </label>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="inline-flex h-11 min-w-12 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-2 text-sm font-black text-rose-700 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                      {currencyLabel}
+                      {BET_CURRENCY_LABEL}
                     </span>
                     <Input
                       type="number"
                       min={DEFAULT_GAME_BET}
                       value={betInput}
-                      onChange={(e) => setBetInput(e.target.value)}
-                      className="h-11 border-rose-200 bg-white text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-950"
+                      disabled
+                      className="h-11 border-rose-200 bg-slate-100 text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-900"
                     />
                   </div>
                   <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Minimum: {DEFAULT_GAME_BET} {currencyLabel} per cartella
+                    Minimum: {DEFAULT_GAME_BET} {BET_CURRENCY_LABEL} per
+                    cartella
                   </p>
                 </div>
 
@@ -1046,8 +865,11 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                 <Button
                   className="h-11 bg-linear-to-r from-rose-600 via-red-600 to-red-800 px-6 font-bold text-white shadow-[0_10px_24px_rgba(225,29,72,0.4)] hover:from-rose-700 hover:via-red-700 hover:to-red-900"
                   onClick={handleLockBet}
+                  disabled={isLockingBet}
                 >
-                  {t("newGame.lockBetAmount")}
+                  {isLockingBet
+                    ? "Loading Settings..."
+                    : t("newGame.lockBetAmount")}
                 </Button>
               </DialogFooter>
             </div>
