@@ -165,7 +165,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
       localStorage.getItem("autoCallSeconds") || "5",
       10,
     );
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+    // Sub-3 second cadence is too aggressive for full voice playback.
+    return Number.isFinite(parsed) && parsed >= 3 ? parsed : 5;
   }, []);
 
   // State for called numbers & auto call
@@ -677,7 +678,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
-    const postVoiceDisplayMs = 250;
+    const postVoiceDisplayMs = 180;
+    const minimumAnnouncementMs = 1200;
     const { label: resolvedLabel, number: resolvedCalledNumber } =
       resolveCalledLabelAndNumber(label, calledNumber ?? null);
 
@@ -700,7 +702,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
+    const announcementStartedAt = Date.now();
     await playAudio(resolvedLabel, true);
+
+    if (activeNumberVoiceIdRef.current === announcementId) {
+      const elapsedMs = Date.now() - announcementStartedAt;
+      const remainingMinimumMs = Math.max(0, minimumAnnouncementMs - elapsedMs);
+      if (remainingMinimumMs > 0) {
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, remainingMinimumMs);
+        });
+      }
+    }
 
     if (activeNumberVoiceIdRef.current === announcementId) {
       await new Promise<void>((resolve) => {
@@ -953,7 +966,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             isCallingNumber ||
             isAnnouncingNumber
           ) {
-            return prev <= 1 ? 1 : prev - 1;
+            return prev;
           }
 
           if (prev <= 1) {
@@ -1815,38 +1828,58 @@ export const Playground: React.FC<PlaygroundProps> = ({
     audio.preload = "auto";
     targetRef.current = audio;
 
-    const playPromise = audio.play().catch(() => {
-      // Ignore autoplay/interrupt errors because calls can happen rapidly.
-    });
-
     if (!waitForEnd) {
-      return playPromise;
+      return audio.play().catch(() => {
+        // Ignore autoplay/interrupt errors because calls can happen rapidly.
+      });
     }
 
     return new Promise<void>((resolve) => {
       let settled = false;
-      const fallbackTimeoutId = window.setTimeout(() => {
-        settle();
-      }, 7000);
+      const startedAt = Date.now();
+      const minimumWaitMs = isCalledBallKey ? 900 : 0;
 
       const settle = () => {
         if (settled) return;
         settled = true;
         window.clearTimeout(fallbackTimeoutId);
-        audio.removeEventListener("ended", settle);
-        audio.removeEventListener("error", settle);
-        audio.removeEventListener("pause", settle);
+        audio.removeEventListener("ended", onEnded);
+        audio.removeEventListener("error", onFailure);
+        audio.removeEventListener("abort", onFailure);
         resolve();
       };
 
-      audio.addEventListener("ended", settle, { once: true });
-      audio.addEventListener("error", settle, { once: true });
-      audio.addEventListener("pause", settle, { once: true });
-
-      void playPromise.finally(() => {
-        if (audio.paused && audio.currentTime === 0) {
-          settle();
+      const settleWithMinimum = () => {
+        const elapsedMs = Date.now() - startedAt;
+        const remainingMinimumMs = Math.max(0, minimumWaitMs - elapsedMs);
+        if (remainingMinimumMs > 0) {
+          window.setTimeout(() => {
+            settle();
+          }, remainingMinimumMs);
+          return;
         }
+        settle();
+      };
+
+      const onEnded = () => {
+        settle();
+      };
+
+      const onFailure = () => {
+        settleWithMinimum();
+      };
+
+      const fallbackTimeoutId = window.setTimeout(() => {
+        settleWithMinimum();
+      }, 7000);
+
+      audio.addEventListener("ended", onEnded, { once: true });
+      audio.addEventListener("error", onFailure, { once: true });
+      audio.addEventListener("abort", onFailure, { once: true });
+
+      void audio.play().catch(() => {
+        // If playback cannot start, keep cadence smooth instead of instant chaining.
+        settleWithMinimum();
       });
     });
   };
