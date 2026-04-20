@@ -17,7 +17,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
 import { CartelaModal } from "../components/Cartela";
-import { gamesApi } from "../services/api";
+import { gamesApi, shopApi } from "../services/api";
 import { ApiError } from "../services/api/client";
 import { formatCurrency } from "../services/settings";
 import { Game } from "../services/types";
@@ -48,6 +48,11 @@ const parseCartelaNumber = (value: string | number): number | null => {
   if (!digits) return null;
   const parsed = Number.parseInt(digits, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const parseMoneyAmount = (value: unknown, fallback = 0): number => {
+  const parsed = Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 export const Playground: React.FC<PlaygroundProps> = ({
@@ -1204,7 +1209,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   // Handle winner declaration
-  const handleDeclareWinner = async (cartelaNumber: string) => {
+  const handleDeclareWinner = async (
+    cartelaNumber: string,
+    pattern: "row" | "diagonal" = "row",
+  ) => {
     if (winnerClaimInFlightRef.current) {
       return;
     }
@@ -1225,6 +1233,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
       if (currentGameConfig?.gameCode) {
         const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
           cartella_index: winnerIndex,
+          pattern,
           called_numbers: calledNumbers,
           ban_on_false_claim: false,
         });
@@ -1730,13 +1739,57 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     setIsAddingPlayer(true);
     try {
+      const normalizedBetPerCartella = parseMoneyAmount(
+        currentGameConfig.betBirr || restoredGame?.bet_amount || "10.00",
+        10,
+      );
+      const additionalPool =
+        normalizedBetPerCartella * addPlayerCartellas.length;
+
+      let currentTotalPool = parseMoneyAmount(
+        restoredGame?.total_pool ||
+          restoredGame?.win_amount ||
+          currentGameConfig.winBirr,
+        0,
+      );
+
+      if (currentTotalPool <= 0) {
+        currentTotalPool =
+          normalizedBetPerCartella * Math.max(activeCartelas.length, 1);
+      }
+
+      const projectedTotalPool = currentTotalPool + additionalPool;
+
+      const profile = await shopApi.getProfile();
+      const availableBalance = parseMoneyAmount(profile.wallet_balance, 0);
+      const effectiveShopCutPercentage = parseMoneyAmount(
+        profile.shop_cut_percentage ?? restoredGame?.cut_percentage,
+        parseMoneyAmount(restoredGame?.cut_percentage, 10),
+      );
+      const effectiveLuluCutPercentage = parseMoneyAmount(
+        profile.lulu_cut_percentage ?? restoredGame?.lulu_cut_percentage,
+        parseMoneyAmount(restoredGame?.lulu_cut_percentage, 15),
+      );
+
+      const projectedShopCut =
+        (projectedTotalPool * effectiveShopCutPercentage) / 100;
+      const projectedLuluCut =
+        (projectedShopCut * effectiveLuluCutPercentage) / 100;
+
+      if (availableBalance < projectedLuluCut) {
+        const shortBy = Math.max(0, projectedLuluCut - availableBalance);
+        popup.error(
+          `Insufficient Lulu reserve for adding this player. Required ${formatCurrency(projectedLuluCut.toFixed(2))}, available ${formatCurrency(availableBalance.toFixed(2))}, short by ${formatCurrency(shortBy.toFixed(2))}.`,
+        );
+        return;
+      }
+
       const updatedGame = await gamesApi.addPlayerToGame(
         currentGameConfig.gameCode,
         {
           player_name: trimmedName,
           cartella_numbers: [...addPlayerCartellas].sort((a, b) => a - b),
-          bet_per_cartella:
-            currentGameConfig.betBirr || restoredGame?.bet_amount || "10.00",
+          bet_per_cartella: normalizedBetPerCartella.toFixed(2),
         },
       );
 
@@ -2100,7 +2153,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           }
         }}
       >
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="max-h-[90vh] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Add Player While Paused</DialogTitle>
             <DialogDescription>
@@ -2109,7 +2162,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto pr-1">
             <div className="space-y-2">
               <label className="text-sm font-medium">Player Name</label>
               <Input
@@ -2144,23 +2197,25 @@ export const Playground: React.FC<PlaygroundProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
-              {addPlayerPageRange.map((number) => {
-                const isSelected = addPlayerCartellas.includes(number);
-                const isTaken = takenCartellaNumbers.has(number);
+            <div className="max-h-[46vh] overflow-y-auto rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+                {addPlayerPageRange.map((number) => {
+                  const isSelected = addPlayerCartellas.includes(number);
+                  const isTaken = takenCartellaNumbers.has(number);
 
-                return (
-                  <button
-                    key={`add-player-${number}`}
-                    type="button"
-                    className={`relative flex h-12 w-12 items-center justify-center rounded-full border text-sm font-semibold transition ${isTaken ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:border-red-300 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"}`}
-                    onClick={() => toggleAddPlayerCartella(number)}
-                    disabled={isTaken || isAddingPlayer}
-                  >
-                    {number}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={`add-player-${number}`}
+                      type="button"
+                      className={`relative flex h-12 w-12 items-center justify-center rounded-full border text-sm font-semibold transition ${isTaken ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:border-red-300 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"}`}
+                      onClick={() => toggleAddPlayerCartella(number)}
+                      disabled={isTaken || isAddingPlayer}
+                    >
+                      {number}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {addPlayerCartellas.length > 0 && (

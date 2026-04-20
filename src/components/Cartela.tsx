@@ -20,7 +20,10 @@ interface CartelaModalProps {
   cartelaDataMap?: Record<string, number[]>;
   cartellaNumberMap?: Record<string, number>;
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
-  onDeclareWinner?: (cartelaNumber: string) => void;
+  onDeclareWinner?: (
+    cartelaNumber: string,
+    pattern: "row" | "diagonal",
+  ) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
 }
@@ -44,6 +47,9 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [selectedCartela, setSelectedCartela] = useState(cartelaNumber || "");
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedWinningPattern, setSelectedWinningPattern] = useState<
+    "row" | "diagonal"
+  >("row");
 
   const normalizeCartelaNumber = useCallback((value: string | number) => {
     const digits = String(value).replace(/\D/g, "");
@@ -155,7 +161,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     [calledNumbers],
   );
 
-  const hasWinningPattern = useMemo(() => {
+  const hasRowPattern = useMemo(() => {
     if (cartelaData.length !== 25) {
       return false;
     }
@@ -164,7 +170,18 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
     );
 
-    const hasRow = grid.some((row) => row.every(isMarked));
+    return grid.some((row) => row.every(isMarked));
+  }, [cartelaData, isMarked]);
+
+  const hasDiagonalPattern = useMemo(() => {
+    if (cartelaData.length !== 25) {
+      return false;
+    }
+
+    const grid = Array.from({ length: 5 }, (_, row) =>
+      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
+    );
+
     const hasMainDiagonal = [0, 1, 2, 3, 4].every((idx) =>
       isMarked(grid[idx][idx]),
     );
@@ -172,8 +189,24 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       isMarked(grid[idx][4 - idx]),
     );
 
-    return hasRow || hasMainDiagonal || hasAntiDiagonal;
+    return hasMainDiagonal || hasAntiDiagonal;
   }, [cartelaData, isMarked]);
+
+  const hasWinningPattern = hasRowPattern || hasDiagonalPattern;
+
+  const selectedPatternMatched =
+    selectedWinningPattern === "row" ? hasRowPattern : hasDiagonalPattern;
+
+  useEffect(() => {
+    if (!hasDiagonalPattern) {
+      setSelectedWinningPattern("row");
+      return;
+    }
+
+    if (!hasRowPattern) {
+      setSelectedWinningPattern("diagonal");
+    }
+  }, [hasRowPattern, hasDiagonalPattern]);
 
   const handleDeclareWinner = async () => {
     if (cartelaData.length !== 25) {
@@ -190,14 +223,21 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       return;
     }
 
+    if (!selectedPatternMatched) {
+      popup.warning(
+        `Cartela ${selectedCartela} does not have a complete ${selectedWinningPattern} yet.`,
+      );
+      return;
+    }
+
     const confirmed = await popup.confirm({
       title: `Declare Winner`,
-      description: `Declare cartela ${selectedCartela} as winner?`,
+      description: `Declare cartela ${selectedCartela} as winner with ${selectedWinningPattern} pattern?`,
       confirmText: "Declare",
       cancelText: "Cancel",
     });
     if (confirmed) {
-      onDeclareWinner?.(selectedCartela);
+      onDeclareWinner?.(selectedCartela, selectedWinningPattern);
     }
   };
 
@@ -410,14 +450,56 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
                     {/* Action Buttons */}
                     {gameActive && (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          className="bg-emerald-600 text-white hover:bg-emerald-700"
-                          onClick={handleDeclareWinner}
-                        >
-                          <Trophy size={18} />
-                          Declare Winner
-                        </Button>
+                      <div className="space-y-3">
+                        {hasWinningPattern && (
+                          <>
+                            <div className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Winning Type
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    selectedWinningPattern === "row"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  onClick={() => setSelectedWinningPattern("row")}
+                                  disabled={!hasRowPattern}
+                                >
+                                  Row Winning
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    selectedWinningPattern === "diagonal"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  onClick={() =>
+                                    setSelectedWinningPattern("diagonal")
+                                  }
+                                  disabled={!hasDiagonalPattern}
+                                >
+                                  Diagonal Winning
+                                </Button>
+                              </div>
+                            </div>
+
+                            <Button
+                              className="bg-emerald-600 text-white hover:bg-emerald-700"
+                              onClick={handleDeclareWinner}
+                              disabled={!selectedPatternMatched}
+                            >
+                              <Trophy size={18} />
+                              Declare Winner
+                            </Button>
+                          </>
+                        )}
+
                         <Button
                           className="border-red-300 text-red-700 hover:bg-red-50"
                           variant="outline"
@@ -426,6 +508,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                           <UserX size={18} />
                           Remove Player
                         </Button>
+                        </div>
                       </div>
                     )}
                   </motion.div>
