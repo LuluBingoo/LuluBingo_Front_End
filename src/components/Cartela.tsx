@@ -466,7 +466,9 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                                       ? "default"
                                       : "outline"
                                   }
-                                  onClick={() => setSelectedWinningPattern("row")}
+                                  onClick={() =>
+                                    setSelectedWinningPattern("row")
+                                  }
                                   disabled={!hasRowPattern}
                                 >
                                   Row Winning
@@ -508,7 +510,6 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                           <UserX size={18} />
                           Remove Player
                         </Button>
-                        </div>
                       </div>
                     )}
                   </motion.div>
