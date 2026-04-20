@@ -124,14 +124,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       }
     }
 
-    for (let candidate = 1; candidate <= targetPlayers; candidate += 1) {
-      if (!usedNumbers.has(candidate)) {
-        return candidate;
-      }
+    let candidate = 1;
+    while (usedNumbers.has(candidate)) {
+      candidate += 1;
     }
 
-    return targetPlayers;
-  }, [session?.players_data, stagedPlayers, targetPlayers]);
+    return candidate;
+  }, [session?.players_data, stagedPlayers]);
 
   const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
 
@@ -344,10 +343,6 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       popup.warning("Set and lock bet amount first.");
       return;
     }
-    if (totalPaidPlayers >= targetPlayers) {
-      popup.info(`All ${targetPlayers} players are already locked.`);
-      return;
-    }
     if (selectedCartellas.length === 0) {
       popup.warning("Select at least one cartella.");
       return;
@@ -519,14 +514,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const handleCheckPaymentAndCreate = async () => {
     const serverLockedCount = session?.players_data.length ?? 0;
     const stagedLockedCount = stagedPlayers.length;
+    const lockedPlayerCount = serverLockedCount + stagedLockedCount;
 
     if (!session?.session_id && stagedLockedCount === 0) {
       popup.warning(t("newGame.lockAllPlayersFirst"));
       return;
     }
 
-    if (serverLockedCount + stagedLockedCount < targetPlayers) {
-      popup.warning(`Lock all ${targetPlayers} players first.`);
+    if (lockedPlayerCount === 0) {
+      popup.warning("Lock at least one player first.");
       return;
     }
 
@@ -556,7 +552,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     const confirmed = await popup.confirm({
       title: "Check Payment",
-      description: `Confirm payments for all ${targetPlayers} players and create the game now?`,
+      description: `Confirm payments for ${lockedPlayerCount} locked player(s) and create the game now?`,
       confirmText: t("newGame.createGame"),
       cancelText: t("common.cancel"),
     });
@@ -955,12 +951,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         <Button
           className="bg-red-700 text-white hover:bg-red-800"
           onClick={handleLockCurrentPlayer}
-          disabled={
-            submittingLock ||
-            totalLockedPlayers >= targetPlayers ||
-            !betLocked ||
-            submittingPayment
-          }
+          disabled={submittingLock || !betLocked || submittingPayment}
         >
           {submittingLock
             ? t("newGame.locking")
@@ -972,7 +963,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           onClick={handleCheckPaymentAndCreate}
           disabled={
             submittingPayment ||
-            totalLockedPlayers < targetPlayers ||
+            totalLockedPlayers === 0 ||
             availableBalanceAmount < projectedLuluCut
           }
         >
@@ -1107,9 +1098,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                       {t("newGame.playersLocked")}
                     </label>
                     <div className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                      {totalLockedPlayers}/{targetPlayers}{" "}
-                      {t("newGame.playersReserved")}, {totalPaidPlayers}/
-                      {targetPlayers} {t("newGame.paid")}
+                      {totalLockedPlayers} {t("newGame.playersReserved")},{" "}
+                      {totalPaidPlayers} {t("newGame.paid")}
                     </div>
                   </div>
 

@@ -4,6 +4,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePopup } from "../contexts/PopupContext";
@@ -33,6 +42,13 @@ import {
   WinnerConfettiPiece,
 } from "./playground/types";
 import audioMap from "../audioMap";
+
+const parseCartelaNumber = (value: string | number): number | null => {
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return null;
+  const parsed = Number.parseInt(digits, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
 
 export const Playground: React.FC<PlaygroundProps> = ({
   gameConfig,
@@ -187,6 +203,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [showCartelaModal, setShowCartelaModal] = useState(false);
   const [selectedCartela, setSelectedCartela] = useState<string>("");
   const [cartelaError, setCartelaError] = useState("");
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [addPlayerName, setAddPlayerName] = useState("");
+  const [addPlayerCartellas, setAddPlayerCartellas] = useState<number[]>([]);
+  const [addPlayerPage, setAddPlayerPage] = useState<1 | 2>(1);
+  const [isAddingPlayer, setIsAddingPlayer] = useState(false);
 
   // Local state for active cartelas (can be removed)
   const [activeCartelas, setActiveCartelas] = useState<string[]>([]);
@@ -247,6 +268,50 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const isWinnerModalOpen = Boolean(winnerCelebration);
 
+  const canAddPlayerWhilePaused = gameStatus === "active" && isPaused;
+  const addPlayerPageRange = React.useMemo(() => {
+    const start = addPlayerPage === 1 ? 1 : 101;
+    return Array.from({ length: 100 }, (_, idx) => start + idx);
+  }, [addPlayerPage]);
+
+  const takenCartellaNumbers = React.useMemo(() => {
+    const taken = new Set<number>();
+
+    for (const rawValue of [
+      ...serverCartelaOrder,
+      ...activeCartelas,
+      ...resolvedCartelaNumbers,
+    ]) {
+      const parsed = parseCartelaNumber(rawValue);
+      if (parsed !== null) {
+        taken.add(parsed);
+      }
+    }
+
+    return taken;
+  }, [serverCartelaOrder, activeCartelas, resolvedCartelaNumbers]);
+
+  const nextLatePlayerNumber = React.useMemo(() => {
+    const usedNumbers = new Set<number>();
+    const players = restoredGame?.shop_players_data || [];
+
+    for (const player of players) {
+      const raw = String((player as any)?.player_name || "");
+      const match = raw.match(/(\d+)\s*$/);
+      if (!match) continue;
+      const parsed = Number.parseInt(match[1], 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        usedNumbers.add(parsed);
+      }
+    }
+
+    let candidate = 1;
+    while (usedNumbers.has(candidate)) {
+      candidate += 1;
+    }
+    return candidate;
+  }, [restoredGame?.shop_players_data]);
+
   useEffect(() => {
     onWinnerCelebrationVisibilityChange?.(isWinnerModalOpen);
 
@@ -306,7 +371,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setResolvedGameConfig(config);
         setRestoredGame(game);
         setGameStatus(state.status as any);
-        setIsPaused(false);
+        setIsPaused(Boolean(state.is_paused));
         setIsGameActive(
           state.status === "active" || state.status === "pending",
         );
@@ -328,7 +393,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setDrawCursor(restoredCursor);
         setCalledNumbers(state.called_numbers || []);
         setAutoCall(
-          state.status === "active" && (state.called_numbers?.length || 0) < 75,
+          state.status === "active" &&
+            !state.is_paused &&
+            (state.called_numbers?.length || 0) < 75,
         );
         setAutoCallTimer(getConfiguredAutoCallSeconds());
 
@@ -429,10 +496,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [resolvedCartelaNumbers]);
 
   const normalizeCartelaNumber = (value: string | number): number | null => {
-    const digits = String(value).replace(/\D/g, "");
-    if (!digits) return null;
-    const parsed = Number.parseInt(digits, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    return parseCartelaNumber(value);
   };
 
   const cartelaDataMap = React.useMemo(() => {
@@ -579,6 +643,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
       setIsPaused(false);
     }
   }, [gameStatus]);
+
+  useEffect(() => {
+    if (!canAddPlayerWhilePaused) {
+      setShowAddPlayerModal(false);
+    }
+  }, [canAddPlayerWhilePaused]);
 
   // Notify parent when game state changes
   useEffect(() => {
@@ -865,6 +935,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setGameStatus(nextStatus);
       }
       if (!isStaleState) {
+        setIsPaused(Boolean(state.is_paused));
         latestCallCursorRef.current = stateCursor;
         setDrawCursor(stateCursor);
         setCalledNumbers(state.called_numbers || []);
@@ -1562,25 +1633,134 @@ export const Playground: React.FC<PlaygroundProps> = ({
   );
 
   const togglePauseGame = React.useCallback(() => {
+    if (!currentGameConfig?.gameCode) {
+      popup.error("No backend game code found.");
+      return;
+    }
+
     if (gameStatus !== "active") {
       popup.info("Game can only be paused while active.");
       return;
     }
 
-    setIsPaused((prev) => {
-      const nextPaused = !prev;
-      if (nextPaused) {
-        setAutoCall(false);
-        setAutoCallTimer(getConfiguredAutoCallSeconds());
-        popup.info("Game paused.");
-      } else {
-        setAutoCall(true);
-        setAutoCallTimer(getConfiguredAutoCallSeconds());
-        popup.success("Game resumed. Auto-call restarted.");
+    const nextPaused = !isPaused;
+
+    void (async () => {
+      try {
+        const response = await gamesApi.setGamePaused(
+          currentGameConfig.gameCode!,
+          nextPaused,
+        );
+
+        setIsPaused(Boolean(response.is_paused));
+        if (response.is_paused) {
+          setAutoCall(false);
+          setAutoCallTimer(getConfiguredAutoCallSeconds());
+          popup.info("Game paused.");
+        } else {
+          setShowAddPlayerModal(false);
+          setAutoCall(true);
+          setAutoCallTimer(getConfiguredAutoCallSeconds());
+          popup.success("Game resumed. Auto-call restarted.");
+        }
+      } catch (error) {
+        console.error("Failed to toggle pause", error);
+        popup.error(getApiErrorDetail(error, "Failed to update pause state."));
       }
-      return nextPaused;
+    })();
+  }, [
+    currentGameConfig?.gameCode,
+    gameStatus,
+    isPaused,
+    getConfiguredAutoCallSeconds,
+    popup,
+  ]);
+
+  const toggleAddPlayerCartella = (cartellaNumber: number) => {
+    if (takenCartellaNumbers.has(cartellaNumber)) {
+      popup.warning(`Cartella ${cartellaNumber} is already in this game.`);
+      return;
+    }
+
+    setAddPlayerCartellas((prev) => {
+      if (prev.includes(cartellaNumber)) {
+        return prev.filter((value) => value !== cartellaNumber);
+      }
+      if (prev.length >= 4) {
+        popup.warning("A player can select a maximum of 4 cartellas.");
+        return prev;
+      }
+      return [...prev, cartellaNumber];
     });
-  }, [gameStatus, getConfiguredAutoCallSeconds, popup]);
+  };
+
+  const openAddPlayerModal = () => {
+    if (!canAddPlayerWhilePaused) {
+      popup.info("Pause the active game to add new players.");
+      return;
+    }
+
+    setAddPlayerName(`Player ${nextLatePlayerNumber}`);
+    setAddPlayerCartellas([]);
+    setAddPlayerPage(1);
+    setShowAddPlayerModal(true);
+  };
+
+  const handleAddPlayerDuringPause = async () => {
+    if (!currentGameConfig?.gameCode) {
+      popup.error("No backend game code found.");
+      return;
+    }
+
+    if (!canAddPlayerWhilePaused) {
+      popup.info("Pause the active game before adding a player.");
+      return;
+    }
+
+    const trimmedName = addPlayerName.trim();
+    if (!trimmedName) {
+      popup.warning("Player name is required.");
+      return;
+    }
+
+    if (addPlayerCartellas.length === 0) {
+      popup.warning("Select at least one cartella.");
+      return;
+    }
+
+    setIsAddingPlayer(true);
+    try {
+      const updatedGame = await gamesApi.addPlayerToGame(
+        currentGameConfig.gameCode,
+        {
+          player_name: trimmedName,
+          cartella_numbers: [...addPlayerCartellas].sort((a, b) => a - b),
+          bet_per_cartella:
+            currentGameConfig.betBirr || restoredGame?.bet_amount || "10.00",
+        },
+      );
+
+      const updatedConfig = buildConfigFromGame(updatedGame);
+      updatedConfig.backendStatus = gameStatus;
+
+      setResolvedGameConfig(updatedConfig);
+      setRestoredGame(updatedGame);
+      setActiveCartelas(updatedConfig.cartelaNumbers || []);
+      setServerCartelaOrder(updatedConfig.cartelaNumbers || []);
+      setCartellaStatuses(updatedGame.cartella_statuses || {});
+      setShowAddPlayerModal(false);
+      setAddPlayerCartellas([]);
+
+      popup.success(
+        `Added ${trimmedName} with cartellas ${addPlayerCartellas.join(", ")}.`,
+      );
+    } catch (error) {
+      console.error("Failed to add player while paused", error);
+      popup.error(getApiErrorDetail(error, "Failed to add player."));
+    } finally {
+      setIsAddingPlayer(false);
+    }
+  };
 
   // Shuffle/reshuffle numbers inside each Bingo column
   const reshuffleBoard = () => {
@@ -1912,6 +2092,105 @@ export const Playground: React.FC<PlaygroundProps> = ({
         gameActive={isGameActive}
       />
 
+      <Dialog
+        open={showAddPlayerModal}
+        onOpenChange={(open) => {
+          if (!isAddingPlayer) {
+            setShowAddPlayerModal(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Add Player While Paused</DialogTitle>
+            <DialogDescription>
+              Select a player name and up to 4 new cartellas. Reserved cartellas
+              are locked.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Player Name</label>
+              <Input
+                value={addPlayerName}
+                onChange={(event) => setAddPlayerName(event.target.value)}
+                placeholder="Player name"
+                disabled={isAddingPlayer}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Cartella Selection ({addPlayerCartellas.length}/4)
+              </h4>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={addPlayerPage === 1 ? "default" : "outline"}
+                  onClick={() => setAddPlayerPage(1)}
+                  size="sm"
+                  disabled={isAddingPlayer}
+                >
+                  1-100
+                </Button>
+                <Button
+                  variant={addPlayerPage === 2 ? "default" : "outline"}
+                  onClick={() => setAddPlayerPage(2)}
+                  size="sm"
+                  disabled={isAddingPlayer}
+                >
+                  101-200
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+              {addPlayerPageRange.map((number) => {
+                const isSelected = addPlayerCartellas.includes(number);
+                const isTaken = takenCartellaNumbers.has(number);
+
+                return (
+                  <button
+                    key={`add-player-${number}`}
+                    type="button"
+                    className={`relative flex h-12 w-12 items-center justify-center rounded-full border text-sm font-semibold transition ${isTaken ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-red-700 text-white" : "border-slate-300 bg-white text-slate-800 hover:border-red-300 hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"}`}
+                    onClick={() => toggleAddPlayerCartella(number)}
+                    disabled={isTaken || isAddingPlayer}
+                  >
+                    {number}
+                  </button>
+                );
+              })}
+            </div>
+
+            {addPlayerCartellas.length > 0 && (
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Selected:{" "}
+                {[...addPlayerCartellas].sort((a, b) => a - b).join(", ")}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddPlayerModal(false)}
+              disabled={isAddingPlayer}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddPlayerDuringPause}
+              disabled={isAddingPlayer || addPlayerCartellas.length === 0}
+            >
+              {isAddingPlayer ? "Adding..." : "Add Player"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className={isFullscreen ? "hidden" : "block"}>
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
@@ -2139,6 +2418,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
           onToggleAutoCall={toggleAutoCall}
           isPaused={isPaused}
           togglePauseGame={togglePauseGame}
+          canAddPlayerWhilePaused={canAddPlayerWhilePaused}
+          openAddPlayerModal={openAddPlayerModal}
           autoCallTimer={autoCallTimer}
           autoCallCycleSeconds={getConfiguredAutoCallSeconds()}
           t={t}

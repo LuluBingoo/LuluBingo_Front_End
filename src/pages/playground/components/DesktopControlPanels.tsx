@@ -1,5 +1,14 @@
 import React from "react";
-import { Check, Eye, Loader2, Pause, Play, Shuffle, X } from "lucide-react";
+import {
+  Check,
+  Eye,
+  Loader2,
+  Pause,
+  Play,
+  Shuffle,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
@@ -27,6 +36,8 @@ interface DesktopControlPanelsProps {
   onToggleAutoCall: (nextValue?: boolean) => void;
   isPaused: boolean;
   togglePauseGame: () => void;
+  canAddPlayerWhilePaused: boolean;
+  openAddPlayerModal: () => void;
   autoCallTimer: number;
   autoCallCycleSeconds: number;
   t: (key: string) => string;
@@ -63,6 +74,8 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
   onToggleAutoCall,
   isPaused,
   togglePauseGame,
+  canAddPlayerWhilePaused,
+  openAddPlayerModal,
   autoCallTimer,
   autoCallCycleSeconds,
   t,
@@ -166,6 +179,20 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                       <Pause className="mr-1 h-4 w-4" /> Pause Game
                     </>
                   )}
+                </Button>
+
+                <Button
+                  className="h-10 w-full"
+                  onClick={openAddPlayerModal}
+                  variant="outline"
+                  disabled={
+                    !canAddPlayerWhilePaused ||
+                    isStoppingGame ||
+                    isCallingNumber ||
+                    isCheckingCartela
+                  }
+                >
+                  <UserPlus className="mr-1 h-4 w-4" /> Add Player (Paused)
                 </Button>
 
                 <Button

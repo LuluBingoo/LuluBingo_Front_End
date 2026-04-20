@@ -111,6 +111,8 @@ export interface Game {
   called_numbers?: number[];
   call_cursor?: number;
   current_called_number?: number | null;
+  is_paused?: boolean;
+  shop_players_data?: ShopBingoPlayer[];
   status: GameStatus;
   winners: number[];
   banned_cartellas?: number[];
@@ -221,12 +223,19 @@ export interface ShopBingoConfirmPaymentResponse {
 export interface GameStateResponse {
   game_code: string;
   status: GameStatus;
+  is_paused: boolean;
   started_at: string | null;
   call_cursor: number;
   current_called_number: number | null;
   current_called_formatted: string | null;
   called_numbers: number[];
   cartella_statuses?: Record<string, "active" | "banned" | "winner">;
+}
+
+export interface GamePauseResponse {
+  game_code: string;
+  status: GameStatus;
+  is_paused: boolean;
 }
 
 export interface GameNextCallResponse {

@@ -25,6 +25,7 @@ import {
   ShopBingoConfirmPaymentRequest,
   ShopBingoConfirmPaymentResponse,
   GameStateResponse,
+  GamePauseResponse,
   GameNextCallResponse,
   GameAuditReportResponse,
   ShopBingoReserveRequest,
@@ -274,6 +275,19 @@ export const gamesApi = {
     );
   },
 
+  async setGamePaused(
+    code: string,
+    paused: boolean,
+  ): Promise<GamePauseResponse> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Game pause is not available in mock mode");
+    }
+    return await apiClient.post<GamePauseResponse>(
+      API_ENDPOINTS.GAMES.PAUSE(code),
+      { paused },
+    );
+  },
+
   async shuffleGame(
     code: string,
   ): Promise<{ game_code: string; status: string; message: string }> {
@@ -315,6 +329,19 @@ export const gamesApi = {
       return await mockGamesApi.completeGame(code, data);
     }
     return await apiClient.post<Game>(API_ENDPOINTS.GAMES.COMPLETE(code), data);
+  },
+
+  async addPlayerToGame(
+    code: string,
+    data: ShopBingoReserveRequest,
+  ): Promise<Game> {
+    if (API_CONFIG.USE_MOCK) {
+      throw new Error("Adding players is not available in mock mode");
+    }
+    return await apiClient.post<Game>(
+      API_ENDPOINTS.GAMES.ADD_PLAYER(code),
+      data,
+    );
   },
 
   async claimGame(
