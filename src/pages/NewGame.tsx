@@ -82,6 +82,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const [betPerCartella, setBetPerCartella] = useState(
     DEFAULT_GAME_BET.toFixed(2),
   );
+  const [minimumBetPerCartella, setMinimumBetPerCartella] = useState(
+    DEFAULT_GAME_BET.toFixed(2),
+  );
   const [submittingLock, setSubmittingLock] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [isLockingBet, setIsLockingBet] = useState(false);
@@ -101,6 +104,16 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   } | null>(null);
   const currencyLabel = getCurrencyLabel();
   const targetPlayers = session?.fixed_players || fixedPlayers;
+
+  const minimumBetValue = useMemo(() => {
+    const parsed = Number.parseFloat(minimumBetPerCartella);
+    if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
+      return DEFAULT_GAME_BET;
+    }
+    return parsed;
+  }, [minimumBetPerCartella]);
+
+  const minimumBetLabel = minimumBetValue.toFixed(2);
 
   const parseAmount = (value: unknown, fallback = 0) => {
     const parsed = Number.parseFloat(String(value ?? ""));
@@ -237,7 +250,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     setSession(latest);
   };
 
-  const syncShopFinancials = async () => {
+  const syncShopFinancials = async (options?: { updateBetInput?: boolean }) => {
+    const updateBetInput = options?.updateBetInput ?? true;
     setIsFinancialLoading(true);
     try {
       const profile = await shopApi.getProfile();
@@ -245,8 +259,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       setWalletBalance(String(profile.wallet_balance ?? "0"));
       setShopCutPercentage(String(profile.shop_cut_percentage ?? "0"));
       setLuluCutPercentage(String(profile.lulu_cut_percentage ?? "0"));
+      setMinimumBetPerCartella(defaultBet);
 
-      if (!betLocked) {
+      if (!betLocked && updateBetInput) {
         setBetInput(defaultBet);
         setBetPerCartella(defaultBet);
       }
@@ -483,17 +498,29 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     setIsLockingBet(true);
 
     try {
-      const latestProfile = await syncShopFinancials();
-      const settingsBet = resolveDefaultGameBet(latestProfile?.feature_flags);
-      const parsed = Number.parseFloat(settingsBet);
-      if (!Number.isFinite(parsed) || parsed < DEFAULT_GAME_BET) {
+      const latestProfile = await syncShopFinancials({
+        updateBetInput: false,
+      });
+
+      const resolvedMinimumBet = resolveDefaultGameBet(
+        latestProfile?.feature_flags,
+      );
+      const minimumBet = Number.parseFloat(resolvedMinimumBet);
+      const normalizedMinimumBet =
+        Number.isFinite(minimumBet) && minimumBet >= DEFAULT_GAME_BET
+          ? minimumBet
+          : minimumBetValue;
+
+      const enteredBet = Number.parseFloat(betInput);
+      if (!Number.isFinite(enteredBet) || enteredBet < normalizedMinimumBet) {
         popup.warning(
-          `Minimum bet per cartella is ${DEFAULT_GAME_BET} ${BET_CURRENCY_LABEL}.`,
+          `Minimum bet per cartella is ${normalizedMinimumBet.toFixed(2)} ${BET_CURRENCY_LABEL}.`,
         );
         return;
       }
 
-      setBetInput(settingsBet);
+      const normalizedBet = enteredBet.toFixed(2);
+      setBetInput(normalizedBet);
 
       const parsedPlayers = Number.parseInt(playersInput, 10);
       if (!Number.isFinite(parsedPlayers) || parsedPlayers < 2) {
@@ -501,8 +528,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         return;
       }
 
-      const locked = parsed.toFixed(2);
-      setBetPerCartella(locked);
+      setBetPerCartella(normalizedBet);
       setFixedPlayers(parsedPlayers);
       setBetLocked(true);
       setShowBetDialog(false);
@@ -741,7 +767,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                     <DialogDescription className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                       This step is mandatory. Bet amount is loaded from
-                      Settings. Minimum is {DEFAULT_GAME_BET}{" "}
+                      Settings. Minimum is {minimumBetLabel}{" "}
                       {BET_CURRENCY_LABEL} per cartella.
                     </DialogDescription>
                   </div>
@@ -763,15 +789,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     </span>
                     <Input
                       type="number"
-                      min={DEFAULT_GAME_BET}
+                      min={minimumBetValue}
+                      step="0.01"
                       value={betInput}
-                      disabled
-                      className="h-11 border-rose-200 bg-slate-100 text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-900"
+                      onChange={(e) => setBetInput(e.target.value)}
+                      className="h-11 border-rose-200 bg-white text-lg font-semibold dark:border-rose-700/70 dark:bg-slate-950"
                     />
                   </div>
                   <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Minimum: {DEFAULT_GAME_BET} {BET_CURRENCY_LABEL} per
-                    cartella
+                    Minimum: {minimumBetLabel} {BET_CURRENCY_LABEL} per cartella
                   </p>
                 </div>
 
