@@ -505,11 +505,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const cartelaDataMap = React.useMemo(() => {
-    const numbers = currentGameConfig?.cartelaData || [];
+    const numbers =
+      (Array.isArray(restoredGame?.cartella_numbers) &&
+      restoredGame.cartella_numbers.length > 0
+        ? restoredGame.cartella_numbers
+        : currentGameConfig?.cartelaData) || [];
     const authoritativeMap =
-      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map;
+      restoredGame?.cartella_number_map || currentGameConfig?.cartellaNumberMap;
+    const mappedCartelaNumbers =
+      authoritativeMap && typeof authoritativeMap === "object"
+        ? Object.keys(authoritativeMap)
+        : [];
     const sourceCartelaNumbers = Array.from(
       new Set([
+        ...mappedCartelaNumbers,
         ...serverCartelaOrder,
         ...activeCartelas,
         ...resolvedCartelaNumbers,
@@ -551,29 +560,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
         );
       }
 
-      if (currentGameConfig?.playMode === "offline") {
-        const offlineBoard = getOfflineCartellaBoard(cartelaNumber);
-        if (offlineBoard) {
-          return [cartelaNumber, offlineBoard] as const;
-        }
-
-        const backendBoard = index >= 0 ? numbers[index] || [] : [];
-        const normalizedBackendBoard = normalizeCartellaBoard(backendBoard);
-        if (normalizedBackendBoard) {
-          return [cartelaNumber, normalizedBackendBoard] as const;
-        }
-
-        return [cartelaNumber, []] as const;
-      }
-
       const backendBoard = index >= 0 ? numbers[index] || [] : [];
       const normalizedBackendBoard = normalizeCartellaBoard(backendBoard);
       if (normalizedBackendBoard) {
         return [cartelaNumber, normalizedBackendBoard] as const;
       }
 
-      const data = normalizeCartellaBoard(backendBoard) ?? backendBoard;
-      return [cartelaNumber, data] as const;
+      if (currentGameConfig?.playMode === "offline") {
+        const offlineBoard = getOfflineCartellaBoard(cartelaNumber);
+        if (offlineBoard) {
+          return [cartelaNumber, offlineBoard] as const;
+        }
+      }
+
+      return [cartelaNumber, []] as const;
     });
 
     return Object.fromEntries(entries);
@@ -582,6 +582,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     currentGameConfig?.cartellaNumberMap,
     currentGameConfig?.playMode,
     resolvedCartelaNumbers,
+    restoredGame?.cartella_numbers,
     restoredGame?.cartella_number_map,
     activeCartelas,
     serverCartelaOrder,
@@ -607,7 +608,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     const authoritativeMap =
-      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map;
+      restoredGame?.cartella_number_map || currentGameConfig?.cartellaNumberMap;
     if (authoritativeMap && typeof authoritativeMap === "object") {
       for (const [mappedCartelaNumber, mappedIndex] of Object.entries(
         authoritativeMap,
@@ -775,7 +776,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     let calledNumbersForClaim = [...calledNumbers];
     let cartelaIndex = resolveCartelaIndexFromMap(
       cartelaNumber,
-      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map,
+      restoredGame?.cartella_number_map || currentGameConfig?.cartellaNumberMap,
     );
     let assignedCartelaNumbers: number[] | undefined;
     let boardCount = 0;
@@ -2315,8 +2316,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
         cartelaNumbers={activeCartelas}
         cartelaDataMap={cartelaDataMap}
         cartellaNumberMap={
-          currentGameConfig?.cartellaNumberMap ||
           restoredGame?.cartella_number_map ||
+          currentGameConfig?.cartellaNumberMap ||
           undefined
         }
         cartellaStatuses={cartellaStatuses}

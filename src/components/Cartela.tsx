@@ -107,26 +107,58 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     [cartelaNumbers, getCartellaStatusByNumber],
   );
 
+  const getProvidedCartelaBoard = useCallback(
+    (number: string) => {
+      if (!cartelaDataMap || typeof cartelaDataMap !== "object") {
+        return undefined;
+      }
+
+      const directBoard = cartelaDataMap[number];
+      if (Array.isArray(directBoard)) {
+        return directBoard;
+      }
+
+      const normalized = normalizeCartelaNumber(number);
+      if (normalized === null) {
+        return undefined;
+      }
+
+      for (const [mappedNumber, board] of Object.entries(cartelaDataMap)) {
+        if (
+          normalizeCartelaNumber(mappedNumber) === normalized &&
+          Array.isArray(board)
+        ) {
+          return board;
+        }
+      }
+
+      return undefined;
+    },
+    [cartelaDataMap, normalizeCartelaNumber],
+  );
+
   // Generate or retrieve cartela data when cartela changes
   useEffect(() => {
-    if (selectedCartela) {
-      if (playMode === "offline") {
-        const offlineBoard = getOfflineCartellaBoard(selectedCartela);
-        setCartelaData(offlineBoard ? [...offlineBoard] : []);
-        return;
-      }
-
-      const providedNumbers = cartelaDataMap?.[selectedCartela];
-      const normalizedProvided = normalizeCartellaBoard(providedNumbers);
-      if (normalizedProvided) {
-        setCartelaData(normalizedProvided);
-        return;
-      }
-
-      // Avoid synthetic online cartelas; only trust backend-provided board data.
-      setCartelaData([]);
+    if (!selectedCartela) {
+      return;
     }
-  }, [selectedCartela, cartelaDataMap, playMode]);
+
+    const providedNumbers = getProvidedCartelaBoard(selectedCartela);
+    const normalizedProvided = normalizeCartellaBoard(providedNumbers);
+    if (normalizedProvided) {
+      setCartelaData(normalizedProvided);
+      return;
+    }
+
+    if (playMode === "offline") {
+      const offlineBoard = getOfflineCartellaBoard(selectedCartela);
+      setCartelaData(offlineBoard ? [...offlineBoard] : []);
+      return;
+    }
+
+    // Avoid synthetic online cartelas; only trust backend-provided board data.
+    setCartelaData([]);
+  }, [selectedCartela, getProvidedCartelaBoard, playMode]);
 
   // Initialize with provided cartela number
   useEffect(() => {
