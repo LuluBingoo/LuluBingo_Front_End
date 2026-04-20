@@ -71,6 +71,24 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
       return [];
     }
 
+    if (winnerCelebration.pattern === "column") {
+      for (let column = 0; column < 5; column++) {
+        const columnIndices = [
+          column,
+          column + 5,
+          column + 10,
+          column + 15,
+          column + 20,
+        ];
+
+        if (columnIndices.every((index) => isMarked(index))) {
+          return columnIndices;
+        }
+      }
+
+      return [];
+    }
+
     for (let row = 0; row < 5; row++) {
       const rowIndices = [
         row * 5,
@@ -96,7 +114,9 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   const patternLabel =
     winnerCelebration?.pattern === "diagonal"
       ? "Winning Diagonal"
-      : "Winning Row";
+      : winnerCelebration?.pattern === "column"
+        ? "Winning Column"
+        : "Winning Row";
 
   if (typeof document === "undefined") {
     return null;

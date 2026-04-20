@@ -22,7 +22,7 @@ interface CartelaModalProps {
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   onDeclareWinner?: (
     cartelaNumber: string,
-    pattern: "row" | "diagonal",
+    pattern: "row" | "column" | "diagonal",
   ) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
@@ -48,7 +48,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedWinningPattern, setSelectedWinningPattern] = useState<
-    "row" | "diagonal"
+    "row" | "column" | "diagonal"
   >("row");
 
   const normalizeCartelaNumber = useCallback((value: string | number) => {
@@ -192,21 +192,56 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     return hasMainDiagonal || hasAntiDiagonal;
   }, [cartelaData, isMarked]);
 
-  const hasWinningPattern = hasRowPattern || hasDiagonalPattern;
+  const hasColumnPattern = useMemo(() => {
+    if (cartelaData.length !== 25) {
+      return false;
+    }
+
+    const grid = Array.from({ length: 5 }, (_, row) =>
+      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
+    );
+
+    return Array.from({ length: 5 }, (_, col) => col).some((col) =>
+      grid.every((row) => isMarked(row[col])),
+    );
+  }, [cartelaData, isMarked]);
+
+  const hasWinningPattern =
+    hasRowPattern || hasColumnPattern || hasDiagonalPattern;
 
   const selectedPatternMatched =
-    selectedWinningPattern === "row" ? hasRowPattern : hasDiagonalPattern;
+    selectedWinningPattern === "row"
+      ? hasRowPattern
+      : selectedWinningPattern === "column"
+        ? hasColumnPattern
+        : hasDiagonalPattern;
 
   useEffect(() => {
-    if (!hasDiagonalPattern) {
+    const availablePatterns: Array<"row" | "column" | "diagonal"> = [];
+    if (hasRowPattern) {
+      availablePatterns.push("row");
+    }
+    if (hasColumnPattern) {
+      availablePatterns.push("column");
+    }
+    if (hasDiagonalPattern) {
+      availablePatterns.push("diagonal");
+    }
+
+    if (availablePatterns.length === 0) {
       setSelectedWinningPattern("row");
       return;
     }
 
-    if (!hasRowPattern) {
-      setSelectedWinningPattern("diagonal");
+    if (!availablePatterns.includes(selectedWinningPattern)) {
+      setSelectedWinningPattern(availablePatterns[0]);
     }
-  }, [hasRowPattern, hasDiagonalPattern]);
+  }, [
+    hasRowPattern,
+    hasColumnPattern,
+    hasDiagonalPattern,
+    selectedWinningPattern,
+  ]);
 
   const handleDeclareWinner = async () => {
     if (cartelaData.length !== 25) {
@@ -218,7 +253,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
     if (!hasWinningPattern) {
       popup.warning(
-        `Cartela ${selectedCartela} does not have a complete row or diagonal yet.`,
+        `Cartela ${selectedCartela} does not have a complete row, column, or diagonal yet.`,
       );
       return;
     }
@@ -472,6 +507,21 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                                   disabled={!hasRowPattern}
                                 >
                                   Row Winning
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    selectedWinningPattern === "column"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  onClick={() =>
+                                    setSelectedWinningPattern("column")
+                                  }
+                                  disabled={!hasColumnPattern}
+                                >
+                                  Column Winning
                                 </Button>
                                 <Button
                                   type="button"

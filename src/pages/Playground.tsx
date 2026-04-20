@@ -20,7 +20,7 @@ import { CartelaModal } from "../components/Cartela";
 import { gamesApi, shopApi } from "../services/api";
 import { ApiError } from "../services/api/client";
 import { formatCurrency } from "../services/settings";
-import { Game } from "../services/types";
+import { Game, GameClaimResponse } from "../services/types";
 import { GameLogCard } from "./playground/components/GameLogCard";
 import { OpeningPlaygroundOverlay } from "./playground/components/OpeningPlaygroundOverlay";
 import { WinnerCelebrationModal } from "./playground/components/WinnerCelebrationModal";
@@ -749,6 +749,181 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return fallback;
   };
 
+  const resolveCartelaIndexFromMap = (
+    cartelaNumber: string,
+    map?: Record<string, number> | null,
+  ) => {
+    const target = normalizeCartelaNumber(cartelaNumber);
+    if (target === null || !map || typeof map !== "object") {
+      return -1;
+    }
+
+    for (const [mappedCartelaNumber, mappedIndex] of Object.entries(map)) {
+      if (normalizeCartelaNumber(mappedCartelaNumber) === target) {
+        const parsedMappedIndex = Number(mappedIndex);
+        return Number.isInteger(parsedMappedIndex) && parsedMappedIndex >= 0
+          ? parsedMappedIndex
+          : -1;
+      }
+    }
+
+    return -1;
+  };
+
+  const getClaimContext = async (cartelaNumber: string) => {
+    const gameCode = currentGameConfig?.gameCode;
+    let calledNumbersForClaim = [...calledNumbers];
+    let cartelaIndex = resolveCartelaIndexFromMap(
+      cartelaNumber,
+      currentGameConfig?.cartellaNumberMap || restoredGame?.cartella_number_map,
+    );
+    let assignedCartelaNumbers: number[] | undefined;
+    let boardCount = 0;
+
+    if (gameCode) {
+      try {
+        const [state, game] = await Promise.all([
+          gamesApi.getGameState(gameCode),
+          gamesApi.getGame(gameCode),
+        ]);
+
+        const backendCalledNumbers = Array.isArray(state.called_numbers)
+          ? state.called_numbers
+          : [];
+        calledNumbersForClaim = backendCalledNumbers;
+        setCalledNumbers(backendCalledNumbers);
+        const syncedCursor = resolveCallCursor(
+          state.call_cursor,
+          backendCalledNumbers,
+        );
+        latestCallCursorRef.current = Math.max(
+          latestCallCursorRef.current,
+          syncedCursor,
+        );
+        setDrawCursor(syncedCursor);
+
+        setIsPaused(Boolean(state.is_paused));
+        if (state.current_called_number) {
+          const { label: syncedLabel } = resolveCalledLabelAndNumber(
+            state.current_called_formatted,
+            state.current_called_number,
+          );
+          setCurrentCalledNumber(syncedLabel);
+        } else {
+          setCurrentCalledNumber("");
+        }
+
+        if (state.cartella_statuses) {
+          setCartellaStatuses(state.cartella_statuses);
+        }
+
+        setRestoredGame(game);
+        assignedCartelaNumbers = game.assigned_cartella_numbers;
+        boardCount = Array.isArray(game.cartella_numbers)
+          ? game.cartella_numbers.length
+          : 0;
+
+        const refreshedIndex = resolveCartelaIndexFromMap(
+          cartelaNumber,
+          game.cartella_number_map,
+        );
+        if (refreshedIndex >= 0) {
+          cartelaIndex = refreshedIndex;
+        }
+      } catch (error) {
+        console.error("Failed to refresh claim context", error);
+      }
+    }
+
+    const normalizedTarget = normalizeCartelaNumber(cartelaNumber);
+
+    if (
+      cartelaIndex < 0 &&
+      normalizedTarget !== null &&
+      Array.isArray(assignedCartelaNumbers) &&
+      assignedCartelaNumbers.length > 0
+    ) {
+      const assignedIndex = assignedCartelaNumbers.findIndex(
+        (value) => Number(value) === normalizedTarget,
+      );
+      if (assignedIndex >= 0) {
+        cartelaIndex = assignedIndex;
+      }
+    }
+
+    if (cartelaIndex < 0) {
+      cartelaIndex = getServerCartelaIndex(cartelaNumber);
+    }
+
+    if (
+      cartelaIndex < 0 &&
+      normalizedTarget !== null &&
+      boardCount > 0 &&
+      normalizedTarget >= 1 &&
+      normalizedTarget <= boardCount
+    ) {
+      cartelaIndex = normalizedTarget - 1;
+    }
+
+    return {
+      cartelaIndex,
+      calledNumbersForClaim,
+    };
+  };
+
+  const applyWinningClaimResult = (
+    winningCartelaNumber: string,
+    winningCartelaIndex: number,
+    claim: GameClaimResponse,
+    source: "declare" | "check",
+  ) => {
+    const patternText = claim.pattern ? `\nPattern: ${claim.pattern}` : "";
+    const payoutText = claim.payout_amount
+      ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
+      : "";
+    const cutText = claim.shop_cut_amount
+      ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
+      : "";
+
+    triggerWinnerCelebration(
+      winningCartelaNumber,
+      claim.pattern,
+      claim.payout_amount,
+      claim.shop_cut_amount,
+    );
+    setGameStatus("completed");
+    setIsPaused(false);
+    setIsGameActive(false);
+    setAutoCall(false);
+    setRestoredGame((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: "completed",
+            winners: [
+              ...new Set([...(prev.winners || []), winningCartelaIndex]),
+            ],
+            winning_pattern: claim.pattern || prev.winning_pattern,
+            payout_amount: claim.payout_amount || prev.payout_amount,
+            shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
+            ended_at: prev.ended_at || new Date().toISOString(),
+          }
+        : prev,
+    );
+    onGameStateChange?.(false);
+
+    if (source === "declare") {
+      popup.success(
+        `🎉 BINGO! Cartela ${winningCartelaNumber} WON!\nGame closed.${patternText}${payoutText}${cutText}`,
+      );
+      return;
+    }
+
+    popup.success(
+      `🎉 BINGO${claim.pattern ? ` (${claim.pattern})` : ""}! Player with Cartela ${winningCartelaNumber} WON!\nGame closed.${payoutText}${cutText}`,
+    );
+  };
+
   const triggerCalledBall = async (
     label: string,
     calledNumber?: number | null,
@@ -1211,15 +1386,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
   // Handle winner declaration
   const handleDeclareWinner = async (
     cartelaNumber: string,
-    pattern: "row" | "diagonal" = "row",
+    pattern: "row" | "column" | "diagonal" = "row",
   ) => {
     if (winnerClaimInFlightRef.current) {
-      return;
-    }
-
-    const winnerIndex = getServerCartelaIndex(cartelaNumber);
-    if (winnerIndex < 0) {
-      popup.error(`Cartela ${cartelaNumber} not found in this game.`);
       return;
     }
 
@@ -1228,95 +1397,106 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
+    if (!currentGameConfig?.gameCode) {
+      popup.error("No backend game code found for winner declaration.");
+      return;
+    }
+
     winnerClaimInFlightRef.current = true;
     try {
-      if (currentGameConfig?.gameCode) {
-        const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
-          cartella_index: winnerIndex,
-          pattern,
-          called_numbers: calledNumbers,
-          ban_on_false_claim: false,
-        });
+      const claimContext = await getClaimContext(cartelaNumber);
+      if (claimContext.cartelaIndex < 0) {
+        popup.error(`Cartela ${cartelaNumber} not found in this game.`);
+        return;
+      }
 
-        if (claim.cartella_statuses) {
-          setCartellaStatuses(claim.cartella_statuses);
-        }
+      let claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+        cartella_index: claimContext.cartelaIndex,
+        pattern,
+        called_numbers: claimContext.calledNumbersForClaim,
+        ban_on_false_claim: false,
+      });
 
-        if (!claim.is_bingo) {
-          playAudio("you_didnt_win");
-          setSelectedCartela(cartelaNumber);
-          setShowCartelaModal(true);
+      if (claim.cartella_statuses) {
+        setCartellaStatuses(claim.cartella_statuses);
+      }
 
-          const shouldBan = await popup.confirm({
-            title: "No Bingo Yet",
-            description: `${claim.detail || "Cartela did not win yet."}\n\nCartela ${cartelaNumber} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
-            confirmText: "Ban Cartela",
-            cancelText: "Keep Playing",
-          });
-
-          if (!shouldBan) {
-            setSelectedCartela(cartelaNumber);
-            setShowCartelaModal(true);
-            return;
-          }
-
-          const banClaim = await gamesApi.claimGame(
-            currentGameConfig.gameCode,
-            {
-              cartella_index: winnerIndex,
-              called_numbers: calledNumbers,
-              ban_on_false_claim: true,
-            },
-          );
-
-          if (banClaim.cartella_statuses) {
-            setCartellaStatuses(banClaim.cartella_statuses);
-          }
-
-          popup.error(
-            banClaim.detail ||
-              `Cartela ${cartelaNumber} has been banned after false claim.`,
-          );
-          return;
-        }
-
-        const patternText = claim.pattern ? `\nPattern: ${claim.pattern}` : "";
-        const payoutText = claim.payout_amount
-          ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
-          : "";
-        const cutText = claim.shop_cut_amount
-          ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
-          : "";
-
-        triggerWinnerCelebration(
+      if (claim.is_bingo) {
+        applyWinningClaimResult(
           cartelaNumber,
-          claim.pattern,
-          claim.payout_amount,
-          claim.shop_cut_amount,
-        );
-        setGameStatus("completed");
-        setIsPaused(false);
-        setIsGameActive(false);
-        setAutoCall(false);
-        setRestoredGame((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: "completed",
-                winners: [...new Set([...(prev.winners || []), winnerIndex])],
-                winning_pattern: claim.pattern || prev.winning_pattern,
-                payout_amount: claim.payout_amount || prev.payout_amount,
-                shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
-                ended_at: prev.ended_at || new Date().toISOString(),
-              }
-            : prev,
-        );
-        onGameStateChange?.(false);
-        popup.success(
-          `🎉 BINGO! Cartela ${cartelaNumber} WON!\nGame closed.${patternText}${payoutText}${cutText}`,
+          claimContext.cartelaIndex,
+          claim,
+          "declare",
         );
         return;
       }
+
+      // Safety retry with freshly synced state to avoid banning a true winner due to stale local state.
+      const retryContext = await getClaimContext(cartelaNumber);
+      const retryIndex =
+        retryContext.cartelaIndex >= 0
+          ? retryContext.cartelaIndex
+          : claimContext.cartelaIndex;
+      const retryClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+        cartella_index: retryIndex,
+        pattern,
+        called_numbers: retryContext.calledNumbersForClaim,
+        ban_on_false_claim: false,
+      });
+
+      if (retryClaim.cartella_statuses) {
+        setCartellaStatuses(retryClaim.cartella_statuses);
+      }
+
+      if (retryClaim.is_bingo) {
+        applyWinningClaimResult(
+          cartelaNumber,
+          retryIndex,
+          retryClaim,
+          "declare",
+        );
+        return;
+      }
+
+      claim = retryClaim;
+
+      playAudio("you_didnt_win");
+      setSelectedCartela(cartelaNumber);
+      setShowCartelaModal(true);
+
+      const shouldBan = await popup.confirm({
+        title: "No Bingo Yet",
+        description: `${claim.detail || "Cartela did not win yet."}\n\nCartela ${cartelaNumber} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
+        confirmText: "Ban Cartela",
+        cancelText: "Keep Playing",
+      });
+
+      if (!shouldBan) {
+        setSelectedCartela(cartelaNumber);
+        setShowCartelaModal(true);
+        return;
+      }
+
+      const banContext = await getClaimContext(cartelaNumber);
+      const banIndex =
+        banContext.cartelaIndex >= 0 ? banContext.cartelaIndex : retryIndex;
+
+      const banClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+        cartella_index: banIndex,
+        pattern,
+        called_numbers: banContext.calledNumbersForClaim,
+        ban_on_false_claim: true,
+      });
+
+      if (banClaim.cartella_statuses) {
+        setCartellaStatuses(banClaim.cartella_statuses);
+      }
+
+      popup.error(
+        banClaim.detail ||
+          `Cartela ${cartelaNumber} has been banned after false claim.`,
+      );
+      return;
     } catch (error) {
       console.error("Failed to complete game", error);
       popup.error(
@@ -1406,12 +1586,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
       return;
     }
 
-    const cartellaIndex = getServerCartelaIndex(matchedCartela);
-    if (cartellaIndex < 0) {
-      popup.error(`Cartela ${matchedCartela} not found in server order`);
-      return;
-    }
-
     if (getCartellaStatusByNumber(matchedCartela) === "banned") {
       popup.error("This cartela is banned and cannot claim bingo.");
       return;
@@ -1427,9 +1601,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setIsCheckingCartela(true);
     playAudio("Check_is_your_card_is_saved");
     try {
+      const claimContext = await getClaimContext(matchedCartela);
+      if (claimContext.cartelaIndex < 0) {
+        popup.error(`Cartela ${matchedCartela} not found in server order`);
+        return;
+      }
+
       const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
-        cartella_index: cartellaIndex,
-        called_numbers: calledNumbers,
+        cartella_index: claimContext.cartelaIndex,
+        called_numbers: claimContext.calledNumbersForClaim,
         ban_on_false_claim: false,
       });
 
@@ -1438,40 +1618,37 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       if (claim.is_bingo) {
-        const patternText = claim.pattern ? ` (${claim.pattern})` : "";
-        const payoutText = claim.payout_amount
-          ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
-          : "";
-        const cutText = claim.shop_cut_amount
-          ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
-          : "";
-
-        triggerWinnerCelebration(
+        applyWinningClaimResult(
           matchedCartela,
-          claim.pattern,
-          claim.payout_amount,
-          claim.shop_cut_amount,
+          claimContext.cartelaIndex,
+          claim,
+          "check",
         );
-        setGameStatus("completed");
-        setIsPaused(false);
-        setIsGameActive(false);
-        setAutoCall(false);
-        setRestoredGame((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: "completed",
-                winners: [...new Set([...(prev.winners || []), cartellaIndex])],
-                winning_pattern: claim.pattern || prev.winning_pattern,
-                payout_amount: claim.payout_amount || prev.payout_amount,
-                shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
-                ended_at: prev.ended_at || new Date().toISOString(),
-              }
-            : prev,
-        );
-        onGameStateChange?.(false);
-        popup.success(
-          `🎉 BINGO${patternText}! Player with Cartela ${matchedCartela} WON!\nGame closed.${payoutText}${cutText}`,
+        return;
+      }
+
+      // Safety retry with freshly synced state to avoid banning a true winner due to stale local state.
+      const retryContext = await getClaimContext(matchedCartela);
+      const retryIndex =
+        retryContext.cartelaIndex >= 0
+          ? retryContext.cartelaIndex
+          : claimContext.cartelaIndex;
+      const retryClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+        cartella_index: retryIndex,
+        called_numbers: retryContext.calledNumbersForClaim,
+        ban_on_false_claim: false,
+      });
+
+      if (retryClaim.cartella_statuses) {
+        setCartellaStatuses(retryClaim.cartella_statuses);
+      }
+
+      if (retryClaim.is_bingo) {
+        applyWinningClaimResult(
+          matchedCartela,
+          retryIndex,
+          retryClaim,
+          "check",
         );
         return;
       }
@@ -1483,7 +1660,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       const shouldBan = await popup.confirm({
         title: "No Bingo Yet",
-        description: `${claim.detail || "Cartela did not win yet."}\n\nCartela ${matchedCartela} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
+        description: `${retryClaim.detail || "Cartela did not win yet."}\n\nCartela ${matchedCartela} is now shown for review.\nDo you want to ban this cartela or keep it in play?`,
         confirmText: "Ban Cartela",
         cancelText: "Keep Playing",
       });
@@ -1495,9 +1672,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       setIsCheckingCartela(true);
+      const banContext = await getClaimContext(matchedCartela);
+      const banIndex =
+        banContext.cartelaIndex >= 0 ? banContext.cartelaIndex : retryIndex;
       const banClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
-        cartella_index: cartellaIndex,
-        called_numbers: calledNumbers,
+        cartella_index: banIndex,
+        called_numbers: banContext.calledNumbersForClaim,
         ban_on_false_claim: true,
       });
 

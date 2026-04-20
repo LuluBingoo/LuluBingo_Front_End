@@ -147,14 +147,14 @@ export interface GameCompleteRequest {
 export interface GameClaimRequest {
   cartella_index: number;
   called_numbers?: number[];
-  pattern?: "row" | "diagonal";
+  pattern?: "row" | "column" | "diagonal";
   ban_on_false_claim?: boolean;
 }
 
 export interface GameClaimResponse {
   game_code: string;
   cartella_index: number;
-  pattern?: "row" | "diagonal";
+  pattern?: "row" | "column" | "diagonal";
   is_bingo: boolean;
   is_banned?: boolean;
   would_ban?: boolean;
