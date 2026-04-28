@@ -55,6 +55,14 @@ const parseMoneyAmount = (value: unknown, fallback = 0): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const createDefaultBingoRows = () => ({
+  B: Array.from({ length: 15 }, (_, i) => i + 1),
+  I: Array.from({ length: 15 }, (_, i) => i + 16),
+  N: Array.from({ length: 15 }, (_, i) => i + 31),
+  G: Array.from({ length: 15 }, (_, i) => i + 46),
+  O: Array.from({ length: 15 }, (_, i) => i + 61),
+});
+
 export const Playground: React.FC<PlaygroundProps> = ({
   gameConfig,
   onStartNewGame,
@@ -224,13 +232,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [drawCursor, setDrawCursor] = useState(0);
 
   // State for Bingo board (numbers shuffled per column)
-  const [bingoRows, setBingoRows] = useState({
-    B: Array.from({ length: 15 }, (_, i) => i + 1),
-    I: Array.from({ length: 15 }, (_, i) => i + 16),
-    N: Array.from({ length: 15 }, (_, i) => i + 31),
-    G: Array.from({ length: 15 }, (_, i) => i + 46),
-    O: Array.from({ length: 15 }, (_, i) => i + 61),
-  });
+  const [bingoRows, setBingoRows] = useState(createDefaultBingoRows);
 
   const [isGameActive, setIsGameActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -316,6 +318,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
     return candidate;
   }, [restoredGame?.shop_players_data]);
+
+  const resetBingoRows = React.useCallback(() => {
+    setBingoRows(createDefaultBingoRows());
+  }, []);
 
   useEffect(() => {
     onWinnerCelebrationVisibilityChange?.(isWinnerModalOpen);
@@ -1996,25 +2002,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
   };
 
-  // Shuffle/reshuffle numbers inside each Bingo column
-  const reshuffleBoard = () => {
-    setBingoRows((prev) => {
-      const shuffleArray = (arr: number[]) =>
-        arr
-          .map((value) => ({ value, sort: Math.random() }))
-          .sort((a, b) => a.sort - b.sort)
-          .map(({ value }) => value);
-
-      return {
-        B: shuffleArray(prev.B),
-        I: shuffleArray(prev.I),
-        N: shuffleArray(prev.N),
-        G: shuffleArray(prev.G),
-        O: shuffleArray(prev.O),
-      };
-    });
-  };
-
   const shuffleNumbers = () => {
     if (gameStatus !== "pending") {
       popup.warning("Shuffle is locked after game starts.");
@@ -2026,11 +2013,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (next) {
         setShuffleCycle(0);
-        reshuffleBoard();
+        resetBingoRows();
         setCalledNumbers([]);
         setCurrentCalledNumber("");
         popup.info("Shuffling started. Click Stop to pause.");
       } else {
+        resetBingoRows();
         popup.info("Shuffling stopped.");
       }
 
@@ -2103,21 +2091,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     const intervalId = window.setInterval(() => {
       setShuffleCycle((prev) => prev + 1);
-      setBingoRows((prev) => {
-        const shuffleArray = (arr: number[]) =>
-          arr
-            .map((value) => ({ value, sort: Math.random() }))
-            .sort((a, b) => a.sort - b.sort)
-            .map(({ value }) => value);
-
-        return {
-          B: shuffleArray(prev.B),
-          I: shuffleArray(prev.I),
-          N: shuffleArray(prev.N),
-          G: shuffleArray(prev.G),
-          O: shuffleArray(prev.O),
-        };
-      });
     }, shuffleSpeedMs);
 
     return () => window.clearInterval(intervalId);
