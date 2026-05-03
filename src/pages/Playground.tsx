@@ -566,17 +566,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
         );
       }
 
-      const backendBoard = index >= 0 ? numbers[index] || [] : [];
-      const normalizedBackendBoard = normalizeCartellaBoard(backendBoard);
-      if (normalizedBackendBoard) {
-        return [cartelaNumber, normalizedBackendBoard] as const;
-      }
-
       if (currentGameConfig?.playMode === "offline") {
         const offlineBoard = getOfflineCartellaBoard(cartelaNumber);
         if (offlineBoard) {
           return [cartelaNumber, offlineBoard] as const;
         }
+      }
+
+      const backendBoard = index >= 0 ? numbers[index] || [] : [];
+      const normalizedBackendBoard = normalizeCartellaBoard(backendBoard);
+      if (normalizedBackendBoard) {
+        return [cartelaNumber, normalizedBackendBoard] as const;
       }
 
       return [cartelaNumber, []] as const;
