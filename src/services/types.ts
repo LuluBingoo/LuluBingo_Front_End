@@ -113,6 +113,7 @@ export interface Game {
   current_called_number?: number | null;
   is_paused?: boolean;
   shop_players_data?: ShopBingoPlayer[];
+  board_configuration?: Record<string, number[]>;
   status: GameStatus;
   winners: number[];
   banned_cartellas?: number[];

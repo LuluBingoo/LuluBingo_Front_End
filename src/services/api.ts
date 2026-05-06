@@ -290,15 +290,17 @@ export const gamesApi = {
 
   async shuffleGame(
     code: string,
+    boardConfiguration?: Record<string, number[]>,
   ): Promise<{ game_code: string; status: string; message: string }> {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Game shuffle is not available in mock mode");
     }
+    const payload = boardConfiguration ? { board_configuration: boardConfiguration } : {};
     return await apiClient.post<{
       game_code: string;
       status: string;
       message: string;
-    }>(API_ENDPOINTS.GAMES.SHUFFLE(code), {});
+    }>(API_ENDPOINTS.GAMES.SHUFFLE(code), payload);
   },
 
   async startGame(

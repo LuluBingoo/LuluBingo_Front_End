@@ -549,6 +549,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
           state.cartella_statuses || game.cartella_statuses || {},
         );
         setDrawSequence(game.draw_sequence || []);
+        
+        // Load board configuration from backend if available
+        if (game.board_configuration && typeof game.board_configuration === 'object') {
+          const boardConfig = game.board_configuration as Record<string, number[]>;
+          if (boardConfig.B && boardConfig.I && boardConfig.N && boardConfig.G && boardConfig.O) {
+            setBingoRows(boardConfig);
+            saveBingoRowsToStorage(boardConfig, game.game_code);
+          }
+        } else {
+          // Load from localStorage if not in backend
+          const savedRows = loadBingoRowsFromStorage(game.game_code);
+          setBingoRows(savedRows);
+        }
+        
         const restoredCursor = resolveCallCursor(
           state.call_cursor,
           state.called_numbers,
@@ -1104,9 +1118,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
-    // Reduced delays for faster calling
-    const postVoiceDisplayMs = 100;
-    const minimumAnnouncementMs = 800;
     const { label: resolvedLabel, number: resolvedCalledNumber } =
       resolveCalledLabelAndNumber(label, calledNumber ?? null);
 
@@ -1115,41 +1126,32 @@ export const Playground: React.FC<PlaygroundProps> = ({
       lastAnimatedCalledRef.current = resolvedCalledNumber;
     }
 
-    // Show center popup at the same moment the voice starts.
-    setBallPopupLabel(resolvedLabel);
-    setShowBallPopup(true);
-
     const now = Date.now();
     const withinStreakWindow = now - lastCallTimeRef.current <= 5000;
     lastCallTimeRef.current = now;
     setCallStreak((prev) => (withinStreakWindow ? prev + 1 : 1));
     setStreakBoost(true);
-
     window.setTimeout(() => setStreakBoost(false), 350);
 
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
-    const announcementStartedAt = Date.now();
+
+    // Show popup and play audio SIMULTANEOUSLY for perfect sync
+    setBallPopupLabel(resolvedLabel);
+    setShowBallPopup(true);
     
-    // Play audio without waiting for full completion for faster flow
-    await playAudio(resolvedLabel, true);
+    // Start audio playback immediately
+    const audioPromise = playAudio(resolvedLabel, true);
+    
+    // Wait for audio to complete
+    await audioPromise;
 
-    if (activeNumberVoiceIdRef.current === announcementId) {
-      const elapsedMs = Date.now() - announcementStartedAt;
-      const remainingMinimumMs = Math.max(0, minimumAnnouncementMs - elapsedMs);
-      if (remainingMinimumMs > 0) {
-        await new Promise<void>((resolve) => {
-          window.setTimeout(resolve, remainingMinimumMs);
-        });
-      }
-    }
+    // Keep popup visible for a brief moment after audio ends
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 200);
+    });
 
-    if (activeNumberVoiceIdRef.current === announcementId) {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, postVoiceDisplayMs);
-      });
-    }
-
+    // Clean up if this is still the active announcement
     if (activeNumberVoiceIdRef.current === announcementId) {
       setShowBallPopup(false);
       setIsAnnouncingNumber(false);
@@ -2220,7 +2222,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
         setShuffleCycle(0);
         popup.info("Shuffling started. Click Stop to pause.");
       } else {
-        popup.info("Shuffling stopped. Current positions saved.");
+        // Save to backend when stopping shuffle
+        const gameCode = currentGameConfig?.gameCode || currentGameConfig?.game;
+        if (gameCode) {
+          gamesApi.shuffleGame(gameCode, bingoRows).catch((error) => {
+            console.error("Failed to save board configuration to backend:", error);
+          });
+        }
+        popup.info("Shuffling stopped. Board saved.");
       }
 
       return next;
@@ -2434,16 +2443,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     // Stop previous audio only if it's the same type
     if (targetRef.current) {
-      targetRef.current.pause();
-      targetRef.current.currentTime = 0;
+      try {
+        targetRef.current.pause();
+        targetRef.current.currentTime = 0;
+      } catch (e) {
+        // Ignore errors from stopping previous audio
+      }
     }
 
-    // Try to use cached audio first for faster playback
+    // Try to use cached audio first for instant playback
     let audio: HTMLAudioElement;
     const cachedAudio = audioCache.current.get(normalizedKey);
     
     if (cachedAudio && isCalledBallKey) {
-      // Clone the cached audio for reuse
+      // Clone the cached audio for instant reuse
       audio = cachedAudio.cloneNode(true) as HTMLAudioElement;
       audio.currentTime = 0;
     } else {
@@ -2456,58 +2469,51 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     if (!waitForEnd) {
       return audio.play().catch(() => {
-        // Ignore autoplay/interrupt errors because calls can happen rapidly.
+        // Ignore autoplay/interrupt errors
       });
     }
 
     return new Promise<void>((resolve) => {
       let settled = false;
-      const startedAt = Date.now();
-      // Reduced minimum wait for faster calls
-      const minimumWaitMs = isCalledBallKey ? 600 : 0;
 
       const settle = () => {
         if (settled) return;
         settled = true;
         window.clearTimeout(fallbackTimeoutId);
         audio.removeEventListener("ended", onEnded);
-        audio.removeEventListener("error", onFailure);
-        audio.removeEventListener("abort", onFailure);
+        audio.removeEventListener("error", onError);
+        audio.removeEventListener("pause", onPause);
         resolve();
-      };
-
-      const settleWithMinimum = () => {
-        const elapsedMs = Date.now() - startedAt;
-        const remainingMinimumMs = Math.max(0, minimumWaitMs - elapsedMs);
-        if (remainingMinimumMs > 0) {
-          window.setTimeout(() => {
-            settle();
-          }, remainingMinimumMs);
-          return;
-        }
-        settle();
       };
 
       const onEnded = () => {
         settle();
       };
 
-      const onFailure = () => {
-        settleWithMinimum();
+      const onError = () => {
+        settle();
       };
 
-      // Reduced timeout for faster flow
+      const onPause = () => {
+        // If audio is paused (interrupted), resolve immediately
+        if (audio.currentTime > 0 && !audio.ended) {
+          settle();
+        }
+      };
+
+      // Timeout as fallback - audio should complete naturally
       const fallbackTimeoutId = window.setTimeout(() => {
-        settleWithMinimum();
-      }, 5000);
+        settle();
+      }, 4000);
 
       audio.addEventListener("ended", onEnded, { once: true });
-      audio.addEventListener("error", onFailure, { once: true });
-      audio.addEventListener("abort", onFailure, { once: true });
+      audio.addEventListener("error", onError, { once: true });
+      audio.addEventListener("pause", onPause);
 
-      void audio.play().catch(() => {
-        // If playback cannot start, keep cadence smooth instead of instant chaining.
-        settleWithMinimum();
+      // Start playback immediately
+      audio.play().catch(() => {
+        // If playback fails, resolve immediately
+        settle();
       });
     });
   };
