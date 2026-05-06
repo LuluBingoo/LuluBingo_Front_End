@@ -195,6 +195,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
         cartelaData: game.cartella_numbers,
         drawSequence: game.draw_sequence,
         cartellaStatuses: game.cartella_statuses || {},
+        cutPercentage: game.cut_percentage,
         backendStatus: game.status,
       };
     },
@@ -2063,10 +2064,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const calculateWinMoney = () => {
+    let pool = calledNumbers.length * 10;
     if (currentGameConfig?.winBirr && currentGameConfig.winBirr !== "0") {
-      return parseInt(currentGameConfig.winBirr);
+      pool = parseFloat(String(currentGameConfig.winBirr));
     }
-    return calledNumbers.length * 10;
+
+    const cutPerc = parseFloat(
+      String(currentGameConfig?.cutPercentage || "10"),
+    );
+    const validCut =
+      Number.isFinite(cutPerc) && cutPerc >= 0 && cutPerc <= 100 ? cutPerc : 10;
+
+    // We already use quantized amounts in the backend, but mathematically: payout = pool - shop_cut
+    const shopCut = (pool * validCut) / 100;
+    const netPayout = pool - shopCut;
+
+    return Math.round(netPayout * 100) / 100; // Return clean 2-decimal rounded if any
   };
 
   const toggleFullscreen = () => {

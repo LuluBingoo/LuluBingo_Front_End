@@ -148,7 +148,6 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   const resolvedPayout =
     restoredGame?.payout_amount ||
     winnerCelebration?.payoutAmount ||
-    currentGameConfig?.winBirr ||
     calculateWinMoney();
   const resolvedShopCut =
     restoredGame?.shop_cut_amount || winnerCelebration?.shopCutAmount || 0;

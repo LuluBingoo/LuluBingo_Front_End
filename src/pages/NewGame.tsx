@@ -41,6 +41,7 @@ interface GameConfig {
   drawSequence?: number[];
   cartellaDrawSequences?: number[][];
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
+  cutPercentage?: string;
   backendStatus?: string;
 }
 
@@ -637,6 +638,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         drawSequence: createdGame.draw_sequence,
         cartellaDrawSequences: createdGame.cartella_draw_sequences,
         cartellaStatuses: createdGame.cartella_statuses || {},
+        cutPercentage: String(effectiveShopCutPercentage),
         backendStatus: createdGame.status,
       };
 

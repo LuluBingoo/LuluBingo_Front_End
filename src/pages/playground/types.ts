@@ -12,6 +12,7 @@ export interface PlaygroundGameConfig {
   cartelaData?: number[][];
   drawSequence?: number[];
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
+  cutPercentage?: string;
 }
 
 export interface PlaygroundProps {
