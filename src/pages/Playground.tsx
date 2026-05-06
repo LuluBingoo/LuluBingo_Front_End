@@ -2039,6 +2039,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
   };
 
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   const shuffleNumbers = () => {
     if (gameStatus !== "pending") {
       popup.warning("Shuffle is locked after game starts.");
@@ -2140,6 +2149,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     const intervalId = window.setInterval(() => {
       setShuffleCycle((prev) => prev + 1);
+      // Actually shuffle the numbers in each column
+      setBingoRows((prevRows) => ({
+        B: shuffleArray(prevRows.B),
+        I: shuffleArray(prevRows.I),
+        N: shuffleArray(prevRows.N),
+        G: shuffleArray(prevRows.G),
+        O: shuffleArray(prevRows.O),
+      }));
     }, shuffleSpeedMs);
 
     return () => window.clearInterval(intervalId);

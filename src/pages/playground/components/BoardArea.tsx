@@ -232,10 +232,21 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
           className={`relative z-10 space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
           animate={
             isShuffling
-              ? { scale: [1, 0.99, 1.01, 1], opacity: [1, 0.9, 1] }
-              : { scale: 1, opacity: 1 }
+              ? { 
+                  scale: [1, 1.005, 1],
+                  boxShadow: [
+                    "0 0 0 rgba(14, 165, 233, 0)",
+                    "0 0 20px rgba(14, 165, 233, 0.3)",
+                    "0 0 0 rgba(14, 165, 233, 0)"
+                  ]
+                }
+              : { scale: 1, boxShadow: "0 0 0 rgba(14, 165, 233, 0)" }
           }
-          transition={{ duration: 0.55 }}
+          transition={{ 
+            duration: 0.8,
+            repeat: isShuffling ? Infinity : 0,
+            ease: "easeInOut"
+          }}
         >
           {Object.entries(bingoRows).map(([letter, numbers]) => (
             <div
@@ -257,39 +268,27 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
                     animate={
                       isShuffling
                         ? {
-                            x: [
-                              0,
-                              ((num * 7 + shuffleCycle * 11) % 29) - 14,
-                              ((num * 13 + shuffleCycle * 5) % 31) - 15,
-                              -(((num * 13 + shuffleCycle * 5) % 31) - 15) / 2,
-                              0,
-                            ],
-                            y: [
-                              0,
-                              ((num * 11 + shuffleCycle * 3) % 21) - 10,
-                              ((num * 5 + shuffleCycle * 17) % 23) - 11,
-                              -(((num * 5 + shuffleCycle * 17) % 23) - 11) / 2,
-                              0,
-                            ],
-                            rotate: [
-                              0,
-                              ((num * 3 + shuffleCycle * 9) % 34) - 17,
-                              -(((num * 3 + shuffleCycle * 9) % 34) - 17) / 2,
-                              0,
-                            ],
-                            scale: [1, 1.1, 0.94, 1.04, 1],
+                            scale: [1, 1.08, 0.96, 1.04, 1],
+                            rotate: [0, -3, 3, -2, 0],
                           }
-                        : { x: 0, y: 0, rotate: 0, scale: 1 }
+                        : { scale: 1, rotate: 0 }
                     }
                     whileHover={{ scale: 1.1 }}
                     transition={{
                       layout: {
                         type: "spring",
-                        stiffness: 320,
-                        damping: 24,
+                        stiffness: 400,
+                        damping: 30,
+                        mass: 0.8,
                       },
-                      duration: isShuffling ? 0.22 : 0.18,
-                      ease: "easeInOut",
+                      scale: {
+                        duration: 0.3,
+                        ease: "easeInOut",
+                      },
+                      rotate: {
+                        duration: 0.3,
+                        ease: "easeInOut",
+                      },
                     }}
                     onClick={() => isGameActive && callSpecificNumber(num)}
                   >
