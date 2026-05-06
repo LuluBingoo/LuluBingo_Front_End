@@ -160,13 +160,25 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   const buildConfigFromGame = React.useCallback(
     (game: Game): PlaygroundGameConfig => {
+      const assignedNumbers = Array.isArray(game.assigned_cartella_numbers)
+        ? game.assigned_cartella_numbers
+        : [];
+      const mappedNumbers =
+        game.cartella_number_map && typeof game.cartella_number_map === "object"
+          ? Object.keys(game.cartella_number_map)
+              .map((value) => Number.parseInt(value, 10))
+              .filter(Number.isFinite)
+              .sort((a, b) => a - b)
+          : [];
       const fallbackCartelaNumbers = Array.from(
-        game.assigned_cartella_numbers?.length
-          ? game.assigned_cartella_numbers
-          : Array.from(
-              { length: game.cartella_numbers?.length || 0 },
-              (_, index) => index + 1,
-            ),
+        assignedNumbers.length > 0
+          ? assignedNumbers
+          : mappedNumbers.length > 0
+            ? mappedNumbers
+            : Array.from(
+                { length: game.cartella_numbers?.length || 0 },
+                (_, index) => index + 1,
+              ),
         (value) => String(value),
       );
 

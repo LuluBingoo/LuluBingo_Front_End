@@ -166,6 +166,16 @@ const normalizeBackendStatus = (
   return undefined;
 };
 
+const ACTIVE_GAME_CODE_STORAGE_KEY = "lulubingo.activeGameCode";
+
+const readStoredActiveGameCode = () => {
+  try {
+    return (localStorage.getItem(ACTIVE_GAME_CODE_STORAGE_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+};
+
 /* ===============================
    PROTECTED APP CONTENT
 ================================ */
@@ -198,6 +208,42 @@ function AppLayout({
   const [isPlaygroundFullscreen, setIsPlaygroundFullscreen] = useState(false);
   const sidebarStateBeforeWinnerModalRef = useRef<boolean | null>(null);
   const currentYear = new Date().getFullYear();
+
+  const activeGameCodeFromUrl = React.useMemo(() => {
+    if (location.pathname !== "/playground") {
+      return "";
+    }
+
+    const params = new URLSearchParams(location.search);
+    return (params.get("game") || "").trim();
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (activeGameCodeFromUrl) {
+      try {
+        localStorage.setItem(
+          ACTIVE_GAME_CODE_STORAGE_KEY,
+          activeGameCodeFromUrl,
+        );
+      } catch {
+        // Ignore storage issues; URL will still drive restore.
+      }
+      return;
+    }
+
+    if (location.pathname !== "/playground") {
+      return;
+    }
+
+    const storedCode = readStoredActiveGameCode();
+    if (!storedCode) {
+      return;
+    }
+
+    navigate(`/playground?game=${encodeURIComponent(storedCode)}`, {
+      replace: true,
+    });
+  }, [activeGameCodeFromUrl, location.pathname, navigate]);
 
   const refreshAccessState = async () => {
     setIsAccessStateLoading(true);
@@ -310,9 +356,25 @@ function AppLayout({
       backendStatus: normalizeBackendStatus(config.backendStatus),
       selectedPatterns: patterns,
     };
+    const activeGameCode = (
+      fullConfig.gameCode ||
+      fullConfig.game ||
+      ""
+    ).trim();
 
     setGameConfig(fullConfig);
     setIsGameActive(true);
+
+    if (activeGameCode) {
+      try {
+        localStorage.setItem(ACTIVE_GAME_CODE_STORAGE_KEY, activeGameCode);
+      } catch {
+        // Ignore storage issues; URL will still drive restore.
+      }
+      navigate(`/playground?game=${encodeURIComponent(activeGameCode)}`);
+      return;
+    }
+
     navigate("/playground");
   };
 
@@ -320,6 +382,11 @@ function AppLayout({
   const handleStartNewGame = () => {
     setGameConfig(null);
     setIsGameActive(false);
+    try {
+      localStorage.removeItem(ACTIVE_GAME_CODE_STORAGE_KEY);
+    } catch {
+      // Ignore storage issues; new game flow can continue.
+    }
     navigate("/newgame");
   };
 
@@ -483,6 +550,11 @@ function App() {
       setUsername("Shop User");
       setGameConfig(null);
       setIsGameActive(false);
+      try {
+        localStorage.removeItem(ACTIVE_GAME_CODE_STORAGE_KEY);
+      } catch {
+        // Ignore storage issues during logout.
+      }
     }
   };
 
