@@ -83,6 +83,11 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
     [],
   );
 
+  const calledNumbersSet = React.useMemo(
+    () => new Set(calledNumbers),
+    [calledNumbers],
+  );
+
   return (
     <div
       ref={boardContainerRef}
@@ -248,7 +253,7 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
                   <motion.div
                     key={num}
                     layout
-                    className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbers.includes(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-white" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-white"}`}
+                    className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full border-2 font-bold transition-all shadow-sm ${isFullscreen ? (isTheaterMode ? "h-[clamp(2.6rem,4.8vw,6rem)] w-[clamp(2.6rem,4.8vw,6rem)] text-[clamp(1rem,1.7vw,2rem)]" : "h-[clamp(2.2rem,4.1vw,5.2rem)] w-[clamp(2.2rem,4.1vw,5.2rem)] text-[clamp(0.9rem,1.35vw,1.5rem)]") : "h-[clamp(2.3rem,5vw,6.2rem)] w-[clamp(2.3rem,5vw,6.2rem)] text-[clamp(0.9rem,1.6vw,2rem)]"} ${calledNumbersSet.has(num) ? "border-sky-500 bg-linear-to-br from-sky-300 via-sky-500 to-sky-700 text-white shadow-[0_10px_20px_rgba(14,165,233,0.45)] font-black scale-[1.02] dark:hover:text-white" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.75),0_6px_14px_rgba(15,23,42,0.16)] hover:border-slate-400 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.85),0_9px_20px_rgba(15,23,42,0.24)] dark:border-slate-600 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:text-white"}`}
                     animate={
                       isShuffling
                         ? {

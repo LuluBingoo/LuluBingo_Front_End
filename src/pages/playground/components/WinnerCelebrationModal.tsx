@@ -130,22 +130,33 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   };
 
   const resolvedGameCode =
-    restoredGame?.game_code || currentGameConfig?.gameCode || currentGameConfig?.game || "-";
+    restoredGame?.game_code ||
+    currentGameConfig?.gameCode ||
+    currentGameConfig?.game ||
+    "-";
   const resolvedTotalPlayers =
-    restoredGame?.num_players || Number.parseInt(currentGameConfig?.numPlayers || "0", 10) || activeCartelasCount;
+    restoredGame?.num_players ||
+    Number.parseInt(currentGameConfig?.numPlayers || "0", 10) ||
+    activeCartelasCount;
   const resolvedBetPerPlayer =
     restoredGame?.bet_amount || currentGameConfig?.betBirr || 0;
   const resolvedTotalPool =
-    restoredGame?.total_pool || winnerCelebration?.totalPool ||
-    (Number.parseFloat(String(resolvedBetPerPlayer)) || 0) * resolvedTotalPlayers;
+    restoredGame?.total_pool ||
+    winnerCelebration?.totalPool ||
+    (Number.parseFloat(String(resolvedBetPerPlayer)) || 0) *
+      resolvedTotalPlayers;
   const resolvedPayout =
-    restoredGame?.payout_amount || winnerCelebration?.payoutAmount || currentGameConfig?.winBirr || calculateWinMoney();
+    restoredGame?.payout_amount ||
+    winnerCelebration?.payoutAmount ||
+    currentGameConfig?.winBirr ||
+    calculateWinMoney();
   const resolvedShopCut =
     restoredGame?.shop_cut_amount || winnerCelebration?.shopCutAmount || 0;
   const resolvedLuluCut =
     restoredGame?.lulu_cut_amount || winnerCelebration?.luluCutAmount || 0;
   const resolvedShopNetCut =
-    restoredGame?.shop_net_cut_amount || winnerCelebration?.shopNetCutAmount ||
+    restoredGame?.shop_net_cut_amount ||
+    winnerCelebration?.shopNetCutAmount ||
     (Number.parseFloat(String(resolvedShopCut)) || 0) -
       (Number.parseFloat(String(resolvedLuluCut)) || 0);
 

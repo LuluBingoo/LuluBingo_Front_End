@@ -40,6 +40,7 @@ interface DesktopControlPanelsProps {
   openAddPlayerModal: () => void;
   autoCallTimer: number;
   autoCallCycleSeconds: number;
+  setAutoCallCycleSeconds: (seconds: number) => void;
   t: (key: string) => string;
   shuffleSpeedMs: number;
   setShuffleSpeedMs: React.Dispatch<React.SetStateAction<number>>;
@@ -78,6 +79,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
   openAddPlayerModal,
   autoCallTimer,
   autoCallCycleSeconds,
+  setAutoCallCycleSeconds,
   t,
   shuffleSpeedMs,
   setShuffleSpeedMs,
@@ -291,16 +293,41 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                 </button>
               </div>
 
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
-                <span
-                  className={`rounded-full px-2 py-0.5 ${
-                    autoCall
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                  }`}
-                >
-                  {autoCall ? "On" : "Off"}
-                </span>
+              <div className="mt-2 flex flex-col gap-2 relative">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
+                  <span
+                    className={`rounded-full px-2 py-0.5 ${
+                      autoCall
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    }`}
+                  >
+                    {autoCall ? "On" : "Off"}
+                  </span>
+                </div>
+                <div className="flex flex-col w-full mt-1.5 rounded-xl border border-slate-100 bg-slate-50/70 p-2 shadow-inner dark:border-slate-700/60 dark:bg-slate-800/40 backdrop-blur-md">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-0.5">
+                      Speed Control
+                    </span>
+                  </div>
+                  <div className="flex w-full gap-1">
+                    {[1, 2, 3, 4, 5, 6].map((sec) => (
+                      <button
+                        key={`speed-${sec}`}
+                        type="button"
+                        onClick={() => setAutoCallCycleSeconds(sec)}
+                        className={`flex-1 rounded-md py-1.5 text-xs font-black transition-all ${
+                          cycleSeconds === sec
+                            ? "bg-linear-to-b from-emerald-400 to-emerald-600 shadow-[0_4px_12px_rgba(16,185,129,0.3)] text-white scale-[1.04]"
+                            : "bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 border border-slate-200 hover:border-emerald-300/50 dark:border-slate-800 dark:hover:border-emerald-700/50"
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3 rounded-xl border border-slate-200 bg-linear-to-r from-white to-slate-50 p-3 shadow-inner dark:border-slate-700 dark:from-slate-900 dark:to-slate-800/80">

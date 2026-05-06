@@ -206,9 +206,20 @@ export const Playground: React.FC<PlaygroundProps> = ({
       localStorage.getItem("autoCallSeconds") || "5",
       10,
     );
-    // Sub-3 second cadence is too aggressive for full voice playback.
-    return Number.isFinite(parsed) && parsed >= 3 ? parsed : 5;
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 5;
   }, []);
+
+  const [currentAutoCallSeconds, setCurrentAutoCallSeconds] = useState(() =>
+    getConfiguredAutoCallSeconds(),
+  );
+
+  const handleSetAutoCallSeconds = (seconds: number) => {
+    localStorage.setItem("autoCallSeconds", String(seconds));
+    setCurrentAutoCallSeconds(seconds);
+    if (autoCall) {
+      setAutoCallTimer(seconds);
+    }
+  };
 
   // State for called numbers & auto call
   const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
@@ -2622,6 +2633,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
           shuffleNumbers={shuffleNumbers}
           autoCall={autoCall}
           onToggleAutoCall={toggleAutoCall}
+          autoCallCycleSeconds={currentAutoCallSeconds}
+          setAutoCallCycleSeconds={handleSetAutoCallSeconds}
           isPaused={isPaused}
           togglePauseGame={togglePauseGame}
           showRadialControls={showRadialControls}
@@ -2656,7 +2669,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
           canAddPlayerWhilePaused={canAddPlayerWhilePaused}
           openAddPlayerModal={openAddPlayerModal}
           autoCallTimer={autoCallTimer}
-          autoCallCycleSeconds={getConfiguredAutoCallSeconds()}
+          autoCallCycleSeconds={currentAutoCallSeconds}
+          setAutoCallCycleSeconds={handleSetAutoCallSeconds}
           t={t}
           shuffleSpeedMs={shuffleSpeedMs}
           setShuffleSpeedMs={setShuffleSpeedMs}

@@ -55,7 +55,10 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Game:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.game_code || currentGameConfig?.gameCode || currentGameConfig?.game || "-"}
+              {restoredGame?.game_code ||
+                currentGameConfig?.gameCode ||
+                currentGameConfig?.game ||
+                "-"}
             </span>
           </div>
           <div>
@@ -65,7 +68,9 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Players:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.num_players || currentGameConfig?.numPlayers || "-"}
+              {restoredGame?.num_players ||
+                currentGameConfig?.numPlayers ||
+                "-"}
             </span>
           </div>
           <div>
@@ -91,7 +96,9 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Winners:</span>{" "}
             <span className="font-semibold">
-              {resolvedWinnerLabels.length ? resolvedWinnerLabels.join(", ") : "-"}
+              {resolvedWinnerLabels.length
+                ? resolvedWinnerLabels.join(", ")
+                : "-"}
             </span>
           </div>
           <div>

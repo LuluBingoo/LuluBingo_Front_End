@@ -16,6 +16,8 @@ interface FullscreenControlsProps {
   shuffleNumbers: () => void;
   autoCall: boolean;
   onToggleAutoCall: (nextValue?: boolean) => void;
+  autoCallCycleSeconds: number;
+  setAutoCallCycleSeconds: (seconds: number) => void;
   isPaused: boolean;
   togglePauseGame: () => void;
   showRadialControls: boolean;
@@ -40,6 +42,8 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
   shuffleNumbers,
   autoCall,
   onToggleAutoCall,
+  autoCallCycleSeconds,
+  setAutoCallCycleSeconds,
   isPaused,
   togglePauseGame,
   showRadialControls,
@@ -150,6 +154,26 @@ export const FullscreenControls: React.FC<FullscreenControlsProps> = ({
                 <Pause className="h-5 w-5" />
               )}
             </button>
+            <div
+              className={`flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur ${theme === "dark" ? "bg-slate-800/80 border border-slate-700" : "bg-white/80 border border-slate-200"}`}
+            >
+              {[1, 2, 3, 4, 5].map((sec) => (
+                <button
+                  key={`fs-speed-${sec}`}
+                  type="button"
+                  onClick={() => setAutoCallCycleSeconds(sec)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    autoCallCycleSeconds === sec
+                      ? "bg-emerald-500 text-white shadow-md scale-105"
+                      : theme === "dark"
+                        ? "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                        : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
           </motion.div>
         ) : (
           <motion.div
