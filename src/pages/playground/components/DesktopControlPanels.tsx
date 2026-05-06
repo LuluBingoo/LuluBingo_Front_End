@@ -28,6 +28,7 @@ interface DesktopControlPanelsProps {
   isStoppingGame: boolean;
   closeGameWithoutWinner: () => Promise<void>;
   shuffleNumbers: () => void;
+  resetBingoRows: () => void;
   isShuffling: boolean;
   isStartingGame: boolean;
   startGame: () => Promise<void>;
@@ -67,6 +68,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
   isStoppingGame,
   closeGameWithoutWinner,
   shuffleNumbers,
+  resetBingoRows,
   isShuffling,
   isStartingGame,
   startGame,
@@ -211,17 +213,27 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
               </>
             ) : gameStatus === "pending" ? (
               <>
-                <Button
-                  className="h-10 w-full"
-                  onClick={shuffleNumbers}
-                  variant="outline"
-                  disabled={isStartingGame}
-                >
-                  <Shuffle
-                    className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
-                  />
-                  {isShuffling ? "Stop Shuffling" : "Shuffle"}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    className="h-10 w-full"
+                    onClick={shuffleNumbers}
+                    variant="outline"
+                    disabled={isStartingGame}
+                  >
+                    <Shuffle
+                      className={`mr-1 h-4 w-4 ${isShuffling ? "animate-spin" : ""}`}
+                    />
+                    {isShuffling ? "Stop" : "Shuffle"}
+                  </Button>
+                  <Button
+                    className="h-10 w-full"
+                    onClick={resetBingoRows}
+                    variant="outline"
+                    disabled={isStartingGame || isShuffling}
+                  >
+                    Reset
+                  </Button>
+                </div>
                 {isShuffling && (
                   <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
                     <ShuffleSpeedPresets

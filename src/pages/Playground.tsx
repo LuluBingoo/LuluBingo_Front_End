@@ -63,6 +63,41 @@ const createDefaultBingoRows = () => ({
   O: Array.from({ length: 15 }, (_, i) => i + 61),
 });
 
+const getStorageKey = (gameCode?: string) => {
+  return gameCode ? `bingoRows_${gameCode}` : 'bingoRows_default';
+};
+
+const loadBingoRowsFromStorage = (gameCode?: string) => {
+  try {
+    const key = getStorageKey(gameCode);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Validate the structure
+      if (parsed && parsed.B && parsed.I && parsed.N && parsed.G && parsed.O &&
+          Array.isArray(parsed.B) && parsed.B.length === 15 &&
+          Array.isArray(parsed.I) && parsed.I.length === 15 &&
+          Array.isArray(parsed.N) && parsed.N.length === 15 &&
+          Array.isArray(parsed.G) && parsed.G.length === 15 &&
+          Array.isArray(parsed.O) && parsed.O.length === 15) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load bingo rows from storage:', error);
+  }
+  return createDefaultBingoRows();
+};
+
+const saveBingoRowsToStorage = (rows: Record<string, number[]>, gameCode?: string) => {
+  try {
+    const key = getStorageKey(gameCode);
+    localStorage.setItem(key, JSON.stringify(rows));
+  } catch (error) {
+    console.error('Failed to save bingo rows to storage:', error);
+  }
+};
+
 export const Playground: React.FC<PlaygroundProps> = ({
   gameConfig,
   onStartNewGame,
@@ -256,7 +291,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [drawCursor, setDrawCursor] = useState(0);
 
   // State for Bingo board (numbers shuffled per column)
-  const [bingoRows, setBingoRows] = useState(createDefaultBingoRows);
+  const [bingoRows, setBingoRows] = useState(() => 
+    loadBingoRowsFromStorage(currentGameConfig?.gameCode || currentGameConfig?.game)
+  );
 
   const [isGameActive, setIsGameActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -344,8 +381,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
   }, [restoredGame?.shop_players_data]);
 
   const resetBingoRows = React.useCallback(() => {
-    setBingoRows(createDefaultBingoRows());
-  }, []);
+    const defaultRows = createDefaultBingoRows();
+    setBingoRows(defaultRows);
+    // Save the reset state to storage
+    const gameCode = currentGameConfig?.gameCode || currentGameConfig?.game;
+    saveBingoRowsToStorage(defaultRows, gameCode);
+  }, [currentGameConfig?.gameCode, currentGameConfig?.game]);
 
   useEffect(() => {
     onWinnerCelebrationVisibilityChange?.(isWinnerModalOpen);
@@ -510,6 +551,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setCartellaStatuses(currentGameConfig.cartellaStatuses || {});
     setDrawSequence(currentGameConfig.drawSequence || []);
     setDrawCursor(0);
+    
+    // Load saved bingo rows for this game
+    const savedRows = loadBingoRowsFromStorage(gameCode);
+    setBingoRows(savedRows);
+    
     onGameStateChange?.(status === "active");
   }, [
     currentGameConfig?.gameCode,
@@ -2059,13 +2105,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       if (next) {
         setShuffleCycle(0);
-        resetBingoRows();
-        setCalledNumbers([]);
-        setCurrentCalledNumber("");
         popup.info("Shuffling started. Click Stop to pause.");
       } else {
-        resetBingoRows();
-        popup.info("Shuffling stopped.");
+        popup.info("Shuffling stopped. Current positions saved.");
       }
 
       return next;
@@ -2150,17 +2192,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const intervalId = window.setInterval(() => {
       setShuffleCycle((prev) => prev + 1);
       // Actually shuffle the numbers in each column
-      setBingoRows((prevRows) => ({
-        B: shuffleArray(prevRows.B),
-        I: shuffleArray(prevRows.I),
-        N: shuffleArray(prevRows.N),
-        G: shuffleArray(prevRows.G),
-        O: shuffleArray(prevRows.O),
-      }));
+      setBingoRows((prevRows) => {
+        const newRows = {
+          B: shuffleArray(prevRows.B),
+          I: shuffleArray(prevRows.I),
+          N: shuffleArray(prevRows.N),
+          G: shuffleArray(prevRows.G),
+          O: shuffleArray(prevRows.O),
+        };
+        // Save to localStorage
+        saveBingoRowsToStorage(newRows, currentGameConfig?.gameCode || currentGameConfig?.game);
+        return newRows;
+      });
     }, shuffleSpeedMs);
 
     return () => window.clearInterval(intervalId);
-  }, [isShuffling, gameStatus, shuffleSpeedMs]);
+  }, [isShuffling, gameStatus, shuffleSpeedMs, currentGameConfig?.gameCode, currentGameConfig?.game]);
 
   useEffect(() => {
     onFullscreenChange?.(isFullscreen);
@@ -2688,6 +2735,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           isStoppingGame={isStoppingGame}
           closeGameWithoutWinner={closeGameWithoutWinner}
           shuffleNumbers={shuffleNumbers}
+          resetBingoRows={resetBingoRows}
           isShuffling={isShuffling}
           isStartingGame={isStartingGame}
           startGame={startGame}
