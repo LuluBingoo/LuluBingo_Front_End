@@ -1136,20 +1136,31 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
 
-    // Show popup and play audio SIMULTANEOUSLY for perfect sync
+    // Show popup FIRST
     setBallPopupLabel(resolvedLabel);
     setShowBallPopup(true);
     
-    // Start audio playback immediately
-    const audioPromise = playAudio(resolvedLabel, true);
-    
-    // Wait for audio to complete
-    await audioPromise;
-
-    // Keep popup visible for a brief moment after audio ends
+    // Small delay to ensure popup is visible before audio starts
     await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 200);
+      window.setTimeout(resolve, 150);
     });
+    
+    // Start audio playback
+    const audioStartTime = Date.now();
+    await playAudio(resolvedLabel, true);
+    const audioEndTime = Date.now();
+    const audioDuration = audioEndTime - audioStartTime;
+    
+    // Ensure minimum total display time of 2 seconds for visibility
+    const minimumDisplayTime = 2000;
+    const elapsedTime = Date.now() - now;
+    const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
+    
+    if (remainingTime > 0) {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, remainingTime);
+      });
+    }
 
     // Clean up if this is still the active announcement
     if (activeNumberVoiceIdRef.current === announcementId) {
@@ -2465,6 +2476,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       audio.preload = "auto";
     }
     
+    // Set volume to maximum for clear audio
+    audio.volume = 1.0;
+    
     targetRef.current = audio;
 
     if (!waitForEnd) {
@@ -2475,6 +2489,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     return new Promise<void>((resolve) => {
       let settled = false;
+      const startTime = Date.now();
 
       const settle = () => {
         if (settled) return;
@@ -2483,7 +2498,17 @@ export const Playground: React.FC<PlaygroundProps> = ({
         audio.removeEventListener("ended", onEnded);
         audio.removeEventListener("error", onError);
         audio.removeEventListener("pause", onPause);
-        resolve();
+        
+        // Ensure minimum audio duration for proper playback
+        const elapsed = Date.now() - startTime;
+        const minimumDuration = isCalledBallKey ? 800 : 0;
+        const remaining = Math.max(0, minimumDuration - elapsed);
+        
+        if (remaining > 0) {
+          window.setTimeout(resolve, remaining);
+        } else {
+          resolve();
+        }
       };
 
       const onEnded = () => {
@@ -2491,20 +2516,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
       };
 
       const onError = () => {
+        // On error, still wait minimum time for smooth flow
         settle();
       };
 
       const onPause = () => {
-        // If audio is paused (interrupted), resolve immediately
+        // If audio is paused (interrupted), resolve after minimum time
         if (audio.currentTime > 0 && !audio.ended) {
           settle();
         }
       };
 
-      // Timeout as fallback - audio should complete naturally
+      // Longer timeout for audio to complete naturally
       const fallbackTimeoutId = window.setTimeout(() => {
         settle();
-      }, 4000);
+      }, 5000);
 
       audio.addEventListener("ended", onEnded, { once: true });
       audio.addEventListener("error", onError, { once: true });
@@ -2512,7 +2538,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       // Start playback immediately
       audio.play().catch(() => {
-        // If playback fails, resolve immediately
+        // If playback fails, still maintain timing
         settle();
       });
     });

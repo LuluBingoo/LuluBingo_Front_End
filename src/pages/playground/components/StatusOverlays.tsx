@@ -106,18 +106,42 @@ export const StatusOverlays: React.FC<StatusOverlaysProps> = ({
       {showBallPopup && ballPopupLabel && (
         <motion.div
           key={ballPopupLabel}
-          initial={{ opacity: 0, scale: 0.35, y: 40 }}
+          initial={{ opacity: 0, scale: 0.5, y: 60 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 1.2, y: -40 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
+          exit={{ opacity: 0, scale: 0.9, y: -30 }}
+          transition={{ 
+            duration: 0.3,
+            ease: [0.34, 1.56, 0.64, 1]
+          }}
           className="pointer-events-none fixed inset-0 z-1200 flex items-center justify-center"
         >
           <motion.div
-            className={`${isFullscreen ? "h-48 w-48 text-7xl" : "h-40 w-40 text-6xl"} flex items-center justify-center rounded-full border-4 border-white/60 bg-linear-to-br from-red-400 via-red-600 to-red-800 font-black text-white shadow-[0_0_45px_rgba(239,68,68,0.65)]`}
-            animate={{ rotate: [0, -4, 4, 0] }}
-            transition={{ duration: 0.35 }}
+            className={`${isFullscreen ? "h-56 w-56 text-8xl" : "h-48 w-48 text-7xl"} flex items-center justify-center rounded-full border-8 border-white bg-linear-to-br from-red-500 via-red-600 to-red-800 font-black text-white shadow-[0_0_80px_rgba(239,68,68,0.8),0_0_120px_rgba(239,68,68,0.5)]`}
+            animate={{ 
+              scale: [1, 1.05, 1],
+              boxShadow: [
+                "0 0 80px rgba(239,68,68,0.8), 0 0 120px rgba(239,68,68,0.5)",
+                "0 0 100px rgba(239,68,68,0.9), 0 0 150px rgba(239,68,68,0.6)",
+                "0 0 80px rgba(239,68,68,0.8), 0 0 120px rgba(239,68,68,0.5)"
+              ]
+            }}
+            transition={{ 
+              duration: 0.8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
           >
             {ballPopupLabel}
+          </motion.div>
+          
+          {/* Background glow effect */}
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          >
+            <div className={`${isFullscreen ? "h-72 w-72" : "h-64 w-64"} rounded-full bg-red-500/30 blur-3xl`} />
           </motion.div>
         </motion.div>
       )}
