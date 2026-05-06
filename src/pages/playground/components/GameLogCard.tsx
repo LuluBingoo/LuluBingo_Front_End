@@ -28,6 +28,23 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
     return null;
   }
 
+  const formatMoneyValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    return formatCurrency(value);
+  };
+
+  const resolvedWinnerLabels = restoredGame?.winners?.length
+    ? restoredGame.winners.map((winnerIndex) => {
+        const cartellaNumber =
+          restoredGame.assigned_cartella_numbers?.[winnerIndex] ??
+          winnerIndex + 1;
+        return `Cartela ${cartellaNumber}`;
+      })
+    : [];
+
   return (
     <div ref={gameLogRef}>
       <Card className="space-y-3 border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/50 dark:bg-amber-900/10">
@@ -38,7 +55,7 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Game:</span>{" "}
             <span className="font-semibold">
-              {currentGameConfig?.game || "-"}
+              {restoredGame?.game_code || currentGameConfig?.gameCode || currentGameConfig?.game || "-"}
             </span>
           </div>
           <div>
@@ -48,7 +65,7 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Players:</span>{" "}
             <span className="font-semibold">
-              {currentGameConfig?.numPlayers || "-"}
+              {restoredGame?.num_players || currentGameConfig?.numPlayers || "-"}
             </span>
           </div>
           <div>
@@ -74,11 +91,7 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Winners:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.winners?.length
-                ? restoredGame.winners
-                    .map((index) => `Cartela ${index}`)
-                    .join(", ")
-                : "-"}
+              {resolvedWinnerLabels.length ? resolvedWinnerLabels.join(", ") : "-"}
             </span>
           </div>
           <div>
@@ -90,25 +103,31 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Total Pool:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.total_pool
-                ? formatCurrency(restoredGame.total_pool)
-                : "-"}
+              {formatMoneyValue(restoredGame?.total_pool)}
             </span>
           </div>
           <div>
             <span className="text-slate-500">Payout:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.payout_amount
-                ? formatCurrency(restoredGame.payout_amount)
-                : "-"}
+              {formatMoneyValue(restoredGame?.payout_amount)}
             </span>
           </div>
           <div>
             <span className="text-slate-500">Shop Cut:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.shop_cut_amount
-                ? formatCurrency(restoredGame.shop_cut_amount)
-                : "-"}
+              {formatMoneyValue(restoredGame?.shop_cut_amount)}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-500">Lulu Cut:</span>{" "}
+            <span className="font-semibold">
+              {formatMoneyValue(restoredGame?.lulu_cut_amount)}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-500">Shop Net Cut:</span>{" "}
+            <span className="font-semibold">
+              {formatMoneyValue(restoredGame?.shop_net_cut_amount)}
             </span>
           </div>
         </div>

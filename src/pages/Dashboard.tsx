@@ -695,9 +695,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {new Date(win.date).toLocaleString()}
                       </td>
                       <td className="px-3 py-2">
-                        {win.winner_indexes
-                          .map((idx) => `Cartella ${idx}`)
-                          .join(", ")}
+                        {win.winner_labels?.length
+                          ? win.winner_labels.join(", ")
+                          : win.winner_indexes
+                              .map((idx) => `Cartella ${idx + 1}`)
+                              .join(", ")}
                       </td>
                       <td className="px-3 py-2">
                         {win.winning_pattern || "-"}

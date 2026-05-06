@@ -290,8 +290,13 @@ export interface GameHistoryItem {
 export interface WinHistoryItem {
   game_id: string;
   winner_indexes: number[];
+  winner_labels?: string[];
   winning_pattern: string;
+  total_pool?: string;
   payout_amount: string;
+  shop_cut_amount?: string;
+  lulu_cut_amount?: string;
+  shop_net_cut_amount?: string;
   date: string;
 }
 

@@ -32,6 +32,9 @@ export interface WinnerCelebration {
   pattern?: string | null;
   payoutAmount?: string | number | null;
   shopCutAmount?: string | number | null;
+  luluCutAmount?: string | number | null;
+  shopNetCutAmount?: string | number | null;
+  totalPool?: string | number | null;
 }
 
 export interface WinnerConfettiPiece {

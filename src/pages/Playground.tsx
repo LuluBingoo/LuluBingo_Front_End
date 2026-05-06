@@ -909,6 +909,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       claim.pattern,
       claim.payout_amount,
       claim.shop_cut_amount,
+      claim.lulu_cut_amount,
+      claim.shop_net_cut_amount,
+      claim.total_pool,
     );
     setGameStatus("completed");
     setIsPaused(false);
@@ -923,8 +926,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
               ...new Set([...(prev.winners || []), winningCartelaIndex]),
             ],
             winning_pattern: claim.pattern || prev.winning_pattern,
+            total_pool: claim.total_pool || prev.total_pool,
             payout_amount: claim.payout_amount || prev.payout_amount,
             shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
+            lulu_cut_amount: claim.lulu_cut_amount || prev.lulu_cut_amount,
+            shop_net_cut_amount:
+              claim.shop_net_cut_amount || prev.shop_net_cut_amount,
             ended_at: prev.ended_at || new Date().toISOString(),
           }
         : prev,
@@ -1060,12 +1067,18 @@ export const Playground: React.FC<PlaygroundProps> = ({
     pattern?: string | null,
     payoutAmount?: string | number | null,
     shopCutAmount?: string | number | null,
+    luluCutAmount?: string | number | null,
+    shopNetCutAmount?: string | number | null,
+    totalPool?: string | number | null,
   ) => {
     setWinnerCelebration({
       cartela: cartelaNumber,
       pattern: pattern || null,
       payoutAmount: payoutAmount ?? null,
       shopCutAmount: shopCutAmount ?? null,
+      luluCutAmount: luluCutAmount ?? null,
+      shopNetCutAmount: shopNetCutAmount ?? null,
+      totalPool: totalPool ?? null,
     });
     playAudio("you_won");
   };
@@ -2578,6 +2591,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           winnerCelebration={winnerCelebration}
           winnerConfetti={winnerConfetti}
           currentGameConfig={currentGameConfig}
+          restoredGame={restoredGame}
           activeCartelasCount={activeCartelas.length}
           calledNumbersCount={calledNumbers.length}
           calledNumbers={calledNumbers}

@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Trophy, X } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { formatCurrency } from "../../../services/settings";
+import { Game } from "../../../services/types";
 import {
   PlaygroundGameConfig,
   WinnerCelebration,
@@ -14,6 +15,7 @@ interface WinnerCelebrationModalProps {
   winnerCelebration: WinnerCelebration | null;
   winnerConfetti: WinnerConfettiPiece[];
   currentGameConfig?: PlaygroundGameConfig | null;
+  restoredGame?: Game | null;
   activeCartelasCount: number;
   calledNumbersCount: number;
   calledNumbers: number[];
@@ -28,6 +30,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   winnerCelebration,
   winnerConfetti,
   currentGameConfig,
+  restoredGame,
   activeCartelasCount,
   calledNumbersCount,
   calledNumbers,
@@ -117,6 +120,34 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
       : winnerCelebration?.pattern === "column"
         ? "Winning Column"
         : "Winning Row";
+
+  const formatMoneyValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    return formatCurrency(value);
+  };
+
+  const resolvedGameCode =
+    restoredGame?.game_code || currentGameConfig?.gameCode || currentGameConfig?.game || "-";
+  const resolvedTotalPlayers =
+    restoredGame?.num_players || Number.parseInt(currentGameConfig?.numPlayers || "0", 10) || activeCartelasCount;
+  const resolvedBetPerPlayer =
+    restoredGame?.bet_amount || currentGameConfig?.betBirr || 0;
+  const resolvedTotalPool =
+    restoredGame?.total_pool || winnerCelebration?.totalPool ||
+    (Number.parseFloat(String(resolvedBetPerPlayer)) || 0) * resolvedTotalPlayers;
+  const resolvedPayout =
+    restoredGame?.payout_amount || winnerCelebration?.payoutAmount || currentGameConfig?.winBirr || calculateWinMoney();
+  const resolvedShopCut =
+    restoredGame?.shop_cut_amount || winnerCelebration?.shopCutAmount || 0;
+  const resolvedLuluCut =
+    restoredGame?.lulu_cut_amount || winnerCelebration?.luluCutAmount || 0;
+  const resolvedShopNetCut =
+    restoredGame?.shop_net_cut_amount || winnerCelebration?.shopNetCutAmount ||
+    (Number.parseFloat(String(resolvedShopCut)) || 0) -
+      (Number.parseFloat(String(resolvedLuluCut)) || 0);
 
   if (typeof document === "undefined") {
     return null;
@@ -226,9 +257,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     Game Code
                   </span>
                   <span className="font-bold text-slate-900">
-                    {currentGameConfig?.gameCode ||
-                      currentGameConfig?.game ||
-                      "-"}
+                    {resolvedGameCode}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
@@ -244,10 +273,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     Total Players
                   </span>
                   <span className="font-bold text-slate-900">
-                    {Number.parseInt(
-                      currentGameConfig?.numPlayers || "0",
-                      10,
-                    ) || activeCartelasCount}
+                    {resolvedTotalPlayers}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
@@ -255,7 +281,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     Bet / Player
                   </span>
                   <span className="font-bold text-slate-900">
-                    {formatCurrency(currentGameConfig?.betBirr || 0)}
+                    {formatMoneyValue(resolvedBetPerPlayer)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
@@ -263,14 +289,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     Total Pool
                   </span>
                   <span className="font-bold text-slate-900">
-                    {formatCurrency(
-                      (Number.parseFloat(currentGameConfig?.betBirr || "0") ||
-                        0) *
-                        (Number.parseInt(
-                          currentGameConfig?.numPlayers || "0",
-                          10,
-                        ) || activeCartelasCount),
-                    )}
+                    {formatMoneyValue(resolvedTotalPool)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-emerald-100/90 px-3 py-2">
@@ -278,17 +297,27 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     Winner Payout
                   </span>
                   <span className="text-lg font-black text-emerald-700">
-                    {formatCurrency(
-                      winnerCelebration.payoutAmount ??
-                        currentGameConfig?.winBirr ??
-                        calculateWinMoney(),
-                    )}
+                    {formatMoneyValue(resolvedPayout)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
                   <span className="font-semibold text-slate-600">Shop Cut</span>
                   <span className="font-bold text-slate-900">
-                    {formatCurrency(winnerCelebration.shopCutAmount ?? 0)}
+                    {formatMoneyValue(resolvedShopCut)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                  <span className="font-semibold text-slate-600">Lulu Cut</span>
+                  <span className="font-bold text-slate-900">
+                    {formatMoneyValue(resolvedLuluCut)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                  <span className="font-semibold text-slate-600">
+                    Shop Net Cut
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {formatMoneyValue(resolvedShopNetCut)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
