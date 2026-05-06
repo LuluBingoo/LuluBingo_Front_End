@@ -239,10 +239,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   const getConfiguredAutoCallSeconds = React.useCallback(() => {
     const parsed = Number.parseInt(
-      localStorage.getItem("autoCallSeconds") || "5",
+      localStorage.getItem("autoCallSeconds") || "3",
       10,
     );
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 5;
+    return Number.isFinite(parsed) && parsed >= 3 ? parsed : 3;
   }, []);
 
   const [currentAutoCallSeconds, setCurrentAutoCallSeconds] = useState(() =>
@@ -336,6 +336,47 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const effectAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const isWinnerModalOpen = Boolean(winnerCelebration);
 
+  // Audio preloading cache for faster playback
+  const audioCache = React.useRef<Map<string, HTMLAudioElement>>(new Map());
+  const audioPreloadQueue = React.useRef<Set<string>>(new Set());
+
+  // Preload audio files for numbers
+  const preloadAudio = React.useCallback((key: string) => {
+    if (audioCache.current.has(key) || audioPreloadQueue.current.has(key)) {
+      return;
+    }
+
+    const normalizedKey = key.trim();
+    const calledBallMatch = normalizedKey.match(/^([BINGO])[\s_-]?(\d{1,2})$/i);
+    const audioKey = calledBallMatch
+      ? `${calledBallMatch[1].toUpperCase()}${Number.parseInt(calledBallMatch[2], 10)}`
+      : normalizedKey;
+
+    const audioPath = audioMap[audioKey] || audioMap[normalizedKey];
+    if (!audioPath) {
+      return;
+    }
+
+    audioPreloadQueue.current.add(key);
+
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = audioPath;
+    
+    const onCanPlay = () => {
+      audioCache.current.set(key, audio);
+      audioPreloadQueue.current.delete(key);
+    };
+
+    const onError = () => {
+      audioPreloadQueue.current.delete(key);
+    };
+
+    audio.addEventListener("canplaythrough", onCanPlay, { once: true });
+    audio.addEventListener("error", onError, { once: true });
+    audio.load();
+  }, []);
+
   const canAddPlayerWhilePaused = gameStatus === "active" && isPaused;
   const addPlayerPageRange = React.useMemo(() => {
     const start = addPlayerPage === 1 ? 1 : 101;
@@ -387,6 +428,57 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const gameCode = currentGameConfig?.gameCode || currentGameConfig?.game;
     saveBingoRowsToStorage(defaultRows, gameCode);
   }, [currentGameConfig?.gameCode, currentGameConfig?.game]);
+
+  // Preload all number audios on mount
+  useEffect(() => {
+    const letters = ['B', 'I', 'N', 'G', 'O'];
+    const ranges = {
+      B: [1, 15],
+      I: [16, 30],
+      N: [31, 45],
+      G: [46, 60],
+      O: [61, 75],
+    };
+
+    // Preload in batches to avoid overwhelming the browser
+    const preloadBatch = (startIdx: number, batchSize: number) => {
+      let count = 0;
+      for (const letter of letters) {
+        const [min, max] = ranges[letter as keyof typeof ranges];
+        for (let num = min; num <= max; num++) {
+          if (count >= startIdx && count < startIdx + batchSize) {
+            preloadAudio(`${letter}${num}`);
+          }
+          count++;
+        }
+      }
+    };
+
+    // Preload in batches of 15 with delays
+    let batchIndex = 0;
+    const batchSize = 15;
+    const totalBatches = Math.ceil(75 / batchSize);
+
+    const preloadNextBatch = () => {
+      if (batchIndex < totalBatches) {
+        preloadBatch(batchIndex * batchSize, batchSize);
+        batchIndex++;
+        setTimeout(preloadNextBatch, 100);
+      }
+    };
+
+    preloadNextBatch();
+
+    // Preload common effect sounds
+    setTimeout(() => {
+      preloadAudio("Game_has_started");
+      preloadAudio("Game_Finished");
+      preloadAudio("you_won");
+      preloadAudio("you_didnt_win");
+      preloadAudio("Check_is_your_card_is_saved");
+      preloadAudio("Game_stopped");
+    }, 500);
+  }, [preloadAudio]);
 
   useEffect(() => {
     onWinnerCelebrationVisibilityChange?.(isWinnerModalOpen);
@@ -1012,8 +1104,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
     label: string,
     calledNumber?: number | null,
   ) => {
-    const postVoiceDisplayMs = 180;
-    const minimumAnnouncementMs = 1200;
+    // Reduced delays for faster calling
+    const postVoiceDisplayMs = 100;
+    const minimumAnnouncementMs = 800;
     const { label: resolvedLabel, number: resolvedCalledNumber } =
       resolveCalledLabelAndNumber(label, calledNumber ?? null);
 
@@ -1037,6 +1130,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const announcementId = ++activeNumberVoiceIdRef.current;
     setIsAnnouncingNumber(true);
     const announcementStartedAt = Date.now();
+    
+    // Play audio without waiting for full completion for faster flow
     await playAudio(resolvedLabel, true);
 
     if (activeNumberVoiceIdRef.current === announcementId) {
@@ -1410,6 +1505,24 @@ export const Playground: React.FC<PlaygroundProps> = ({
           calledNumber,
           responseCursor,
         );
+        
+        // Predictive preloading: preload next 5 uncalled numbers for faster playback
+        if (calledNumber && response.called_numbers) {
+          const calledSet = new Set(response.called_numbers);
+          const uncalledNumbers = [];
+          for (let i = 1; i <= 75 && uncalledNumbers.length < 5; i++) {
+            if (!calledSet.has(i)) {
+              uncalledNumbers.push(i);
+            }
+          }
+          // Preload in background without blocking
+          setTimeout(() => {
+            uncalledNumbers.forEach(num => {
+              const letter = getNumberLetter(num);
+              preloadAudio(`${letter}${num}`);
+            });
+          }, 50);
+        }
       }
 
       if (response.is_complete) {
@@ -2319,13 +2432,26 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const isCalledBallKey = /^[BINGO]\d{1,2}$/i.test(audioKey);
     const targetRef = isCalledBallKey ? voiceAudioRef : effectAudioRef;
 
+    // Stop previous audio only if it's the same type
     if (targetRef.current) {
       targetRef.current.pause();
       targetRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(audioPath);
-    audio.preload = "auto";
+    // Try to use cached audio first for faster playback
+    let audio: HTMLAudioElement;
+    const cachedAudio = audioCache.current.get(normalizedKey);
+    
+    if (cachedAudio && isCalledBallKey) {
+      // Clone the cached audio for reuse
+      audio = cachedAudio.cloneNode(true) as HTMLAudioElement;
+      audio.currentTime = 0;
+    } else {
+      // Create new audio if not cached
+      audio = new Audio(audioPath);
+      audio.preload = "auto";
+    }
+    
     targetRef.current = audio;
 
     if (!waitForEnd) {
@@ -2337,7 +2463,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return new Promise<void>((resolve) => {
       let settled = false;
       const startedAt = Date.now();
-      const minimumWaitMs = isCalledBallKey ? 900 : 0;
+      // Reduced minimum wait for faster calls
+      const minimumWaitMs = isCalledBallKey ? 600 : 0;
 
       const settle = () => {
         if (settled) return;
@@ -2369,9 +2496,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
         settleWithMinimum();
       };
 
+      // Reduced timeout for faster flow
       const fallbackTimeoutId = window.setTimeout(() => {
         settleWithMinimum();
-      }, 7000);
+      }, 5000);
 
       audio.addEventListener("ended", onEnded, { once: true });
       audio.addEventListener("error", onFailure, { once: true });

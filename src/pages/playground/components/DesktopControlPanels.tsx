@@ -324,7 +324,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
                     </span>
                   </div>
                   <div className="flex w-full gap-1">
-                    {[1, 2, 3, 4, 5, 6].map((sec) => (
+                    {[3, 4, 5, 6, 10].map((sec) => (
                       <button
                         key={`speed-${sec}`}
                         type="button"
