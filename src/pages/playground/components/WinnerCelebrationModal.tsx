@@ -242,19 +242,29 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               <Trophy className="h-11 w-11 sm:h-14 sm:w-14" />
             </div>
             <motion.div
-              animate={{ scale: [1, 1.06, 1] }}
-              transition={{ duration: 1.1, repeat: 2 }}
-              className="text-4xl font-black tracking-tight text-amber-700 drop-shadow-[0_4px_14px_rgba(245,158,11,0.35)] sm:text-6xl"
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              className="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 drop-shadow-[0_6px_20px_rgba(245,158,11,0.5)] sm:text-7xl"
             >
-              BINGO!
+              🎊 BINGO! 🎊
             </motion.div>
-            <div className="mt-3 text-xl font-bold text-slate-900 sm:text-3xl">
-              Cartela {winnerCelebration.cartela} WINS
-            </div>
+            <motion.div 
+              className="mt-4 text-2xl font-bold text-slate-900 sm:text-4xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              🏆 Cartela {winnerCelebration.cartela} WINS! 🏆
+            </motion.div>
             {winnerCelebration.pattern && (
-              <div className="mt-2 text-sm font-semibold uppercase tracking-wider text-amber-700 sm:text-base">
-                Pattern: {winnerCelebration.pattern}
-              </div>
+              <motion.div 
+                className="mt-3 inline-block rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-2 text-base font-black uppercase tracking-wider text-white shadow-lg sm:text-lg"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+              >
+                ✨ {winnerCelebration.pattern} Pattern ✨
+              </motion.div>
             )}
             <div className="mt-4 h-px w-full bg-amber-300/80" />
             <div className="mt-4 rounded-2xl border border-amber-200/90 bg-white/70 p-4 text-left shadow-inner backdrop-blur-sm sm:p-5 lg:mt-5">
@@ -302,14 +312,23 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     {formatMoneyValue(resolvedTotalPool)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-2 rounded-lg bg-emerald-100/90 px-3 py-2">
-                  <span className="font-semibold text-emerald-700">
-                    Winner Payout
+                <motion.div 
+                  className="flex items-center justify-between gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 px-4 py-3 shadow-lg"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.7, type: "spring" }}
+                >
+                  <span className="font-bold text-white text-lg">
+                    💰 Winner Payout
                   </span>
-                  <span className="text-lg font-black text-emerald-700">
+                  <motion.span 
+                    className="text-2xl font-black text-white"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 1, repeat: Infinity, repeatDelay: 1 }}
+                  >
                     {formatMoneyValue(resolvedPayout)}
-                  </span>
-                </div>
+                  </motion.span>
+                </motion.div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
                   <span className="font-semibold text-slate-600">Shop Cut</span>
                   <span className="font-bold text-slate-900">
