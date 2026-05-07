@@ -229,21 +229,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     [walletBalance],
   );
 
-  // Real-time projected Lulu cut for ONLY the current player's selection
-  const currentPlayerLuluCut = useMemo(() => {
-    // Calculate pool for ONLY this player's cartellas
-    const currentPlayerPool = selectedCartellas.length * parseAmount(betPerCartella);
-    
-    // Calculate shop cut from this player's pool
-    const currentPlayerShopCut = (currentPlayerPool * parseAmount(shopCutPercentage)) / 100;
-    
-    // Calculate Lulu cut from this player's shop cut
-    const currentPlayerLuluCutAmount = (currentPlayerShopCut * parseAmount(luluCutPercentage)) / 100;
-    
-    return currentPlayerLuluCutAmount;
-  }, [selectedCartellas, betPerCartella, shopCutPercentage, luluCutPercentage]);
-
-  // Real-time projected Lulu cut including current selection (for display purposes)
+  // Real-time projected Lulu cut including current selection (not yet locked)
   const projectedLuluCutWithSelection = useMemo(() => {
     const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
     const totalPoolWithSelection = projectedTotalPool + currentSelectionAmount;
@@ -252,28 +238,29 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     return luluCutWithSelection;
   }, [selectedCartellas, betPerCartella, projectedTotalPool, shopCutPercentage, luluCutPercentage]);
 
-  // Check if current player's selection would exceed balance
-  // Only check the Lulu cut for THIS PLAYER, not the entire game
+  // Check if current selection would exceed balance
   const wouldExceedBalance = useMemo(() => {
-    return betLocked && availableBalanceAmount < currentPlayerLuluCut;
-  }, [betLocked, availableBalanceAmount, currentPlayerLuluCut]);
+    return betLocked && availableBalanceAmount < projectedLuluCutWithSelection;
+  }, [betLocked, availableBalanceAmount, projectedLuluCutWithSelection]);
 
   // Helper to check if adding a specific cartella would exceed balance
   const wouldCartellaExceedBalance = (cartellaNumber: number): boolean => {
     if (!betLocked) return false;
     if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
     
-    // Calculate pool for ONLY this player with one more cartella
-    const nextPlayerCartellaCount = selectedCartellas.length + 1;
-    const nextPlayerPool = nextPlayerCartellaCount * parseAmount(betPerCartella);
+    // Calculate the pool with ONLY the locked players (not including current selection)
+    const lockedPlayersPool = projectedTotalPool;
     
-    // Calculate shop cut from this player's pool
-    const nextPlayerShopCut = (nextPlayerPool * parseAmount(shopCutPercentage)) / 100;
+    // Calculate what the pool would be if we add this ONE cartella to the current selection
+    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+    const withThisCartellaAmount = (selectedCartellas.length + 1) * parseAmount(betPerCartella);
     
-    // Calculate Lulu cut from this player's shop cut
-    const nextPlayerLuluCut = (nextPlayerShopCut * parseAmount(luluCutPercentage)) / 100;
+    // Total pool would be: locked players + current selection + this new cartella
+    const nextTotalPool = lockedPlayersPool + withThisCartellaAmount;
+    const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
+    const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
     
-    return availableBalanceAmount < nextPlayerLuluCut;
+    return availableBalanceAmount < nextLuluCut;
   };
 
   const lockedPlayers = useMemo<LockedPlayerEntry[]>(() => {
@@ -1183,37 +1170,25 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                     <label className="text-sm font-medium">
-                      Current Player Lulu Cut
+                      Estimated Lulu Cut (Session)
                     </label>
-                    <div className={`mt-1 text-lg font-bold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                      {formatCurrency(currentPlayerLuluCut.toFixed(2))}
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      For {selectedCartellas.length} cartella(s) @ {formatCurrency(betPerCartella)}
-                    </p>
-                    {wouldExceedBalance && (
-                      <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
-                        ⚠️ Exceeds available balance!
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-                    <label className="text-sm font-medium">
-                      Total Session Lulu Cut
-                    </label>
-                    <div className="mt-1 text-lg font-bold text-rose-600">
+                    <div className={`mt-1 text-lg font-bold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-rose-600'}`}>
                       {formatCurrency(projectedLuluCut.toFixed(2))}
                     </div>
                     {selectedCartellas.length > 0 && (
-                      <div className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-400">
-                        + With current: {formatCurrency(projectedLuluCutWithSelection.toFixed(2))}
+                      <div className={`mt-1 text-sm font-semibold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        + Current: {formatCurrency(projectedLuluCutWithSelection.toFixed(2))}
                       </div>
                     )}
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       Pool {formatCurrency(projectedTotalPool.toFixed(2))} •
                       Shop cut {formatCurrency(projectedShopCut.toFixed(2))}
                     </p>
+                    {wouldExceedBalance && (
+                      <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
+                        ⚠️ Would exceed available balance!
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
