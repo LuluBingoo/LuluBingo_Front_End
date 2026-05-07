@@ -248,9 +248,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     if (!betLocked) return false;
     if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
     
-    const nextSelection = [...selectedCartellas, cartellaNumber];
-    const nextSelectionAmount = nextSelection.length * parseAmount(betPerCartella);
-    const nextTotalPool = projectedTotalPool + nextSelectionAmount;
+    // Calculate the pool with ONLY the locked players (not including current selection)
+    const lockedPlayersPool = projectedTotalPool;
+    
+    // Calculate what the pool would be if we add this ONE cartella to the current selection
+    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+    const withThisCartellaAmount = (selectedCartellas.length + 1) * parseAmount(betPerCartella);
+    
+    // Total pool would be: locked players + current selection + this new cartella
+    const nextTotalPool = lockedPlayersPool + withThisCartellaAmount;
     const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
     const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
     
@@ -1306,17 +1312,28 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   {pageRange.map((number) => {
                     const isSelected = selectedCartellas.includes(number);
                     const isLocked = lockedByOthers.has(number);
-                    const wouldExceed = !isSelected && wouldCartellaExceedBalance(number);
+                    
+                    // Check if this cartella would cause balance to be exceeded
+                    let wouldExceed = false;
+                    if (!isLocked) {
+                      if (isSelected) {
+                        // If already selected, check if current total selection exceeds balance
+                        wouldExceed = wouldExceedBalance;
+                      } else {
+                        // If not selected, check if adding it would exceed balance
+                        wouldExceed = wouldCartellaExceedBalance(number);
+                      }
+                    }
 
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
+                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : wouldExceed && isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)] ring-2 ring-amber-400 ring-offset-2" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
                         onClick={() => handleCartellaToggle(number)}
-                        whileHover={{ scale: wouldExceed ? 1 : 1.07 }}
-                        whileTap={{ scale: wouldExceed ? 1 : 0.95 }}
-                        disabled={isLocked || wouldExceed}
-                        title={wouldExceed ? "Would exceed Lulu reserve balance" : undefined}
+                        whileHover={{ scale: wouldExceed && !isSelected ? 1 : 1.07 }}
+                        whileTap={{ scale: wouldExceed && !isSelected ? 1 : 0.95 }}
+                        disabled={isLocked || (wouldExceed && !isSelected)}
+                        title={wouldExceed && isSelected ? "Selection exceeds Lulu reserve - click to deselect" : wouldExceed ? "Would exceed Lulu reserve balance" : undefined}
                       >
                         {isSelected && (
                           <motion.div
