@@ -165,6 +165,34 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     ).toFixed(2);
   }, [betPerCartella, selectedCartellas]);
 
+  // Real-time projected Lulu cut including current selection
+  const projectedLuluCutWithSelection = useMemo(() => {
+    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+    const totalPoolWithSelection = projectedTotalPool + currentSelectionAmount;
+    const shopCutWithSelection = (totalPoolWithSelection * parseAmount(shopCutPercentage)) / 100;
+    const luluCutWithSelection = (shopCutWithSelection * parseAmount(luluCutPercentage)) / 100;
+    return luluCutWithSelection;
+  }, [selectedCartellas, betPerCartella, projectedTotalPool, shopCutPercentage, luluCutPercentage]);
+
+  // Check if current selection would exceed balance
+  const wouldExceedBalance = useMemo(() => {
+    return betLocked && availableBalanceAmount < projectedLuluCutWithSelection;
+  }, [betLocked, availableBalanceAmount, projectedLuluCutWithSelection]);
+
+  // Helper to check if adding a specific cartella would exceed balance
+  const wouldCartellaExceedBalance = (cartellaNumber: number): boolean => {
+    if (!betLocked) return false;
+    if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
+    
+    const nextSelection = [...selectedCartellas, cartellaNumber];
+    const nextSelectionAmount = nextSelection.length * parseAmount(betPerCartella);
+    const nextTotalPool = projectedTotalPool + nextSelectionAmount;
+    const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
+    const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
+    
+    return availableBalanceAmount < nextLuluCut;
+  };
+
   const totalLockedPlayers =
     (session?.players_data.length ?? 0) + stagedPlayers.length;
   const totalPaidPlayers =
@@ -330,15 +358,18 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       ? selectedCartellas.filter((number) => number !== cartellaNumber)
       : [...selectedCartellas, cartellaNumber];
 
+    // Real-time balance checking when adding a cartella
     if (betLocked && !alreadySelected && next.length > 0) {
-      const selectionAmount = next.length * parseAmount(betPerCartella);
-      const previewPool = projectedTotalPool + selectionAmount;
-      const previewShopCut =
-        (previewPool * parseAmount(shopCutPercentage)) / 100;
-      const previewLuluCut =
-        (previewShopCut * parseAmount(luluCutPercentage)) / 100;
+      const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+      const newSelectionAmount = next.length * parseAmount(betPerCartella);
+      const additionalAmount = newSelectionAmount - currentSelectionAmount;
+      
+      const previewPool = projectedTotalPool + additionalAmount;
+      const previewShopCut = (previewPool * parseAmount(shopCutPercentage)) / 100;
+      const previewLuluCut = (previewShopCut * parseAmount(luluCutPercentage)) / 100;
 
       if (availableBalanceAmount < previewLuluCut) {
+        const shortfall = previewLuluCut - availableBalanceAmount;
         setLowReservePreview({
           projectedPool: previewPool,
           projectedShopCut: previewShopCut,
@@ -346,6 +377,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           availableBalance: availableBalanceAmount,
         });
         setShowLowReserveModal(true);
+        popup.error(
+          `Insufficient Lulu reserve. Need ${formatCurrency(previewLuluCut.toFixed(2))}, have ${formatCurrency(availableBalanceAmount.toFixed(2))}, short by ${formatCurrency(shortfall.toFixed(2))}.`
+        );
         return;
       }
     }
@@ -464,6 +498,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         prev.filter((player) => player.player_name !== entry.player_name),
       );
       popup.success(`${entry.player_name} unlocked.`);
+      
+      // Immediately refresh financial display after unlocking
+      void syncShopFinancials({ updateBetInput: false });
       return;
     }
 
@@ -484,6 +521,9 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       );
       setSession(latestSession);
       popup.success(`${entry.player_name} unlocked.`);
+      
+      // Immediately refresh financial display after unlocking
+      void syncShopFinancials({ updateBetInput: false });
     } catch (error) {
       const err = error as any;
       const detail =
@@ -979,7 +1019,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         <Button
           className="bg-red-700 text-white hover:bg-red-800"
           onClick={handleLockCurrentPlayer}
-          disabled={submittingLock || !betLocked || submittingPayment}
+          disabled={submittingLock || !betLocked || submittingPayment || wouldExceedBalance}
         >
           {submittingLock
             ? t("newGame.locking")
@@ -1111,13 +1151,23 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     <label className="text-sm font-medium">
                       Estimated Lulu Cut (Session)
                     </label>
-                    <div className="mt-1 text-lg font-bold text-rose-600">
+                    <div className={`mt-1 text-lg font-bold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-rose-600'}`}>
                       {formatCurrency(projectedLuluCut.toFixed(2))}
                     </div>
+                    {selectedCartellas.length > 0 && (
+                      <div className={`mt-1 text-sm font-semibold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        + Current: {formatCurrency(projectedLuluCutWithSelection.toFixed(2))}
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       Pool {formatCurrency(projectedTotalPool.toFixed(2))} •
                       Shop cut {formatCurrency(projectedShopCut.toFixed(2))}
                     </p>
+                    {wouldExceedBalance && (
+                      <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
+                        ⚠️ Would exceed available balance!
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
@@ -1241,15 +1291,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   {pageRange.map((number) => {
                     const isSelected = selectedCartellas.includes(number);
                     const isLocked = lockedByOthers.has(number);
+                    const wouldExceed = !isSelected && wouldCartellaExceedBalance(number);
 
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
+                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
                         onClick={() => handleCartellaToggle(number)}
-                        whileHover={{ scale: 1.07 }}
-                        whileTap={{ scale: 0.95 }}
-                        disabled={isLocked}
+                        whileHover={{ scale: wouldExceed ? 1 : 1.07 }}
+                        whileTap={{ scale: wouldExceed ? 1 : 0.95 }}
+                        disabled={isLocked || wouldExceed}
+                        title={wouldExceed ? "Would exceed Lulu reserve balance" : undefined}
                       >
                         {isSelected && (
                           <motion.div
@@ -1270,6 +1322,11 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   <p>{t("newGame.fixedModeInfo")}</p>
                   <p>{t("newGame.maxCartellasInfo")}</p>
                   <p>{t("newGame.lockedConfigInfo")}</p>
+                  {wouldExceedBalance && (
+                    <p className="font-semibold text-amber-600 dark:text-amber-400">
+                      ⚠️ Some cartellas are disabled because adding them would exceed your Lulu reserve balance.
+                    </p>
+                  )}
                 </div>
               </Card>
             </motion.div>
