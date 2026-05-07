@@ -128,16 +128,21 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       ...stagedPlayers,
     ] as ShopBingoPlayer[];
 
+    // Extract all player numbers from existing players
     for (const player of allPlayers) {
       const raw = String(player.player_name || "");
-      const match = raw.match(/(\d+)\s*$/);
-      if (!match) continue;
-      const num = Number.parseInt(match[1], 10);
-      if (Number.isFinite(num) && num > 0) {
-        usedNumbers.add(num);
+      // Match pattern like "Player 1", "ተጫዋች 2", etc.
+      // Extract the last number in the string
+      const numbers = raw.match(/\d+/g);
+      if (numbers && numbers.length > 0) {
+        const num = Number.parseInt(numbers[numbers.length - 1], 10);
+        if (Number.isFinite(num) && num > 0) {
+          usedNumbers.add(num);
+        }
       }
     }
 
+    // Find the next available number starting from 1
     let candidate = 1;
     while (usedNumbers.has(candidate)) {
       candidate += 1;
@@ -146,7 +151,10 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     return candidate;
   }, [session?.players_data, stagedPlayers]);
 
-  const currentPlayerName = `${t("newGame.playerWord")} ${nextPlayerNumber}`;
+  // Generate current player name with proper formatting
+  const currentPlayerName = useMemo(() => {
+    return `${t("newGame.playerWord")} ${nextPlayerNumber}`;
+  }, [t, nextPlayerNumber]);
 
   const stagedLockedCartellas = useMemo(
     () => new Set(stagedPlayers.flatMap((player) => player.cartella_numbers)),
@@ -164,34 +172,6 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
       selectedCartellas.length * (Number.isFinite(bet) ? bet : 0)
     ).toFixed(2);
   }, [betPerCartella, selectedCartellas]);
-
-  // Real-time projected Lulu cut including current selection
-  const projectedLuluCutWithSelection = useMemo(() => {
-    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
-    const totalPoolWithSelection = projectedTotalPool + currentSelectionAmount;
-    const shopCutWithSelection = (totalPoolWithSelection * parseAmount(shopCutPercentage)) / 100;
-    const luluCutWithSelection = (shopCutWithSelection * parseAmount(luluCutPercentage)) / 100;
-    return luluCutWithSelection;
-  }, [selectedCartellas, betPerCartella, projectedTotalPool, shopCutPercentage, luluCutPercentage]);
-
-  // Check if current selection would exceed balance
-  const wouldExceedBalance = useMemo(() => {
-    return betLocked && availableBalanceAmount < projectedLuluCutWithSelection;
-  }, [betLocked, availableBalanceAmount, projectedLuluCutWithSelection]);
-
-  // Helper to check if adding a specific cartella would exceed balance
-  const wouldCartellaExceedBalance = (cartellaNumber: number): boolean => {
-    if (!betLocked) return false;
-    if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
-    
-    const nextSelection = [...selectedCartellas, cartellaNumber];
-    const nextSelectionAmount = nextSelection.length * parseAmount(betPerCartella);
-    const nextTotalPool = projectedTotalPool + nextSelectionAmount;
-    const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
-    const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
-    
-    return availableBalanceAmount < nextLuluCut;
-  };
 
   const totalLockedPlayers =
     (session?.players_data.length ?? 0) + stagedPlayers.length;
@@ -248,6 +228,34 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     () => parseAmount(walletBalance),
     [walletBalance],
   );
+
+  // Real-time projected Lulu cut including current selection (not yet locked)
+  const projectedLuluCutWithSelection = useMemo(() => {
+    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+    const totalPoolWithSelection = projectedTotalPool + currentSelectionAmount;
+    const shopCutWithSelection = (totalPoolWithSelection * parseAmount(shopCutPercentage)) / 100;
+    const luluCutWithSelection = (shopCutWithSelection * parseAmount(luluCutPercentage)) / 100;
+    return luluCutWithSelection;
+  }, [selectedCartellas, betPerCartella, projectedTotalPool, shopCutPercentage, luluCutPercentage]);
+
+  // Check if current selection would exceed balance
+  const wouldExceedBalance = useMemo(() => {
+    return betLocked && availableBalanceAmount < projectedLuluCutWithSelection;
+  }, [betLocked, availableBalanceAmount, projectedLuluCutWithSelection]);
+
+  // Helper to check if adding a specific cartella would exceed balance
+  const wouldCartellaExceedBalance = (cartellaNumber: number): boolean => {
+    if (!betLocked) return false;
+    if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
+    
+    const nextSelection = [...selectedCartellas, cartellaNumber];
+    const nextSelectionAmount = nextSelection.length * parseAmount(betPerCartella);
+    const nextTotalPool = projectedTotalPool + nextSelectionAmount;
+    const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
+    const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
+    
+    return availableBalanceAmount < nextLuluCut;
+  };
 
   const lockedPlayers = useMemo<LockedPlayerEntry[]>(() => {
     const serverPlayers: LockedPlayerEntry[] = (session?.players_data ?? [])
@@ -511,6 +519,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     setUnlockingPlayerName(entry.player_name);
     try {
+      // Unlock the player by setting their cartellas to empty array
       const latestSession = await gamesApi.reserveShopCartellas(
         session.session_id,
         {
@@ -519,7 +528,13 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           bet_per_cartella: betPerCartella,
         },
       );
+      
+      // Update session state immediately
       setSession(latestSession);
+      
+      // Sync session again to ensure we have the latest data
+      await syncSession(latestSession.session_id);
+      
       popup.success(`${entry.player_name} unlocked.`);
       
       // Immediately refresh financial display after unlocking
