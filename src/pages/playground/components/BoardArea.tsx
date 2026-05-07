@@ -232,20 +232,20 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
           className={`relative z-10 space-y-2 ${isFullscreen ? (theme === "dark" ? "h-full overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-900/55 p-2 sm:p-3" : "h-full overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-2 sm:p-3") : ""}`}
           animate={
             isShuffling
-              ? { 
+              ? {
                   scale: [1, 1.005, 1],
                   boxShadow: [
                     "0 0 0 rgba(14, 165, 233, 0)",
                     "0 0 20px rgba(14, 165, 233, 0.3)",
-                    "0 0 0 rgba(14, 165, 233, 0)"
-                  ]
+                    "0 0 0 rgba(14, 165, 233, 0)",
+                  ],
                 }
               : { scale: 1, boxShadow: "0 0 0 rgba(14, 165, 233, 0)" }
           }
-          transition={{ 
+          transition={{
             duration: 0.8,
             repeat: isShuffling ? Infinity : 0,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         >
           {Object.entries(bingoRows).map(([letter, numbers]) => (
@@ -268,28 +268,34 @@ export const BoardArea: React.FC<BoardAreaProps> = ({
                     animate={
                       isShuffling
                         ? {
-                            scale: [1, 1.08, 0.96, 1.04, 1],
-                            rotate: [0, -3, 3, -2, 0],
+                            rotateY: [0, 90, 270, 360],
+                            scale: [1, 0.8, 1.1, 1],
+                            opacity: [1, 0.5, 1],
                           }
-                        : { scale: 1, rotate: 0 }
+                        : { rotateY: 0, scale: 1, opacity: 1 }
                     }
                     whileHover={{ scale: 1.1 }}
-                    transition={{
-                      layout: {
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 30,
-                        mass: 0.8,
-                      },
-                      scale: {
-                        duration: 0.3,
-                        ease: "easeInOut",
-                      },
-                      rotate: {
-                        duration: 0.3,
-                        ease: "easeInOut",
-                      },
-                    }}
+                    transition={
+                      isShuffling
+                        ? {
+                            duration: 1.2,
+                            repeat: Infinity,
+                            delay: (num % 15) * 0.05,
+                            ease: "easeInOut",
+                          }
+                        : {
+                            layout: {
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 30,
+                              mass: 0.8,
+                            },
+                            scale: {
+                              duration: 0.3,
+                              ease: "easeInOut",
+                            },
+                          }
+                    }
                     onClick={() => isGameActive && callSpecificNumber(num)}
                   >
                     {num}
