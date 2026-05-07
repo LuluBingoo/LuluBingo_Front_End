@@ -1829,6 +1829,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
         ban_on_false_claim: false,
       });
 
+      console.log("=== Claim Request ===");
+      console.log("Cartella index:", claimContext.cartelaIndex);
+      console.log("Called numbers count:", claimContext.calledNumbersForClaim.length);
+      console.log("Called numbers:", claimContext.calledNumbersForClaim);
+      console.log("Claim response:", claim);
+      console.log("=== End Claim Request ===");
+
       if (claim.cartella_statuses) {
         setCartellaStatuses(claim.cartella_statuses);
       }
