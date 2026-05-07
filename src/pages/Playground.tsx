@@ -64,7 +64,7 @@ const createDefaultBingoRows = () => ({
 });
 
 const getStorageKey = (gameCode?: string) => {
-  return gameCode ? `bingoRows_${gameCode}` : 'bingoRows_default';
+  return gameCode ? `bingoRows_${gameCode}` : "bingoRows_default";
 };
 
 const loadBingoRowsFromStorage = (gameCode?: string) => {
@@ -74,27 +74,42 @@ const loadBingoRowsFromStorage = (gameCode?: string) => {
     if (stored) {
       const parsed = JSON.parse(stored);
       // Validate the structure
-      if (parsed && parsed.B && parsed.I && parsed.N && parsed.G && parsed.O &&
-          Array.isArray(parsed.B) && parsed.B.length === 15 &&
-          Array.isArray(parsed.I) && parsed.I.length === 15 &&
-          Array.isArray(parsed.N) && parsed.N.length === 15 &&
-          Array.isArray(parsed.G) && parsed.G.length === 15 &&
-          Array.isArray(parsed.O) && parsed.O.length === 15) {
+      if (
+        parsed &&
+        parsed.B &&
+        parsed.I &&
+        parsed.N &&
+        parsed.G &&
+        parsed.O &&
+        Array.isArray(parsed.B) &&
+        parsed.B.length === 15 &&
+        Array.isArray(parsed.I) &&
+        parsed.I.length === 15 &&
+        Array.isArray(parsed.N) &&
+        parsed.N.length === 15 &&
+        Array.isArray(parsed.G) &&
+        parsed.G.length === 15 &&
+        Array.isArray(parsed.O) &&
+        parsed.O.length === 15
+      ) {
         return parsed;
       }
     }
   } catch (error) {
-    console.error('Failed to load bingo rows from storage:', error);
+    console.error("Failed to load bingo rows from storage:", error);
   }
   return createDefaultBingoRows();
 };
 
-const saveBingoRowsToStorage = (rows: Record<string, number[]>, gameCode?: string) => {
+const saveBingoRowsToStorage = (
+  rows: Record<string, number[]>,
+  gameCode?: string,
+) => {
   try {
     const key = getStorageKey(gameCode);
     localStorage.setItem(key, JSON.stringify(rows));
   } catch (error) {
-    console.error('Failed to save bingo rows to storage:', error);
+    console.error("Failed to save bingo rows to storage:", error);
   }
 };
 
@@ -291,8 +306,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [drawCursor, setDrawCursor] = useState(0);
 
   // State for Bingo board (numbers shuffled per column)
-  const [bingoRows, setBingoRows] = useState(() => 
-    loadBingoRowsFromStorage(currentGameConfig?.gameCode || currentGameConfig?.game)
+  const [bingoRows, setBingoRows] = useState(() =>
+    loadBingoRowsFromStorage(
+      currentGameConfig?.gameCode || currentGameConfig?.game,
+    ),
   );
 
   const [isGameActive, setIsGameActive] = useState(false);
@@ -362,7 +379,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const audio = new Audio();
     audio.preload = "auto";
     audio.src = audioPath;
-    
+
     const onCanPlay = () => {
       audioCache.current.set(key, audio);
       audioPreloadQueue.current.delete(key);
@@ -431,7 +448,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   // Preload all number audios on mount
   useEffect(() => {
-    const letters = ['B', 'I', 'N', 'G', 'O'];
+    const letters = ["B", "I", "N", "G", "O"];
     const ranges = {
       B: [1, 15],
       I: [16, 30],
@@ -549,11 +566,23 @@ export const Playground: React.FC<PlaygroundProps> = ({
           state.cartella_statuses || game.cartella_statuses || {},
         );
         setDrawSequence(game.draw_sequence || []);
-        
+
         // Load board configuration from backend if available
-        if (game.board_configuration && typeof game.board_configuration === 'object') {
-          const boardConfig = game.board_configuration as Record<string, number[]>;
-          if (boardConfig.B && boardConfig.I && boardConfig.N && boardConfig.G && boardConfig.O) {
+        if (
+          game.board_configuration &&
+          typeof game.board_configuration === "object"
+        ) {
+          const boardConfig = game.board_configuration as Record<
+            string,
+            number[]
+          >;
+          if (
+            boardConfig.B &&
+            boardConfig.I &&
+            boardConfig.N &&
+            boardConfig.G &&
+            boardConfig.O
+          ) {
             setBingoRows(boardConfig);
             saveBingoRowsToStorage(boardConfig, game.game_code);
           }
@@ -562,7 +591,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           const savedRows = loadBingoRowsFromStorage(game.game_code);
           setBingoRows(savedRows);
         }
-        
+
         const restoredCursor = resolveCallCursor(
           state.call_cursor,
           state.called_numbers,
@@ -657,11 +686,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
     setCartellaStatuses(currentGameConfig.cartellaStatuses || {});
     setDrawSequence(currentGameConfig.drawSequence || []);
     setDrawCursor(0);
-    
+
     // Load saved bingo rows for this game
     const savedRows = loadBingoRowsFromStorage(gameCode);
     setBingoRows(savedRows);
-    
+
     onGameStateChange?.(status === "active");
   }, [
     currentGameConfig?.gameCode,
@@ -1139,23 +1168,23 @@ export const Playground: React.FC<PlaygroundProps> = ({
     // Show popup FIRST
     setBallPopupLabel(resolvedLabel);
     setShowBallPopup(true);
-    
+
     // Small delay to ensure popup is visible before audio starts
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, 150);
     });
-    
+
     // Start audio playback
     const audioStartTime = Date.now();
     await playAudio(resolvedLabel, true);
     const audioEndTime = Date.now();
     const audioDuration = audioEndTime - audioStartTime;
-    
+
     // Ensure minimum total display time of 2 seconds for visibility
     const minimumDisplayTime = 2000;
     const elapsedTime = Date.now() - now;
     const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
-    
+
     if (remainingTime > 0) {
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, remainingTime);
@@ -1518,7 +1547,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           calledNumber,
           responseCursor,
         );
-        
+
         // Predictive preloading: preload next 5 uncalled numbers for faster playback
         if (calledNumber && response.called_numbers) {
           const calledSet = new Set(response.called_numbers);
@@ -1530,7 +1559,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           }
           // Preload in background without blocking
           setTimeout(() => {
-            uncalledNumbers.forEach(num => {
+            uncalledNumbers.forEach((num) => {
               const letter = getNumberLetter(num);
               preloadAudio(`${letter}${num}`);
             });
@@ -1823,15 +1852,90 @@ export const Playground: React.FC<PlaygroundProps> = ({
         return;
       }
 
-      const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+      // ---------------------------------------------------------
+      // Explicit Frontend Checking (As requested)
+      // ---------------------------------------------------------
+      let frontendVerified = false;
+      let frontendPattern = "";
+      const localBoard = cartelaDataMap[matchedCartela];
+
+      if (localBoard && Array.isArray(localBoard) && localBoard.length === 25) {
+        const calledSet = new Set([...claimContext.calledNumbersForClaim, 0]); // 0 is free space
+        const marked = localBoard.map((num) => calledSet.has(num));
+
+        // Rows
+        for (let r = 0; r < 5; r++) {
+          if (
+            marked[r * 5] &&
+            marked[r * 5 + 1] &&
+            marked[r * 5 + 2] &&
+            marked[r * 5 + 3] &&
+            marked[r * 5 + 4]
+          ) {
+            frontendVerified = true;
+            frontendPattern = "row";
+            break;
+          }
+        }
+        // Columns
+        if (!frontendVerified) {
+          for (let c = 0; c < 5; c++) {
+            if (
+              marked[c] &&
+              marked[c + 5] &&
+              marked[c + 10] &&
+              marked[c + 15] &&
+              marked[c + 20]
+            ) {
+              frontendVerified = true;
+              frontendPattern = "column";
+              break;
+            }
+          }
+        }
+        // Diagonals
+        if (!frontendVerified) {
+          if (
+            marked[0] &&
+            marked[6] &&
+            marked[12] &&
+            marked[18] &&
+            marked[24]
+          ) {
+            frontendVerified = true;
+            frontendPattern = "diagonal";
+          } else if (
+            marked[4] &&
+            marked[8] &&
+            marked[12] &&
+            marked[16] &&
+            marked[20]
+          ) {
+            frontendVerified = true;
+            frontendPattern = "diagonal";
+          }
+        }
+      }
+
+      const claimRequest = {
         cartella_index: claimContext.cartelaIndex,
         called_numbers: claimContext.calledNumbersForClaim,
         ban_on_false_claim: false,
-      });
+        frontend_verified: frontendVerified,
+        frontend_pattern: frontendPattern,
+      } as any;
+
+      const claim = await gamesApi.claimGame(
+        currentGameConfig.gameCode,
+        claimRequest,
+      );
 
       console.log("=== Claim Request ===");
       console.log("Cartella index:", claimContext.cartelaIndex);
-      console.log("Called numbers count:", claimContext.calledNumbersForClaim.length);
+      console.log(
+        "Called numbers count:",
+        claimContext.calledNumbersForClaim.length,
+      );
       console.log("Called numbers:", claimContext.calledNumbersForClaim);
       console.log("Claim response:", claim);
       console.log("=== End Claim Request ===");
@@ -1856,11 +1960,76 @@ export const Playground: React.FC<PlaygroundProps> = ({
         retryContext.cartelaIndex >= 0
           ? retryContext.cartelaIndex
           : claimContext.cartelaIndex;
-      const retryClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
+
+      // Re-evaluate frontend checking against synced caller numbers
+      let retryFrontendVerified = false;
+      let retryFrontendPattern = "";
+      if (localBoard && Array.isArray(localBoard) && localBoard.length === 25) {
+        const calledSet = new Set([...retryContext.calledNumbersForClaim, 0]);
+        const marked = localBoard.map((num) => calledSet.has(num));
+        for (let r = 0; r < 5; r++) {
+          if (
+            marked[r * 5] &&
+            marked[r * 5 + 1] &&
+            marked[r * 5 + 2] &&
+            marked[r * 5 + 3] &&
+            marked[r * 5 + 4]
+          ) {
+            retryFrontendVerified = true;
+            retryFrontendPattern = "row";
+            break;
+          }
+        }
+        if (!retryFrontendVerified) {
+          for (let c = 0; c < 5; c++) {
+            if (
+              marked[c] &&
+              marked[c + 5] &&
+              marked[c + 10] &&
+              marked[c + 15] &&
+              marked[c + 20]
+            ) {
+              retryFrontendVerified = true;
+              retryFrontendPattern = "column";
+              break;
+            }
+          }
+        }
+        if (!retryFrontendVerified) {
+          if (
+            marked[0] &&
+            marked[6] &&
+            marked[12] &&
+            marked[18] &&
+            marked[24]
+          ) {
+            retryFrontendVerified = true;
+            retryFrontendPattern = "diagonal";
+          } else if (
+            marked[4] &&
+            marked[8] &&
+            marked[12] &&
+            marked[16] &&
+            marked[20]
+          ) {
+            retryFrontendVerified = true;
+            retryFrontendPattern = "diagonal";
+          }
+        }
+      }
+
+      const retryClaimRequest = {
         cartella_index: retryIndex,
         called_numbers: retryContext.calledNumbersForClaim,
         ban_on_false_claim: false,
-      });
+        frontend_verified: retryFrontendVerified,
+        frontend_pattern: retryFrontendPattern,
+      } as any;
+
+      const retryClaim = await gamesApi.claimGame(
+        currentGameConfig.gameCode,
+        retryClaimRequest,
+      );
 
       if (retryClaim.cartella_statuses) {
         setCartellaStatuses(retryClaim.cartella_statuses);
@@ -2244,7 +2413,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
         const gameCode = currentGameConfig?.gameCode || currentGameConfig?.game;
         if (gameCode) {
           gamesApi.shuffleGame(gameCode, bingoRows).catch((error) => {
-            console.error("Failed to save board configuration to backend:", error);
+            console.error(
+              "Failed to save board configuration to backend:",
+              error,
+            );
           });
         }
         popup.info("Shuffling stopped. Board saved.");
@@ -2341,13 +2513,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
           O: shuffleArray(prevRows.O),
         };
         // Save to localStorage
-        saveBingoRowsToStorage(newRows, currentGameConfig?.gameCode || currentGameConfig?.game);
+        saveBingoRowsToStorage(
+          newRows,
+          currentGameConfig?.gameCode || currentGameConfig?.game,
+        );
         return newRows;
       });
     }, shuffleSpeedMs);
 
     return () => window.clearInterval(intervalId);
-  }, [isShuffling, gameStatus, shuffleSpeedMs, currentGameConfig?.gameCode, currentGameConfig?.game]);
+  }, [
+    isShuffling,
+    gameStatus,
+    shuffleSpeedMs,
+    currentGameConfig?.gameCode,
+    currentGameConfig?.game,
+  ]);
 
   useEffect(() => {
     onFullscreenChange?.(isFullscreen);
@@ -2472,7 +2653,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     // Try to use cached audio first for instant playback
     let audio: HTMLAudioElement;
     const cachedAudio = audioCache.current.get(normalizedKey);
-    
+
     if (cachedAudio && isCalledBallKey) {
       // Clone the cached audio for instant reuse
       audio = cachedAudio.cloneNode(true) as HTMLAudioElement;
@@ -2482,10 +2663,10 @@ export const Playground: React.FC<PlaygroundProps> = ({
       audio = new Audio(audioPath);
       audio.preload = "auto";
     }
-    
+
     // Set volume to maximum for clear audio
     audio.volume = 1.0;
-    
+
     targetRef.current = audio;
 
     if (!waitForEnd) {
@@ -2505,12 +2686,12 @@ export const Playground: React.FC<PlaygroundProps> = ({
         audio.removeEventListener("ended", onEnded);
         audio.removeEventListener("error", onError);
         audio.removeEventListener("pause", onPause);
-        
+
         // Ensure minimum audio duration for proper playback
         const elapsed = Date.now() - startTime;
         const minimumDuration = isCalledBallKey ? 800 : 0;
         const remaining = Math.max(0, minimumDuration - elapsed);
-        
+
         if (remaining > 0) {
           window.setTimeout(resolve, remaining);
         } else {
