@@ -231,12 +231,21 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
   // Real-time projected Lulu cut including current selection (not yet locked)
   const projectedLuluCutWithSelection = useMemo(() => {
-    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+    const currentSelectionAmount =
+      selectedCartellas.length * parseAmount(betPerCartella);
     const totalPoolWithSelection = projectedTotalPool + currentSelectionAmount;
-    const shopCutWithSelection = (totalPoolWithSelection * parseAmount(shopCutPercentage)) / 100;
-    const luluCutWithSelection = (shopCutWithSelection * parseAmount(luluCutPercentage)) / 100;
+    const shopCutWithSelection =
+      (totalPoolWithSelection * parseAmount(shopCutPercentage)) / 100;
+    const luluCutWithSelection =
+      (shopCutWithSelection * parseAmount(luluCutPercentage)) / 100;
     return luluCutWithSelection;
-  }, [selectedCartellas, betPerCartella, projectedTotalPool, shopCutPercentage, luluCutPercentage]);
+  }, [
+    selectedCartellas,
+    betPerCartella,
+    projectedTotalPool,
+    shopCutPercentage,
+    luluCutPercentage,
+  ]);
 
   // Check if current selection would exceed balance
   const wouldExceedBalance = useMemo(() => {
@@ -247,19 +256,21 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   const wouldCartellaExceedBalance = (cartellaNumber: number): boolean => {
     if (!betLocked) return false;
     if (selectedCartellas.includes(cartellaNumber)) return false; // Already selected, removing won't exceed
-    
+
     // Calculate the pool with ONLY the locked players (not including current selection)
     const lockedPlayersPool = projectedTotalPool;
-    
+
     // Calculate what the pool would be if we add this ONE cartella to the current selection
-    const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
-    const withThisCartellaAmount = (selectedCartellas.length + 1) * parseAmount(betPerCartella);
-    
+    const currentSelectionAmount =
+      selectedCartellas.length * parseAmount(betPerCartella);
+    const withThisCartellaAmount =
+      (selectedCartellas.length + 1) * parseAmount(betPerCartella);
+
     // Total pool would be: locked players + current selection + this new cartella
     const nextTotalPool = lockedPlayersPool + withThisCartellaAmount;
     const nextShopCut = (nextTotalPool * parseAmount(shopCutPercentage)) / 100;
     const nextLuluCut = (nextShopCut * parseAmount(luluCutPercentage)) / 100;
-    
+
     return availableBalanceAmount < nextLuluCut;
   };
 
@@ -347,10 +358,17 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   useEffect(() => {
     if (!session?.session_id) return;
 
-    const intervalId = setInterval(() => {
-      syncSession(session.session_id).catch((error) => {
+    let isFetching = false;
+    const intervalId = setInterval(async () => {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        await syncSession(session.session_id);
+      } catch (error) {
         console.error("Failed to refresh shop session", error);
-      });
+      } finally {
+        isFetching = false;
+      }
     }, 3000);
 
     return () => clearInterval(intervalId);
@@ -374,13 +392,16 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
     // Real-time balance checking when adding a cartella
     if (betLocked && !alreadySelected && next.length > 0) {
-      const currentSelectionAmount = selectedCartellas.length * parseAmount(betPerCartella);
+      const currentSelectionAmount =
+        selectedCartellas.length * parseAmount(betPerCartella);
       const newSelectionAmount = next.length * parseAmount(betPerCartella);
       const additionalAmount = newSelectionAmount - currentSelectionAmount;
-      
+
       const previewPool = projectedTotalPool + additionalAmount;
-      const previewShopCut = (previewPool * parseAmount(shopCutPercentage)) / 100;
-      const previewLuluCut = (previewShopCut * parseAmount(luluCutPercentage)) / 100;
+      const previewShopCut =
+        (previewPool * parseAmount(shopCutPercentage)) / 100;
+      const previewLuluCut =
+        (previewShopCut * parseAmount(luluCutPercentage)) / 100;
 
       if (availableBalanceAmount < previewLuluCut) {
         const shortfall = previewLuluCut - availableBalanceAmount;
@@ -392,7 +413,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         });
         setShowLowReserveModal(true);
         popup.error(
-          `Insufficient Lulu reserve. Need ${formatCurrency(previewLuluCut.toFixed(2))}, have ${formatCurrency(availableBalanceAmount.toFixed(2))}, short by ${formatCurrency(shortfall.toFixed(2))}.`
+          `Insufficient Lulu reserve. Need ${formatCurrency(previewLuluCut.toFixed(2))}, have ${formatCurrency(availableBalanceAmount.toFixed(2))}, short by ${formatCurrency(shortfall.toFixed(2))}.`,
         );
         return;
       }
@@ -512,7 +533,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         prev.filter((player) => player.player_name !== entry.player_name),
       );
       popup.success(`${entry.player_name} unlocked.`);
-      
+
       // Immediately refresh financial display after unlocking
       void syncShopFinancials({ updateBetInput: false });
       return;
@@ -534,15 +555,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
           bet_per_cartella: betPerCartella,
         },
       );
-      
+
       // Update session state immediately
       setSession(latestSession);
-      
+
       // Sync session again to ensure we have the latest data
       await syncSession(latestSession.session_id);
-      
+
       popup.success(`${entry.player_name} unlocked.`);
-      
+
       // Immediately refresh financial display after unlocking
       void syncShopFinancials({ updateBetInput: false });
     } catch (error) {
@@ -1040,7 +1061,12 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         <Button
           className="bg-red-700 text-white hover:bg-red-800"
           onClick={handleLockCurrentPlayer}
-          disabled={submittingLock || !betLocked || submittingPayment || wouldExceedBalance}
+          disabled={
+            submittingLock ||
+            !betLocked ||
+            submittingPayment ||
+            wouldExceedBalance
+          }
         >
           {submittingLock
             ? t("newGame.locking")
@@ -1172,12 +1198,19 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     <label className="text-sm font-medium">
                       Estimated Lulu Cut (Session)
                     </label>
-                    <div className={`mt-1 text-lg font-bold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-rose-600'}`}>
+                    <div
+                      className={`mt-1 text-lg font-bold transition-colors ${wouldExceedBalance ? "text-red-600 dark:text-red-400" : "text-rose-600"}`}
+                    >
                       {formatCurrency(projectedLuluCut.toFixed(2))}
                     </div>
                     {selectedCartellas.length > 0 && (
-                      <div className={`mt-1 text-sm font-semibold transition-colors ${wouldExceedBalance ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        + Current: {formatCurrency(projectedLuluCutWithSelection.toFixed(2))}
+                      <div
+                        className={`mt-1 text-sm font-semibold transition-colors ${wouldExceedBalance ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}
+                      >
+                        + Current:{" "}
+                        {formatCurrency(
+                          projectedLuluCutWithSelection.toFixed(2),
+                        )}
                       </div>
                     )}
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -1312,7 +1345,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   {pageRange.map((number) => {
                     const isSelected = selectedCartellas.includes(number);
                     const isLocked = lockedByOthers.has(number);
-                    
+
                     // Check if this cartella would cause balance to be exceeded
                     let wouldExceed = false;
                     if (!isLocked) {
@@ -1330,10 +1363,20 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                         key={number}
                         className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : wouldExceed && isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)] ring-2 ring-amber-400 ring-offset-2" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
                         onClick={() => handleCartellaToggle(number)}
-                        whileHover={{ scale: wouldExceed && !isSelected ? 1 : 1.07 }}
-                        whileTap={{ scale: wouldExceed && !isSelected ? 1 : 0.95 }}
+                        whileHover={{
+                          scale: wouldExceed && !isSelected ? 1 : 1.07,
+                        }}
+                        whileTap={{
+                          scale: wouldExceed && !isSelected ? 1 : 0.95,
+                        }}
                         disabled={isLocked || (wouldExceed && !isSelected)}
-                        title={wouldExceed && isSelected ? "Selection exceeds Lulu reserve - click to deselect" : wouldExceed ? "Would exceed Lulu reserve balance" : undefined}
+                        title={
+                          wouldExceed && isSelected
+                            ? "Selection exceeds Lulu reserve - click to deselect"
+                            : wouldExceed
+                              ? "Would exceed Lulu reserve balance"
+                              : undefined
+                        }
                       >
                         {isSelected && (
                           <motion.div
@@ -1356,7 +1399,8 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                   <p>{t("newGame.lockedConfigInfo")}</p>
                   {wouldExceedBalance && (
                     <p className="font-semibold text-amber-600 dark:text-amber-400">
-                      ⚠️ Some cartellas are disabled because adding them would exceed your Lulu reserve balance.
+                      ⚠️ Some cartellas are disabled because adding them would
+                      exceed your Lulu reserve balance.
                     </p>
                   )}
                 </div>
