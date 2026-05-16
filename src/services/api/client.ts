@@ -14,6 +14,10 @@ export class ApiError extends Error {
   }
 }
 
+type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+};
+
 class ApiClient {
   private token: string | null = null;
 
@@ -61,30 +65,33 @@ class ApiClient {
     return headers;
   }
 
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async request<T>(
+    endpoint: string,
+    options: ApiRequestOptions = {},
+  ): Promise<T> {
     const url = `${API_CONFIG.BASE_URL}${endpoint}`;
 
+    const { timeoutMs, ...requestOptions } = options;
+
     const config: RequestInit = {
-      ...options,
+      ...requestOptions,
       headers: {
         ...this.getHeaders(),
-        ...options.headers,
+        ...requestOptions.headers,
       },
     };
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        API_CONFIG.TIMEOUT,
-      );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      timeoutMs ?? API_CONFIG.TIMEOUT,
+    );
 
+    try {
       const response = await fetch(url, {
         ...config,
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (response.status === 503) {
         markBackendOffline("Service unavailable");
@@ -123,36 +130,55 @@ class ApiClient {
           throw new ApiError("Request timeout", 408);
         }
         markBackendOffline(error.message || "Backend unavailable");
-        toast.error(error.message || "Backend unavailable", { id: "backend-error" });
+        toast.error(error.message || "Backend unavailable", {
+          id: "backend-error",
+        });
         throw new ApiError(error.message, 0);
       }
 
       markBackendOffline("Unknown backend connectivity error");
-      toast.error("Unknown backend connectivity error", { id: "backend-error" });
+      toast.error("Unknown backend connectivity error", {
+        id: "backend-error",
+      });
       throw new ApiError("Unknown error occurred", 0);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "GET" });
+  async get<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "GET" });
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    options: ApiRequestOptions = {},
+  ): Promise<T> {
     return this.request<T>(endpoint, {
+      ...options,
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(
+    endpoint: string,
+    data?: any,
+    options: ApiRequestOptions = {},
+  ): Promise<T> {
     return this.request<T>(endpoint, {
+      ...options,
       method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "DELETE" });
+  async delete<T>(
+    endpoint: string,
+    options: ApiRequestOptions = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 }
 

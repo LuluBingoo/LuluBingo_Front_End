@@ -1,7 +1,7 @@
 // Main API file - handles both mock and real backend data
 // Toggle USE_MOCK to switch between mock data and real backend
 
-import { apiClient } from "./api/client";
+import { ApiError, apiClient } from "./api/client";
 import {
   mockAuthApi,
   mockGamesApi,
@@ -246,10 +246,28 @@ export const gamesApi = {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Shop mode is not available in mock mode");
     }
-    return await apiClient.post<ShopBingoConfirmPaymentResponse>(
-      API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
-      {},
-    );
+
+    // Game creation can occasionally take longer (e.g., cold starts).
+    // This endpoint is idempotent server-side (returns existing game if already created),
+    // so it's safe to give it a longer timeout and retry once on client-side timeout.
+    const baseTimeoutMs = Math.max(API_CONFIG.TIMEOUT, 30000);
+
+    try {
+      return await apiClient.post<ShopBingoConfirmPaymentResponse>(
+        API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
+        {},
+        { timeoutMs: baseTimeoutMs },
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 408) {
+        return await apiClient.post<ShopBingoConfirmPaymentResponse>(
+          API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
+          {},
+          { timeoutMs: Math.max(baseTimeoutMs, 45000) },
+        );
+      }
+      throw error;
+    }
   },
 
   async getGame(code: string): Promise<Game> {
@@ -295,7 +313,9 @@ export const gamesApi = {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Game shuffle is not available in mock mode");
     }
-    const payload = boardConfiguration ? { board_configuration: boardConfiguration } : {};
+    const payload = boardConfiguration
+      ? { board_configuration: boardConfiguration }
+      : {};
     return await apiClient.post<{
       game_code: string;
       status: string;
