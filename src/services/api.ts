@@ -242,6 +242,7 @@ export const gamesApi = {
 
   async createShopGameFromSession(
     sessionId: string,
+    data?: { players?: ShopBingoReserveRequest[] },
   ): Promise<ShopBingoConfirmPaymentResponse> {
     if (API_CONFIG.USE_MOCK) {
       throw new Error("Shop mode is not available in mock mode");
@@ -251,18 +252,19 @@ export const gamesApi = {
     // This endpoint is idempotent server-side (returns existing game if already created),
     // so it's safe to give it a longer timeout and retry once on client-side timeout.
     const baseTimeoutMs = Math.max(API_CONFIG.TIMEOUT, 30000);
+    const requestBody = data?.players?.length ? { players: data.players } : {};
 
     try {
       return await apiClient.post<ShopBingoConfirmPaymentResponse>(
         API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
-        {},
+        requestBody,
         { timeoutMs: baseTimeoutMs },
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 408) {
         return await apiClient.post<ShopBingoConfirmPaymentResponse>(
           API_ENDPOINTS.GAMES.SHOP_SESSION_CREATE_GAME(sessionId),
-          {},
+          requestBody,
           { timeoutMs: Math.max(baseTimeoutMs, 45000) },
         );
       }

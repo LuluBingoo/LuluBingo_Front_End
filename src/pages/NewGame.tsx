@@ -357,6 +357,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
   useEffect(() => {
     if (!session?.session_id) return;
+    if (submittingPayment) return;
 
     let isFetching = false;
     const intervalId = setInterval(async () => {
@@ -372,7 +373,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [session?.session_id]);
+  }, [session?.session_id, submittingPayment]);
 
   const handleCartellaToggle = async (cartellaNumber: number) => {
     if (lockedByOthers.has(cartellaNumber)) {
@@ -675,21 +676,15 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
         return;
       }
 
-      let latestSession = connectedSession;
-
-      for (const stagedPlayer of stagedPlayers) {
-        latestSession = await gamesApi.reserveShopCartellas(
-          latestSession.session_id,
-          {
-            player_name: stagedPlayer.player_name,
-            cartella_numbers: stagedPlayer.cartella_numbers,
-            bet_per_cartella: stagedPlayer.bet_per_cartella,
-          },
-        );
-      }
+      const stagedPayload = stagedPlayers.map((player) => ({
+        player_name: player.player_name,
+        cartella_numbers: player.cartella_numbers,
+        bet_per_cartella: player.bet_per_cartella,
+      }));
 
       const response = await gamesApi.createShopGameFromSession(
-        latestSession.session_id,
+        connectedSession.session_id,
+        stagedPayload.length ? { players: stagedPayload } : undefined,
       );
       setSession(response.session);
       setStagedPlayers([]);
