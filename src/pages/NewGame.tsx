@@ -463,14 +463,6 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
 
       popup.success(`${currentPlayerName} locked locally.`);
 
-      // Play sound when all players are locked
-      const newTotal =
-        (session?.players_data.length ?? 0) + stagedPlayers.length + 1;
-      if (newTotal >= targetPlayers) {
-        const audio = new Audio(audioMap["Check_is_your_card_is_saved"]);
-        void audio.play();
-      }
-
       setSelectedCartellas([]);
       setCurrentPage(1);
     } catch (error) {
@@ -622,6 +614,10 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
   };
 
   const handleCheckPaymentAndCreate = async () => {
+    // Play voice prompt specifically when this button is clicked
+    const audio = new Audio(audioMap["Check_is_your_card_is_saved"]);
+    void audio.play();
+
     const serverLockedCount = session?.players_data.length ?? 0;
     const stagedLockedCount = stagedPlayers.length;
     const lockedPlayerCount = serverLockedCount + stagedLockedCount;

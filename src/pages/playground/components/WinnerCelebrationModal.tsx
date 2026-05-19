@@ -244,7 +244,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
             <motion.div
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 drop-shadow-[0_6px_20px_rgba(245,158,11,0.5)] sm:text-7xl"
+              className="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-amber-600 via-yellow-500 to-amber-600 drop-shadow-[0_6px_20px_rgba(245,158,11,0.5)] sm:text-7xl"
             >
               🎊 BINGO! 🎊
             </motion.div>
@@ -258,7 +258,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
             </motion.div>
             {winnerCelebration.pattern && (
               <motion.div 
-                className="mt-3 inline-block rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-2 text-base font-black uppercase tracking-wider text-white shadow-lg sm:text-lg"
+                className="mt-3 inline-block rounded-full bg-linear-to-r from-amber-500 to-yellow-500 px-6 py-2 text-base font-black uppercase tracking-wider text-white shadow-lg sm:text-lg"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
@@ -313,7 +313,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                   </span>
                 </div>
                 <motion.div 
-                  className="flex items-center justify-between gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 px-4 py-3 shadow-lg"
+                  className="flex items-center justify-between gap-2 rounded-xl bg-linear-to-br from-emerald-400 via-emerald-500 to-emerald-600 px-4 py-3 shadow-lg"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.7, type: "spring" }}

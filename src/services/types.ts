@@ -10,6 +10,8 @@ export type TransactionType =
   | "bet_debit"
   | "bet_credit"
   | "lulu_cut_debit"
+  | "win"
+  | "commission";
   | "adjustment";
 
 // User/Shop types
