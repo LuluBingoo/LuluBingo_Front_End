@@ -1093,6 +1093,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
     const payoutText = claim.payout_amount
       ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
       : "";
+    const bonusText =
+      claim.bonus_awarded_amount &&
+      Number.parseFloat(claim.bonus_awarded_amount || "0") > 0
+        ? `\nBonus: ${formatCurrency(claim.bonus_awarded_amount)}`
+        : "";
     const cutText = claim.shop_cut_amount
       ? `\nShop Cut: ${formatCurrency(claim.shop_cut_amount)}`
       : "";
@@ -1101,6 +1106,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       winningCartelaNumber,
       claim.pattern,
       claim.payout_amount,
+      claim.bonus_contribution_amount,
+      claim.bonus_awarded_amount,
+      claim.bonus_awarded_cartella_index,
       claim.shop_cut_amount,
       claim.lulu_cut_amount,
       claim.shop_net_cut_amount,
@@ -1121,6 +1129,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
             winning_pattern: claim.pattern || prev.winning_pattern,
             total_pool: claim.total_pool || prev.total_pool,
             payout_amount: claim.payout_amount || prev.payout_amount,
+            bonus_contribution_amount:
+              claim.bonus_contribution_amount || prev.bonus_contribution_amount,
+            bonus_awarded_amount:
+              claim.bonus_awarded_amount || prev.bonus_awarded_amount,
+            bonus_awarded_cartella_index:
+              claim.bonus_awarded_cartella_index !== undefined
+                ? claim.bonus_awarded_cartella_index
+                : prev.bonus_awarded_cartella_index,
             shop_cut_amount: claim.shop_cut_amount || prev.shop_cut_amount,
             lulu_cut_amount: claim.lulu_cut_amount || prev.lulu_cut_amount,
             shop_net_cut_amount:
@@ -1133,13 +1149,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
     if (source === "declare") {
       popup.success(
-        `🎉 BINGO! Cartela ${winningCartelaNumber} WON!\nGame closed.${patternText}${payoutText}${cutText}`,
+        `🎉 BINGO! Cartela ${winningCartelaNumber} WON!\nGame closed.${patternText}${payoutText}${bonusText}${cutText}`,
       );
       return;
     }
 
     popup.success(
-      `🎉 BINGO${claim.pattern ? ` (${claim.pattern})` : ""}! Player with Cartela ${winningCartelaNumber} WON!\nGame closed.${payoutText}${cutText}`,
+      `🎉 BINGO${claim.pattern ? ` (${claim.pattern})` : ""}! Player with Cartela ${winningCartelaNumber} WON!\nGame closed.${payoutText}${bonusText}${cutText}`,
     );
   };
 
@@ -1261,6 +1277,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
     cartelaNumber: string,
     pattern?: string | null,
     payoutAmount?: string | number | null,
+    bonusContributionAmount?: string | number | null,
+    bonusAwardedAmount?: string | number | null,
+    bonusAwardedCartellaIndex?: number | null,
     shopCutAmount?: string | number | null,
     luluCutAmount?: string | number | null,
     shopNetCutAmount?: string | number | null,
@@ -1270,6 +1289,9 @@ export const Playground: React.FC<PlaygroundProps> = ({
       cartela: cartelaNumber,
       pattern: pattern || null,
       payoutAmount: payoutAmount ?? null,
+      bonusContributionAmount: bonusContributionAmount ?? null,
+      bonusAwardedAmount: bonusAwardedAmount ?? null,
+      bonusAwardedCartellaIndex: bonusAwardedCartellaIndex ?? null,
       shopCutAmount: shopCutAmount ?? null,
       luluCutAmount: luluCutAmount ?? null,
       shopNetCutAmount: shopNetCutAmount ?? null,

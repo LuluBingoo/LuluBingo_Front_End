@@ -32,6 +32,9 @@ export interface WinnerCelebration {
   cartela: string;
   pattern?: string | null;
   payoutAmount?: string | number | null;
+  bonusContributionAmount?: string | number | null;
+  bonusAwardedAmount?: string | number | null;
+  bonusAwardedCartellaIndex?: number | null;
   shopCutAmount?: string | number | null;
   luluCutAmount?: string | number | null;
   shopNetCutAmount?: string | number | null;

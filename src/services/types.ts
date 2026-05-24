@@ -4,6 +4,7 @@ export type ShopStatus = "pending" | "active" | "suspended" | "blocked";
 export type ShopRole = "shop" | "manager";
 export type GameStatus = "pending" | "active" | "completed" | "cancelled";
 export type TwoFactorMethod = "totp" | "email_code";
+export type BonusFundingSource = "players" | "shop";
 export type TransactionType =
   | "deposit"
   | "withdrawal"
@@ -29,6 +30,14 @@ export interface ShopUser {
   commission_rate: string;
   shop_cut_percentage?: string;
   lulu_cut_percentage?: string;
+  bonus_enabled?: boolean;
+  bonus_funding_source?: BonusFundingSource;
+  bonus_contribution_per_cartella?: string;
+  bonus_min_rounds?: number;
+  bonus_max_rounds?: number;
+  bonus_round_counter?: number;
+  bonus_next_award_round?: number;
+  bonus_pot_balance?: string;
   max_stake: string;
   feature_flags: Record<string, any>;
   bank_name: string;
@@ -61,6 +70,14 @@ export interface ShopProfile {
   commission_rate: string;
   shop_cut_percentage?: string;
   lulu_cut_percentage?: string;
+  bonus_enabled?: boolean;
+  bonus_funding_source?: BonusFundingSource;
+  bonus_contribution_per_cartella?: string;
+  bonus_min_rounds?: number;
+  bonus_max_rounds?: number;
+  bonus_round_counter?: number;
+  bonus_next_award_round?: number;
+  bonus_pot_balance?: string;
   max_stake: string;
   feature_flags: Record<string, any>;
   two_factor_enabled: boolean;
@@ -129,6 +146,9 @@ export interface Game {
   shop_cut_amount?: string;
   lulu_cut_amount?: string;
   shop_net_cut_amount?: string;
+  bonus_contribution_amount?: string;
+  bonus_awarded_amount?: string;
+  bonus_awarded_cartella_index?: number | null;
   winning_pattern?: string;
   created_at: string;
   started_at: string | null;
@@ -175,6 +195,9 @@ export interface GameClaimResponse {
   shop_cut_amount?: string;
   lulu_cut_amount?: string;
   shop_net_cut_amount?: string;
+  bonus_contribution_amount?: string;
+  bonus_awarded_amount?: string;
+  bonus_awarded_cartella_index?: number | null;
 }
 
 export interface ShopBingoPlayer {

@@ -149,6 +149,12 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
     restoredGame?.payout_amount ||
     winnerCelebration?.payoutAmount ||
     calculateWinMoney();
+  const resolvedBonusAwarded =
+    restoredGame?.bonus_awarded_amount ||
+    winnerCelebration?.bonusAwardedAmount ||
+    0;
+  const hasBonusAward =
+    Number.parseFloat(String(resolvedBonusAwarded || "0")) > 0;
   const resolvedShopCut =
     restoredGame?.shop_cut_amount || winnerCelebration?.shopCutAmount || 0;
   const resolvedLuluCut =
@@ -243,12 +249,16 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
             </div>
             <motion.div
               animate={{ scale: [1, 1.08, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
               className="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-amber-600 via-yellow-500 to-amber-600 drop-shadow-[0_6px_20px_rgba(245,158,11,0.5)] sm:text-7xl"
             >
               🎊 BINGO! 🎊
             </motion.div>
-            <motion.div 
+            <motion.div
               className="mt-4 text-2xl font-bold text-slate-900 sm:text-4xl"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -257,7 +267,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
               🏆 Cartela {winnerCelebration.cartela} WINS! 🏆
             </motion.div>
             {winnerCelebration.pattern && (
-              <motion.div 
+              <motion.div
                 className="mt-3 inline-block rounded-full bg-linear-to-r from-amber-500 to-yellow-500 px-6 py-2 text-base font-black uppercase tracking-wider text-white shadow-lg sm:text-lg"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -312,7 +322,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                     {formatMoneyValue(resolvedTotalPool)}
                   </span>
                 </div>
-                <motion.div 
+                <motion.div
                   className="flex items-center justify-between gap-2 rounded-xl bg-linear-to-br from-emerald-400 via-emerald-500 to-emerald-600 px-4 py-3 shadow-lg"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -321,14 +331,28 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                   <span className="font-bold text-white text-lg">
                     💰 Winner Payout
                   </span>
-                  <motion.span 
+                  <motion.span
                     className="text-2xl font-black text-white"
                     animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 1, repeat: Infinity, repeatDelay: 1 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      repeatDelay: 1,
+                    }}
                   >
                     {formatMoneyValue(resolvedPayout)}
                   </motion.span>
                 </motion.div>
+                {hasBonusAward && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
+                    <span className="font-semibold text-slate-600">
+                      Bonus Reward
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      {formatMoneyValue(resolvedBonusAwarded)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50/80 px-3 py-2">
                   <span className="font-semibold text-slate-600">Shop Cut</span>
                   <span className="font-bold text-slate-900">
