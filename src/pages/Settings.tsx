@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Lock, Globe, Palette, Moon, Sun } from "lucide-react";
+import { Bell, Lock, Globe, Palette, Moon, Sun, Gift } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
@@ -58,6 +58,12 @@ export const Settings: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordOtp, setPasswordOtp] = useState("");
+  const [bonusEnabled, setBonusEnabled] = useState(false);
+  const [bonusFundingSource, setBonusFundingSource] = useState("players");
+  const [bonusContribution, setBonusContribution] = useState("0");
+  const [bonusMinRounds, setBonusMinRounds] = useState("3");
+  const [bonusMaxRounds, setBonusMaxRounds] = useState("8");
+  const [bonusPotBalance, setBonusPotBalance] = useState("0");
   const [password2faEnabled, setPassword2faEnabled] = useState(false);
   const [password2faMethods, setPassword2faMethods] = useState<
     TwoFactorMethod[]
@@ -129,6 +135,36 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const persistProfilePatch = async (
+    patch: Record<string, any>,
+    errorMessage: string,
+    settingKey?: string,
+  ) => {
+    if (settingKey) {
+      setSaveStatus((prev) => ({ ...prev, [settingKey]: "saving" }));
+      if (saveStatusTimeoutsRef.current[settingKey]) {
+        window.clearTimeout(saveStatusTimeoutsRef.current[settingKey]);
+      }
+    }
+
+    try {
+      await shopApi.updateProfile(patch);
+
+      if (settingKey) {
+        setSaveStatus((prev) => ({ ...prev, [settingKey]: "saved" }));
+        saveStatusTimeoutsRef.current[settingKey] = window.setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [settingKey]: null }));
+        }, 1400);
+      }
+    } catch (error) {
+      console.error("Failed to auto-save profile patch", error);
+      popup.error(errorMessage);
+      if (settingKey) {
+        setSaveStatus((prev) => ({ ...prev, [settingKey]: null }));
+      }
+    }
+  };
+
   const renderSaveStatus = (key: string) => {
     const status = saveStatus[key];
     if (!status) return null;
@@ -181,6 +217,13 @@ export const Settings: React.FC = () => {
         setShopCutPercentage(String(profile.shop_cut_percentage ?? "0"));
         setLuluCutPercentage(String(profile.lulu_cut_percentage ?? "0"));
         setAvailableBalance(String(profile.wallet_balance ?? "0"));
+
+        setBonusEnabled(Boolean(profile.bonus_enabled));
+        setBonusFundingSource(profile.bonus_funding_source || "players");
+        setBonusContribution(String(profile.bonus_contribution_per_cartella || "0"));
+        setBonusMinRounds(String(profile.bonus_min_rounds || "3"));
+        setBonusMaxRounds(String(profile.bonus_max_rounds || "8"));
+        setBonusPotBalance(String(profile.bonus_pot_balance || "0"));
 
         if (flags.language === "en" || flags.language === "am") {
           setLanguage(flags.language);
@@ -803,6 +846,125 @@ export const Settings: React.FC = () => {
                     Enabled
                   </span>
                 </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <Card className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-red-700" />
+                <h3 className="text-lg font-semibold">Bonus & Rewards</h3>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">Enable Bonus System</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">Collect money per cartella to randomly reward a winner.</p>
+                    {renderSaveStatus("bonus_enabled")}
+                  </div>
+                  <Switch
+                    checked={bonusEnabled}
+                    onCheckedChange={async (val) => {
+                      setBonusEnabled(val);
+                      await persistProfilePatch({ bonus_enabled: val }, "Failed to save bonus status", "bonus_enabled");
+                    }}
+                  />
+                </div>
+                {bonusEnabled && (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">Contribution Per Cartella</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">Amount to collect for the pot from each cartella.</p>
+                        {renderSaveStatus("bonus_contribution_per_cartella")}
+                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={bonusContribution}
+                        onChange={(e) => setBonusContribution(e.target.value)}
+                        onBlur={async () => {
+                          const parsed = parseFloat(bonusContribution) || 0;
+                          await persistProfilePatch({ bonus_contribution_per_cartella: parsed }, "Failed to save contribution amount", "bonus_contribution_per_cartella");
+                        }}
+                        className="w-45"
+                      />
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">Funding Source</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">Where the bonus contribution is deducted from.</p>
+                        {renderSaveStatus("bonus_funding_source")}
+                      </div>
+                      <Select
+                        value={bonusFundingSource}
+                        onValueChange={async (value) => {
+                          setBonusFundingSource(value);
+                          await persistProfilePatch({ bonus_funding_source: value }, "Failed to save funding source", "bonus_funding_source");
+                        }}
+                      >
+                        <SelectTrigger className="w-45">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="players">Players (Payout)</SelectItem>
+                          <SelectItem value="shop">Shop (Profit)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">Random Round Range</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">Min & Max rounds before the pot is awarded.</p>
+                        {renderSaveStatus("bonus_rounds")}
+                      </div>
+                      <div className="flex items-center gap-2 w-45">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={bonusMinRounds}
+                          onChange={(e) => setBonusMinRounds(e.target.value)}
+                          onBlur={async () => {
+                            const min = parseInt(bonusMinRounds) || 1;
+                            const max = parseInt(bonusMaxRounds) || 1;
+                            await persistProfilePatch({ bonus_min_rounds: min, bonus_max_rounds: max < min ? min : max }, "Failed to save rounds", "bonus_rounds");
+                          }}
+                        />
+                        <span>-</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={bonusMaxRounds}
+                          onChange={(e) => setBonusMaxRounds(e.target.value)}
+                          onBlur={async () => {
+                            const min = parseInt(bonusMinRounds) || 1;
+                            const max = parseInt(bonusMaxRounds) || 1;
+                            await persistProfilePatch({ bonus_min_rounds: min, bonus_max_rounds: max < min ? min : max }, "Failed to save rounds", "bonus_rounds");
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">Current Bonus Pot</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">The amount currently accumulated for the next winner.</p>
+                      </div>
+                      <Input
+                        value={formatCurrency(bonusPotBalance)}
+                        disabled
+                        className="w-45 font-bold text-red-600 dark:text-red-400"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
