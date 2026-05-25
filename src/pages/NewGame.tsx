@@ -3,7 +3,14 @@ import { motion } from "motion/react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Check, ShieldCheck, Sparkles, Users, Wallet } from "lucide-react";
+import {
+  Check,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Wallet,
+  Lock,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1377,6 +1384,18 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                             exit={{ scale: 0 }}
                           >
                             <Check size={16} />
+                          </motion.div>
+                        )}
+                        {isLocked && (
+                          <motion.div
+                            className="absolute top-0 left-0 p-0.5"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                          >
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-300 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                              <Lock size={14} />
+                            </div>
                           </motion.div>
                         )}
                         {number}
