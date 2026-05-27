@@ -22,7 +22,7 @@ interface CartelaModalProps {
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
   onDeclareWinner?: (
     cartelaNumber: string,
-    pattern: "row" | "column" | "diagonal",
+    pattern: "row" | "column" | "diagonal" | "center_column" | "four_corners",
   ) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
@@ -48,7 +48,7 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedWinningPattern, setSelectedWinningPattern] = useState<
-    "row" | "column" | "diagonal"
+    "row" | "column" | "diagonal" | "center_column" | "four_corners"
   >("row");
 
   const normalizeCartelaNumber = useCallback((value: string | number) => {
@@ -224,6 +224,31 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     return hasMainDiagonal || hasAntiDiagonal;
   }, [cartelaData, isMarked]);
 
+  const hasCenterColumnPattern = useMemo(() => {
+    if (cartelaData.length !== 25) {
+      return false;
+    }
+    const grid = Array.from({ length: 5 }, (_, row) =>
+      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
+    );
+    return [0, 2, 3, 4].every((r) => isMarked(grid[r][2]));
+  }, [cartelaData, isMarked]);
+
+  const hasFourCornersPattern = useMemo(() => {
+    if (cartelaData.length !== 25) {
+      return false;
+    }
+    const grid = Array.from({ length: 5 }, (_, row) =>
+      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
+    );
+    return (
+      isMarked(grid[0][0]) &&
+      isMarked(grid[0][4]) &&
+      isMarked(grid[4][0]) &&
+      isMarked(grid[4][4])
+    );
+  }, [cartelaData, isMarked]);
+
   const hasColumnPattern = useMemo(() => {
     if (cartelaData.length !== 25) {
       return false;
@@ -239,17 +264,27 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   }, [cartelaData, isMarked]);
 
   const hasWinningPattern =
-    hasRowPattern || hasColumnPattern || hasDiagonalPattern;
+    hasRowPattern ||
+    hasColumnPattern ||
+    hasDiagonalPattern ||
+    hasCenterColumnPattern ||
+    hasFourCornersPattern;
 
   const selectedPatternMatched =
     selectedWinningPattern === "row"
       ? hasRowPattern
       : selectedWinningPattern === "column"
         ? hasColumnPattern
-        : hasDiagonalPattern;
+        : selectedWinningPattern === "diagonal"
+          ? hasDiagonalPattern
+          : selectedWinningPattern === "center_column"
+            ? hasCenterColumnPattern
+            : hasFourCornersPattern;
 
   useEffect(() => {
-    const availablePatterns: Array<"row" | "column" | "diagonal"> = [];
+    const availablePatterns: Array<
+      "row" | "column" | "diagonal" | "center_column" | "four_corners"
+    > = [];
     if (hasRowPattern) {
       availablePatterns.push("row");
     }
@@ -258,6 +293,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     }
     if (hasDiagonalPattern) {
       availablePatterns.push("diagonal");
+    }
+    if (hasCenterColumnPattern) {
+      availablePatterns.push("center_column");
+    }
+    if (hasFourCornersPattern) {
+      availablePatterns.push("four_corners");
     }
 
     if (availablePatterns.length === 0) {
@@ -569,6 +610,36 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                                   disabled={!hasDiagonalPattern}
                                 >
                                   Diagonal Winning
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    selectedWinningPattern === "center_column"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  onClick={() =>
+                                    setSelectedWinningPattern("center_column")
+                                  }
+                                  disabled={!hasCenterColumnPattern}
+                                >
+                                  Center Column
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    selectedWinningPattern === "four_corners"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  onClick={() =>
+                                    setSelectedWinningPattern("four_corners")
+                                  }
+                                  disabled={!hasFourCornersPattern}
+                                >
+                                  Four Corners
                                 </Button>
                               </div>
                             </div>
