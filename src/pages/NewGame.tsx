@@ -1359,7 +1359,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                     return (
                       <motion.button
                         key={number}
-                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500 shadow-inner dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" : wouldExceed && isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)] ring-2 ring-amber-400 ring-offset-2" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
+                        className={`relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border text-base font-semibold transition ${isLocked ? "cursor-not-allowed border-indigo-600 bg-linear-to-br from-indigo-500 via-indigo-600 to-indigo-800 text-white shadow-[0_8px_18px_rgba(79,70,229,0.4)] dark:border-indigo-500 dark:from-indigo-600 dark:via-indigo-700 dark:to-indigo-900" : wouldExceed && isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)] ring-2 ring-amber-400 ring-offset-2" : wouldExceed ? "cursor-not-allowed border-amber-300 bg-amber-100 text-amber-700 opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : isSelected ? "border-red-700 bg-linear-to-br from-red-500 via-red-600 to-red-800 text-white shadow-[0_10px_20px_rgba(185,28,28,0.45)]" : "border-slate-300 bg-linear-to-br from-white via-slate-100 to-slate-300 text-slate-800 shadow-[inset_0_8px_10px_rgba(255,255,255,0.78),0_6px_14px_rgba(15,23,42,0.18)] hover:border-red-300 hover:shadow-[inset_0_10px_12px_rgba(255,255,255,0.88),0_10px_18px_rgba(185,28,28,0.22)] dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-700 dark:via-slate-800 dark:to-slate-950 dark:text-slate-100 dark:hover:text-white"}`}
                         onClick={() => handleCartellaToggle(number)}
                         whileHover={{
                           scale: wouldExceed && !isSelected ? 1 : 1.07,
@@ -1393,7 +1393,7 @@ export const NewGame: React.FC<NewGameProps> = ({ onGameCreated }) => {
                             animate={{ scale: 1 }}
                             exit={{ scale: 0 }}
                           >
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-300 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-white shadow-sm backdrop-blur-sm">
                               <Lock size={14} />
                             </div>
                           </motion.div>
