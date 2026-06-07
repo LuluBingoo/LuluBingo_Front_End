@@ -114,7 +114,10 @@ const audioMap: Record<string, string> = {
 };
 
 const cacheBustedAudioMap: Record<string, string> = Object.fromEntries(
-  Object.entries(audioMap).map(([key, value]) => [key, `${value}?v=${audioAssetVersion}`]),
+  Object.entries(audioMap).map(([key, value]) => [
+    key,
+    `${value}?v=${audioAssetVersion}`,
+  ]),
 );
 
 export default cacheBustedAudioMap;
