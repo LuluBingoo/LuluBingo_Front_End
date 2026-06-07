@@ -1,4 +1,7 @@
-// Mapping of audio file names to their paths
+// Mapping of audio file names to their paths.
+// Keep the version in sync with audio asset updates so browsers refetch corrected voices.
+const audioAssetVersion = "2026-06-07";
+
 const audioMap: Record<string, string> = {
   B1: "/Audios/B1.wav",
   B2: "/Audios/B2.wav",
@@ -110,4 +113,8 @@ const audioMap: Record<string, string> = {
   you_won: "/Audios/you_won.wav",
 };
 
-export default audioMap;
+const cacheBustedAudioMap: Record<string, string> = Object.fromEntries(
+  Object.entries(audioMap).map(([key, value]) => [key, `${value}?v=${audioAssetVersion}`]),
+);
+
+export default cacheBustedAudioMap;
