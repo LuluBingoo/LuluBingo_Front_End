@@ -1875,40 +1875,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
         return;
       }
 
-      // ---------------------------------------------------------
-      // Frontend pre-verification (centralized 5-pattern checker).
-      // Backend remains the authority; we just hint it.
-      // ---------------------------------------------------------
+      // The backend is the sole authority on whether a cartella has won.
+      // The frontend's preview match is informational only — when present we
+      // hint the pattern so the backend message can reference the line the
+      // cashier was reviewing, but the backend re-validates independently.
       const localBoard = cartelaDataMap[matchedCartela];
-      const initialMatches = evaluateBingoPatterns(
+      const localMatch = evaluateBingoPatterns(
         localBoard,
         claimContext.calledNumbersForClaim,
       );
-      const frontendVerified = initialMatches.any;
-      const frontendPattern = initialMatches.firstMatch ?? "";
 
-      const claimRequest = {
+      const claim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: claimContext.cartelaIndex,
         called_numbers: claimContext.calledNumbersForClaim,
         ban_on_false_claim: false,
-        frontend_verified: frontendVerified,
-        frontend_pattern: frontendPattern,
-      } as any;
-
-      const claim = await gamesApi.claimGame(
-        currentGameConfig.gameCode,
-        claimRequest,
-      );
-
-      console.log("=== Claim Request ===");
-      console.log("Cartella index:", claimContext.cartelaIndex);
-      console.log(
-        "Called numbers count:",
-        claimContext.calledNumbersForClaim.length,
-      );
-      console.log("Called numbers:", claimContext.calledNumbersForClaim);
-      console.log("Claim response:", claim);
-      console.log("=== End Claim Request ===");
+        ...(localMatch.firstMatch ? { pattern: localMatch.firstMatch } : {}),
+      });
 
       if (claim.cartella_statuses) {
         setCartellaStatuses(claim.cartella_statuses);
@@ -1936,21 +1918,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
         localBoard,
         retryContext.calledNumbersForClaim,
       );
-      const retryFrontendVerified = retryMatches.any;
-      const retryFrontendPattern = retryMatches.firstMatch ?? "";
 
-      const retryClaimRequest = {
+      const retryClaim = await gamesApi.claimGame(currentGameConfig.gameCode, {
         cartella_index: retryIndex,
         called_numbers: retryContext.calledNumbersForClaim,
         ban_on_false_claim: false,
-        frontend_verified: retryFrontendVerified,
-        frontend_pattern: retryFrontendPattern,
-      } as any;
-
-      const retryClaim = await gamesApi.claimGame(
-        currentGameConfig.gameCode,
-        retryClaimRequest,
-      );
+        ...(retryMatches.firstMatch ? { pattern: retryMatches.firstMatch } : {}),
+      });
 
       if (retryClaim.cartella_statuses) {
         setCartellaStatuses(retryClaim.cartella_statuses);

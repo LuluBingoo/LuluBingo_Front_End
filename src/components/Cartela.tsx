@@ -170,6 +170,12 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
     }
   }, [cartelaNumber]);
 
+  // When switching cartellas, drop the previously-selected pattern so the
+  // auto-pick effect can fall on whatever the new cartela actually matches.
+  useEffect(() => {
+    setSelectedWinningPattern("row");
+  }, [selectedCartela]);
+
   useEffect(() => {
     if (!selectedCartela) {
       return;
@@ -239,21 +245,22 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       return;
     }
 
-    if (!selectedPatternMatched) {
-      popup.warning(
-        `Cartela ${selectedCartela} does not have a complete ${PATTERN_LABELS[selectedWinningPattern]} yet.`,
-      );
-      return;
-    }
+    // Always send a pattern that actually matches — guards against the
+    // selectedWinningPattern still being a default "row" before the effect
+    // has had a chance to switch it to the matched pattern.
+    const effectivePattern: BingoPattern = selectedPatternMatched
+      ? selectedWinningPattern
+      : (ALL_BINGO_PATTERNS.find((pattern) => patternMatches[pattern]) ??
+        selectedWinningPattern);
 
     const confirmed = await popup.confirm({
       title: `Declare Winner`,
-      description: `Declare cartela ${selectedCartela} as winner with ${PATTERN_LABELS[selectedWinningPattern]} pattern?`,
+      description: `Declare cartela ${selectedCartela} as winner with ${PATTERN_LABELS[effectivePattern]} pattern?`,
       confirmText: "Declare",
       cancelText: "Cancel",
     });
     if (confirmed) {
-      onDeclareWinner?.(selectedCartela, selectedWinningPattern);
+      onDeclareWinner?.(selectedCartela, effectivePattern);
     }
   };
 
