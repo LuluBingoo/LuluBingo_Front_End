@@ -9,6 +9,13 @@ import {
   getOfflineCartellaBoard,
   normalizeCartellaBoard,
 } from "../data/offlineCartellas";
+import {
+  ALL_BINGO_PATTERNS,
+  BingoPattern,
+  evaluateBingoPatterns,
+  getWinningLineIndices,
+  PATTERN_LABELS,
+} from "../data/bingoPatterns";
 
 interface CartelaModalProps {
   isOpen: boolean;
@@ -20,10 +27,7 @@ interface CartelaModalProps {
   cartelaDataMap?: Record<string, number[]>;
   cartellaNumberMap?: Record<string, number>;
   cartellaStatuses?: Record<string, "active" | "banned" | "winner">;
-  onDeclareWinner?: (
-    cartelaNumber: string,
-    pattern: "row" | "column" | "diagonal" | "center_column" | "four_corners",
-  ) => void;
+  onDeclareWinner?: (cartelaNumber: string, pattern: BingoPattern) => void;
   onRemovePlayer?: (cartelaNumber: string) => void;
   gameActive?: boolean;
 }
@@ -47,9 +51,8 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
   const [selectedCartela, setSelectedCartela] = useState(cartelaNumber || "");
   const [cartelaData, setCartelaData] = useState<number[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedWinningPattern, setSelectedWinningPattern] = useState<
-    "row" | "column" | "diagonal" | "center_column" | "four_corners"
-  >("row");
+  const [selectedWinningPattern, setSelectedWinningPattern] =
+    useState<BingoPattern>("row");
 
   const normalizeCartelaNumber = useCallback((value: string | number) => {
     const digits = String(value).replace(/\D/g, "");
@@ -188,133 +191,38 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       .length;
   };
 
-  const isMarked = useCallback(
-    (value: number) => value === 0 || calledNumbers.includes(value),
-    [calledNumbers],
+  const patternMatches = useMemo(
+    () => evaluateBingoPatterns(cartelaData, calledNumbers),
+    [cartelaData, calledNumbers],
   );
 
-  const hasRowPattern = useMemo(() => {
-    if (cartelaData.length !== 25) {
-      return false;
+  const hasWinningPattern = patternMatches.any;
+  const selectedPatternMatched = patternMatches[selectedWinningPattern];
+
+  const winningLineIndices = useMemo<Set<number>>(() => {
+    if (!selectedPatternMatched) {
+      return new Set();
     }
-
-    const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
+    return new Set(
+      getWinningLineIndices(cartelaData, calledNumbers, selectedWinningPattern),
     );
-
-    return grid.some((row) => row.every(isMarked));
-  }, [cartelaData, isMarked]);
-
-  const hasDiagonalPattern = useMemo(() => {
-    if (cartelaData.length !== 25) {
-      return false;
-    }
-
-    const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
-    );
-
-    const hasMainDiagonal = [0, 1, 2, 3, 4].every((idx) =>
-      isMarked(grid[idx][idx]),
-    );
-    const hasAntiDiagonal = [0, 1, 2, 3, 4].every((idx) =>
-      isMarked(grid[idx][4 - idx]),
-    );
-
-    return hasMainDiagonal || hasAntiDiagonal;
-  }, [cartelaData, isMarked]);
-
-  const hasCenterColumnPattern = useMemo(() => {
-    if (cartelaData.length !== 25) {
-      return false;
-    }
-    const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
-    );
-    return [0, 2, 3, 4].every((r) => isMarked(grid[r][2]));
-  }, [cartelaData, isMarked]);
-
-  const hasFourCornersPattern = useMemo(() => {
-    if (cartelaData.length !== 25) {
-      return false;
-    }
-    const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
-    );
-    return (
-      isMarked(grid[0][0]) &&
-      isMarked(grid[0][4]) &&
-      isMarked(grid[4][0]) &&
-      isMarked(grid[4][4])
-    );
-  }, [cartelaData, isMarked]);
-
-  const hasColumnPattern = useMemo(() => {
-    if (cartelaData.length !== 25) {
-      return false;
-    }
-
-    const grid = Array.from({ length: 5 }, (_, row) =>
-      Array.from({ length: 5 }, (_, col) => cartelaData[row * 5 + col]),
-    );
-
-    return Array.from({ length: 5 }, (_, col) => col).some((col) =>
-      grid.every((row) => isMarked(row[col])),
-    );
-  }, [cartelaData, isMarked]);
-
-  const hasWinningPattern =
-    hasRowPattern ||
-    hasColumnPattern ||
-    hasDiagonalPattern ||
-    hasCenterColumnPattern ||
-    hasFourCornersPattern;
-
-  const selectedPatternMatched =
-    selectedWinningPattern === "row"
-      ? hasRowPattern
-      : selectedWinningPattern === "column"
-        ? hasColumnPattern
-        : selectedWinningPattern === "diagonal"
-          ? hasDiagonalPattern
-          : selectedWinningPattern === "center_column"
-            ? hasCenterColumnPattern
-            : hasFourCornersPattern;
+  }, [cartelaData, calledNumbers, selectedWinningPattern, selectedPatternMatched]);
 
   useEffect(() => {
-    const availablePatterns: Array<
-      "row" | "column" | "diagonal" | "center_column" | "four_corners"
-    > = [];
-    if (hasRowPattern) {
-      availablePatterns.push("row");
-    }
-    if (hasColumnPattern) {
-      availablePatterns.push("column");
-    }
-    if (hasDiagonalPattern) {
-      availablePatterns.push("diagonal");
-    }
-    if (hasCenterColumnPattern) {
-      availablePatterns.push("center_column");
-    }
-    if (hasFourCornersPattern) {
-      availablePatterns.push("four_corners");
-    }
+    const firstAvailable =
+      ALL_BINGO_PATTERNS.find((pattern) => patternMatches[pattern]) ?? "row";
 
-    if (availablePatterns.length === 0) {
-      setSelectedWinningPattern("row");
+    if (!patternMatches.any) {
+      if (selectedWinningPattern !== "row") {
+        setSelectedWinningPattern("row");
+      }
       return;
     }
 
-    if (!availablePatterns.includes(selectedWinningPattern)) {
-      setSelectedWinningPattern(availablePatterns[0]);
+    if (!patternMatches[selectedWinningPattern]) {
+      setSelectedWinningPattern(firstAvailable);
     }
-  }, [
-    hasRowPattern,
-    hasColumnPattern,
-    hasDiagonalPattern,
-    selectedWinningPattern,
-  ]);
+  }, [patternMatches, selectedWinningPattern]);
 
   const handleDeclareWinner = async () => {
     if (cartelaData.length !== 25) {
@@ -326,21 +234,21 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
 
     if (!hasWinningPattern) {
       popup.warning(
-        `Cartela ${selectedCartela} does not have a complete row, column, or diagonal yet.`,
+        `Cartela ${selectedCartela} does not have a winning pattern yet.`,
       );
       return;
     }
 
     if (!selectedPatternMatched) {
       popup.warning(
-        `Cartela ${selectedCartela} does not have a complete ${selectedWinningPattern} yet.`,
+        `Cartela ${selectedCartela} does not have a complete ${PATTERN_LABELS[selectedWinningPattern]} yet.`,
       );
       return;
     }
 
     const confirmed = await popup.confirm({
       title: `Declare Winner`,
-      description: `Declare cartela ${selectedCartela} as winner with ${selectedWinningPattern} pattern?`,
+      description: `Declare cartela ${selectedCartela} as winner with ${PATTERN_LABELS[selectedWinningPattern]} pattern?`,
       confirmText: "Declare",
       cancelText: "Cancel",
     });
@@ -386,14 +294,19 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
       const rowCells = [];
       for (let col = 0; col < 5; col++) {
         const index = row * 5 + col;
+        const isWinningCell = winningLineIndices.has(index);
 
         if (row === 2 && col === 2) {
           rowCells.push(
             <div
               key={`${row}-${col}`}
-              className="relative flex h-14 items-center justify-center rounded-md border border-slate-300 bg-amber-100 dark:border-slate-700 dark:bg-amber-900/40"
+              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-bold ${
+                isWinningCell
+                  ? "border-amber-500 bg-gradient-to-br from-amber-300 to-amber-500 text-slate-900 shadow-[0_0_14px_rgba(245,158,11,0.55)]"
+                  : "border-slate-300 bg-amber-100 dark:border-slate-700 dark:bg-amber-900/40"
+              }`}
             >
-              <span className="text-sm font-bold">FREE</span>
+              <span>FREE</span>
             </div>,
           );
         } else {
@@ -403,10 +316,16 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
           rowCells.push(
             <div
               key={`${row}-${col}`}
-              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${isCalled ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"}`}
+              className={`relative flex h-14 items-center justify-center rounded-md border text-sm font-semibold ${
+                isWinningCell
+                  ? "border-amber-500 bg-gradient-to-br from-amber-300 to-amber-500 text-slate-900 shadow-[0_0_14px_rgba(245,158,11,0.55)]"
+                  : isCalled
+                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    : "border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              }`}
             >
               <span>{num}</span>
-              {isCalled && (
+              {isCalled && !isWinningCell && (
                 <div className="absolute right-1 top-1 text-xs">✓</div>
               )}
             </div>,
@@ -566,81 +485,24 @@ export const CartelaModal: React.FC<CartelaModalProps> = ({
                                 Winning Type
                               </p>
                               <div className="mt-2 flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    selectedWinningPattern === "row"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  onClick={() =>
-                                    setSelectedWinningPattern("row")
-                                  }
-                                  disabled={!hasRowPattern}
-                                >
-                                  Row Winning
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    selectedWinningPattern === "column"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  onClick={() =>
-                                    setSelectedWinningPattern("column")
-                                  }
-                                  disabled={!hasColumnPattern}
-                                >
-                                  Column Winning
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    selectedWinningPattern === "diagonal"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  onClick={() =>
-                                    setSelectedWinningPattern("diagonal")
-                                  }
-                                  disabled={!hasDiagonalPattern}
-                                >
-                                  Diagonal Winning
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    selectedWinningPattern === "center_column"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  onClick={() =>
-                                    setSelectedWinningPattern("center_column")
-                                  }
-                                  disabled={!hasCenterColumnPattern}
-                                >
-                                  Center Column
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    selectedWinningPattern === "four_corners"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  onClick={() =>
-                                    setSelectedWinningPattern("four_corners")
-                                  }
-                                  disabled={!hasFourCornersPattern}
-                                >
-                                  Four Corners
-                                </Button>
+                                {ALL_BINGO_PATTERNS.map((pattern) => (
+                                  <Button
+                                    key={pattern}
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      selectedWinningPattern === pattern
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    onClick={() =>
+                                      setSelectedWinningPattern(pattern)
+                                    }
+                                    disabled={!patternMatches[pattern]}
+                                  >
+                                    {PATTERN_LABELS[pattern]}
+                                  </Button>
+                                ))}
                               </div>
                             </div>
 

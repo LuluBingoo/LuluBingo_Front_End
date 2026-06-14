@@ -392,11 +392,19 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
         </div>
 
         <Input
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={4}
           placeholder={t("playground.cartelaPlaceholderDetailed")}
           value={cartelaInput}
-          onChange={(e) => setCartelaInput(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") viewCartela();
+          onChange={(e) =>
+            setCartelaInput(e.target.value.replace(/\D/g, "").slice(0, 4))
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && cartelaInput.trim() && !isCheckingCartela) {
+              e.preventDefault();
+              void checkCartela();
+            }
           }}
           disabled={!isGameActive}
         />
@@ -405,7 +413,9 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
           <Button
             className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
             onClick={checkCartela}
-            disabled={!isGameActive || isCheckingCartela}
+            disabled={
+              !isGameActive || isCheckingCartela || !cartelaInput.trim()
+            }
           >
             {isCheckingCartela ? (
               <>
@@ -422,7 +432,7 @@ export const DesktopControlPanels: React.FC<DesktopControlPanelsProps> = ({
             className="h-10 w-full"
             onClick={viewCartela}
             variant="outline"
-            disabled={!isGameActive}
+            disabled={!isGameActive || !cartelaInput.trim()}
           >
             <Eye className="mr-1 h-4 w-4" /> {t("playground.view")}
           </Button>

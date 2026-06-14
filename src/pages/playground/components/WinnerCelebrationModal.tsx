@@ -6,6 +6,11 @@ import { Button } from "../../../components/ui/button";
 import { formatCurrency } from "../../../services/settings";
 import { Game } from "../../../services/types";
 import {
+  BingoPattern,
+  formatPatternLabel,
+  getWinningLineIndices,
+} from "../../../data/bingoPatterns";
+import {
   PlaygroundGameConfig,
   WinnerCelebration,
   WinnerConfettiPiece,
@@ -47,79 +52,30 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
   }, [winnerCelebration?.cartela, winnerCelebration?.pattern]);
 
   const winningLineIndices = React.useMemo<number[]>(() => {
-    if (
-      !winnerCelebration?.pattern ||
-      !winnerCartelaData ||
-      winnerCartelaData.length !== 25
-    ) {
+    if (!winnerCelebration?.pattern || winnerCartelaData.length !== 25) {
       return [];
     }
-
-    const isMarked = (index: number) => {
-      const value = winnerCartelaData[index];
-      return value === 0 || calledNumbers.includes(value);
-    };
-
-    if (winnerCelebration.pattern === "diagonal") {
-      const mainDiagonal = [0, 6, 12, 18, 24];
-      if (mainDiagonal.every((index) => isMarked(index))) {
-        return mainDiagonal;
-      }
-
-      const antiDiagonal = [4, 8, 12, 16, 20];
-      if (antiDiagonal.every((index) => isMarked(index))) {
-        return antiDiagonal;
-      }
-
-      return [];
-    }
-
-    if (winnerCelebration.pattern === "column") {
-      for (let column = 0; column < 5; column++) {
-        const columnIndices = [
-          column,
-          column + 5,
-          column + 10,
-          column + 15,
-          column + 20,
-        ];
-
-        if (columnIndices.every((index) => isMarked(index))) {
-          return columnIndices;
-        }
-      }
-
-      return [];
-    }
-
-    for (let row = 0; row < 5; row++) {
-      const rowIndices = [
-        row * 5,
-        row * 5 + 1,
-        row * 5 + 2,
-        row * 5 + 3,
-        row * 5 + 4,
-      ];
-
-      if (rowIndices.every((index) => isMarked(index))) {
-        return rowIndices;
-      }
-    }
-
-    return [];
+    return getWinningLineIndices(
+      winnerCartelaData,
+      calledNumbers,
+      winnerCelebration.pattern as BingoPattern,
+    );
   }, [winnerCelebration?.pattern, winnerCartelaData, calledNumbers]);
+
+  const winningCellSet = React.useMemo(
+    () => new Set(winningLineIndices),
+    [winningLineIndices],
+  );
 
   const canShowHow =
     Boolean(winnerCelebration?.pattern) &&
     winnerCartelaData.length === 25 &&
     winningLineIndices.length > 0;
 
-  const patternLabel =
-    winnerCelebration?.pattern === "diagonal"
-      ? "Winning Diagonal"
-      : winnerCelebration?.pattern === "column"
-        ? "Winning Column"
-        : "Winning Row";
+  const friendlyPatternLabel = formatPatternLabel(winnerCelebration?.pattern);
+  const patternLabel = friendlyPatternLabel
+    ? `Winning ${friendlyPatternLabel}`
+    : "Winning Pattern";
 
   const formatMoneyValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === "") {
@@ -273,7 +229,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
               >
-                ✨ {winnerCelebration.pattern} Pattern ✨
+                ✨ {friendlyPatternLabel} Pattern ✨
               </motion.div>
             )}
             <div className="mt-4 h-px w-full bg-amber-300/80" />
@@ -442,8 +398,7 @@ export const WinnerCelebrationModal: React.FC<WinnerCelebrationModalProps> = ({
                           const value = winnerCartelaData[index];
                           const isMarked =
                             value === 0 || calledNumbers.includes(value);
-                          const isWinningCell =
-                            winningLineIndices.includes(index);
+                          const isWinningCell = winningCellSet.has(index);
 
                           return (
                             <motion.div

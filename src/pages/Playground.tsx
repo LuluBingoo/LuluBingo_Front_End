@@ -33,6 +33,7 @@ import {
   getOfflineCartellaBoard,
   normalizeCartellaBoard,
 } from "../data/offlineCartellas";
+import { BingoPattern, evaluateBingoPatterns } from "../data/bingoPatterns";
 import {
   DisplayGameStatus,
   PlaygroundGameConfig,
@@ -1653,7 +1654,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
   // Handle winner declaration
   const handleDeclareWinner = async (
     cartelaNumber: string,
-    pattern: "row" | "column" | "diagonal" = "row",
+    pattern: BingoPattern = "row",
   ) => {
     if (winnerClaimInFlightRef.current) {
       return;
@@ -1875,69 +1876,16 @@ export const Playground: React.FC<PlaygroundProps> = ({
       }
 
       // ---------------------------------------------------------
-      // Explicit Frontend Checking (As requested)
+      // Frontend pre-verification (centralized 5-pattern checker).
+      // Backend remains the authority; we just hint it.
       // ---------------------------------------------------------
-      let frontendVerified = false;
-      let frontendPattern = "";
       const localBoard = cartelaDataMap[matchedCartela];
-
-      if (localBoard && Array.isArray(localBoard) && localBoard.length === 25) {
-        const calledSet = new Set([...claimContext.calledNumbersForClaim, 0]); // 0 is free space
-        const marked = localBoard.map((num) => calledSet.has(num));
-
-        // Rows
-        for (let r = 0; r < 5; r++) {
-          if (
-            marked[r * 5] &&
-            marked[r * 5 + 1] &&
-            marked[r * 5 + 2] &&
-            marked[r * 5 + 3] &&
-            marked[r * 5 + 4]
-          ) {
-            frontendVerified = true;
-            frontendPattern = "row";
-            break;
-          }
-        }
-        // Columns
-        if (!frontendVerified) {
-          for (let c = 0; c < 5; c++) {
-            if (
-              marked[c] &&
-              marked[c + 5] &&
-              marked[c + 10] &&
-              marked[c + 15] &&
-              marked[c + 20]
-            ) {
-              frontendVerified = true;
-              frontendPattern = "column";
-              break;
-            }
-          }
-        }
-        // Diagonals
-        if (!frontendVerified) {
-          if (
-            marked[0] &&
-            marked[6] &&
-            marked[12] &&
-            marked[18] &&
-            marked[24]
-          ) {
-            frontendVerified = true;
-            frontendPattern = "diagonal";
-          } else if (
-            marked[4] &&
-            marked[8] &&
-            marked[12] &&
-            marked[16] &&
-            marked[20]
-          ) {
-            frontendVerified = true;
-            frontendPattern = "diagonal";
-          }
-        }
-      }
+      const initialMatches = evaluateBingoPatterns(
+        localBoard,
+        claimContext.calledNumbersForClaim,
+      );
+      const frontendVerified = initialMatches.any;
+      const frontendPattern = initialMatches.firstMatch ?? "";
 
       const claimRequest = {
         cartella_index: claimContext.cartelaIndex,
@@ -1983,62 +1931,13 @@ export const Playground: React.FC<PlaygroundProps> = ({
           ? retryContext.cartelaIndex
           : claimContext.cartelaIndex;
 
-      // Re-evaluate frontend checking against synced caller numbers
-      let retryFrontendVerified = false;
-      let retryFrontendPattern = "";
-      if (localBoard && Array.isArray(localBoard) && localBoard.length === 25) {
-        const calledSet = new Set([...retryContext.calledNumbersForClaim, 0]);
-        const marked = localBoard.map((num) => calledSet.has(num));
-        for (let r = 0; r < 5; r++) {
-          if (
-            marked[r * 5] &&
-            marked[r * 5 + 1] &&
-            marked[r * 5 + 2] &&
-            marked[r * 5 + 3] &&
-            marked[r * 5 + 4]
-          ) {
-            retryFrontendVerified = true;
-            retryFrontendPattern = "row";
-            break;
-          }
-        }
-        if (!retryFrontendVerified) {
-          for (let c = 0; c < 5; c++) {
-            if (
-              marked[c] &&
-              marked[c + 5] &&
-              marked[c + 10] &&
-              marked[c + 15] &&
-              marked[c + 20]
-            ) {
-              retryFrontendVerified = true;
-              retryFrontendPattern = "column";
-              break;
-            }
-          }
-        }
-        if (!retryFrontendVerified) {
-          if (
-            marked[0] &&
-            marked[6] &&
-            marked[12] &&
-            marked[18] &&
-            marked[24]
-          ) {
-            retryFrontendVerified = true;
-            retryFrontendPattern = "diagonal";
-          } else if (
-            marked[4] &&
-            marked[8] &&
-            marked[12] &&
-            marked[16] &&
-            marked[20]
-          ) {
-            retryFrontendVerified = true;
-            retryFrontendPattern = "diagonal";
-          }
-        }
-      }
+      // Re-evaluate against synced called numbers via centralized checker.
+      const retryMatches = evaluateBingoPatterns(
+        localBoard,
+        retryContext.calledNumbersForClaim,
+      );
+      const retryFrontendVerified = retryMatches.any;
+      const retryFrontendPattern = retryMatches.firstMatch ?? "";
 
       const retryClaimRequest = {
         cartella_index: retryIndex,
@@ -2449,22 +2348,36 @@ export const Playground: React.FC<PlaygroundProps> = ({
   };
 
   const calculateWinMoney = () => {
-    let pool = calledNumbers.length * 10;
-    if (currentGameConfig?.winBirr && currentGameConfig.winBirr !== "0") {
-      pool = parseFloat(String(currentGameConfig.winBirr));
+    // Backend-authoritative net payout if known (set after claim or pre-computed at creation).
+    const backendPayout = parseMoneyAmount(
+      restoredGame?.payout_amount ?? currentGameConfig?.winBirr,
+      0,
+    );
+    if (backendPayout > 0) {
+      return Math.round(backendPayout * 100) / 100;
     }
 
-    const cutPerc = parseFloat(
-      String(currentGameConfig?.cutPercentage || "10"),
+    // Fallback estimate: pool = bet × players, payout = pool - shop_cut.
+    const betPerPlayer = parseMoneyAmount(
+      currentGameConfig?.betBirr ?? restoredGame?.bet_amount,
+      0,
     );
-    const validCut =
-      Number.isFinite(cutPerc) && cutPerc >= 0 && cutPerc <= 100 ? cutPerc : 10;
+    const playerCount =
+      Number(restoredGame?.num_players) ||
+      Number.parseInt(currentGameConfig?.numPlayers || "", 10) ||
+      activeCartelas.length;
+    const pool = betPerPlayer * Math.max(playerCount, 0);
 
-    // We already use quantized amounts in the backend, but mathematically: payout = pool - shop_cut
+    const cutPerc = parseMoneyAmount(
+      currentGameConfig?.cutPercentage ?? restoredGame?.cut_percentage,
+      10,
+    );
+    const validCut = cutPerc >= 0 && cutPerc <= 100 ? cutPerc : 10;
+
     const shopCut = (pool * validCut) / 100;
-    const netPayout = pool - shopCut;
+    const netPayout = Math.max(0, pool - shopCut);
 
-    return Math.round(netPayout * 100) / 100; // Return clean 2-decimal rounded if any
+    return Math.round(netPayout * 100) / 100;
   };
 
   const toggleFullscreen = () => {
@@ -2916,8 +2829,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             <span className="mr-1 text-xs uppercase text-slate-500">
               {t("playground.winPrice")}
             </span>
-            <span className="font-semibold">{calculateWinMoney()}</span>
-            <span className="ml-2 text-xs uppercase text-slate-500">
+            <span className="font-semibold">
               {formatCurrency(calculateWinMoney())}
             </span>
           </div>
