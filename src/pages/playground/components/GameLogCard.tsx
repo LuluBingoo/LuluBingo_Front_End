@@ -2,6 +2,7 @@ import React from "react";
 import { Card } from "../../../components/ui/card";
 import { formatCurrency } from "../../../services/settings";
 import { Game } from "../../../services/types";
+import { formatPatternLabel } from "../../../data/bingoPatterns";
 import { GameStatus, PlaygroundGameConfig } from "../types";
 
 interface GameLogCardProps {
@@ -104,7 +105,7 @@ export const GameLogCard: React.FC<GameLogCardProps> = ({
           <div>
             <span className="text-slate-500">Pattern:</span>{" "}
             <span className="font-semibold">
-              {restoredGame?.winning_pattern || "-"}
+              {formatPatternLabel(restoredGame?.winning_pattern) || "-"}
             </span>
           </div>
           <div>

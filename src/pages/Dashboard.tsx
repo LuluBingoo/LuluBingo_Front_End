@@ -18,6 +18,7 @@ import { usePopup } from "../contexts/PopupContext";
 import { gamesApi, shopApi } from "../services/api";
 import { GameAuditReportResponse } from "../services/types";
 import { formatCurrency } from "../services/settings";
+import { formatPatternLabel } from "../data/bingoPatterns";
 
 interface DashboardProps {
   gameConfig?: {
@@ -702,7 +703,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               .join(", ")}
                       </td>
                       <td className="px-3 py-2">
-                        {win.winning_pattern || "-"}
+                        {formatPatternLabel(win.winning_pattern) || "-"}
                       </td>
                       <td className="px-3 py-2">
                         {formatCurrency(win.payout_amount || "0")}

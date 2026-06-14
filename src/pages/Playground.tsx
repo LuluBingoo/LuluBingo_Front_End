@@ -33,7 +33,11 @@ import {
   getOfflineCartellaBoard,
   normalizeCartellaBoard,
 } from "../data/offlineCartellas";
-import { BingoPattern, evaluateBingoPatterns } from "../data/bingoPatterns";
+import {
+  BingoPattern,
+  evaluateBingoPatterns,
+  formatPatternLabel,
+} from "../data/bingoPatterns";
 import {
   DisplayGameStatus,
   PlaygroundGameConfig,
@@ -1090,7 +1094,8 @@ export const Playground: React.FC<PlaygroundProps> = ({
     claim: GameClaimResponse,
     source: "declare" | "check",
   ) => {
-    const patternText = claim.pattern ? `\nPattern: ${claim.pattern}` : "";
+    const patternLabel = formatPatternLabel(claim.pattern);
+    const patternText = patternLabel ? `\nPattern: ${patternLabel}` : "";
     const payoutText = claim.payout_amount
       ? `\nPayout: ${formatCurrency(claim.payout_amount)}`
       : "";
@@ -1156,7 +1161,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
     }
 
     popup.success(
-      `🎉 BINGO${claim.pattern ? ` (${claim.pattern})` : ""}! Player with Cartela ${winningCartelaNumber} WON!\nGame closed.${payoutText}${bonusText}${cutText}`,
+      `🎉 BINGO${patternLabel ? ` (${patternLabel})` : ""}! Player with Cartela ${winningCartelaNumber} WON!\nGame closed.${payoutText}${bonusText}${cutText}`,
     );
   };
 
